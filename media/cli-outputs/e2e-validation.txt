@@ -1,0 +1,115 @@
+
+  ╔═══════════════════════════════════════════════════════╗
+  ║                                                       ║
+  ║   CertChain — End-to-End Full Validation              ║
+  ║                                                       ║
+  ╚═══════════════════════════════════════════════════════╝
+
+  Mode: VALIDATE (test existing deployment)
+
+
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+  Phase 6: Validate Pod Health
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+  Checking certchain...
+  ✓ PASS — All 9 service pods running in certchain
+  Checking certchain-techpulse...
+  ✓ PASS — All 7 service pods running in certchain-techpulse
+  Checking certchain-dataforge...
+  ✓ PASS — All 7 service pods running in certchain-dataforge
+  Checking certchain-neuralpath...
+  ✓ PASS — All 7 service pods running in certchain-neuralpath
+
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+  Phase 7: Validate Routes & Endpoints
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+  Testing application endpoints...
+  ✓ PASS — CertChain Portal (HTTP 200)
+  ✓ PASS — Verify API health (HTTP 200)
+  ✓ PASS — TechPulse Course Manager (HTTP 200)
+  ✓ PASS — TechPulse cert-admin-api health (HTTP 200)
+  ✓ PASS — DataForge cert-admin-api health (HTTP 200)
+  ✓ PASS — NeuralPath cert-admin-api health (HTTP 200)
+
+  Testing Keycloak endpoints...
+  ✓ PASS — Central Keycloak (HTTP 200)
+  ✓ PASS — TechPulse Keycloak (HTTP 200)
+  ✓ PASS — DataForge Keycloak (HTTP 200)
+  ✓ PASS — NeuralPath Keycloak (HTTP 200)
+
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+  Phase 8: API Tests — Authentication & Certificate Lifecycle
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+  Authenticating as TechPulse registrar...
+  ✓ PASS — Keycloak authentication (TechPulse)
+  Testing dashboard stats...
+  ✓ PASS — Dashboard stats API
+  Issuing test certificate: E2E-20260307232337...
+  ✓ PASS — Certificate issuance (HTTP 201)
+  Verifying certificate...
+  ✓ PASS — Certificate verification (status: VALID)
+  Revoking certificate...
+  ✓ PASS — Certificate revocation (HTTP 200)
+  Re-verifying (expect REVOKED)...
+  ✓ PASS — Post-revocation verification (status: REVOKED)
+  Testing cross-org verification...
+  ⊘ SKIP — Cross-org verification (seeded certs not found — seed script may not have run)
+
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+  Phase 9: Validate Monitoring Stack
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+  Checking ServiceMonitors...
+  ✓ PASS — ServiceMonitors in certchain (2 found)
+  ✓ PASS — ServiceMonitors in certchain-techpulse (3 found)
+  Checking Grafana...
+  ✓ PASS — Grafana reachable (HTTP 200)
+  Checking Quarkus metrics endpoints...
+  ✓ PASS — Custom certificate metrics present
+  Checking user workload monitoring...
+  ✓ PASS — User workload monitoring pods running (5 pods)
+
+
+  ╔═══════════════════════════════════════════════════════╗
+  ║                                                       ║
+  ║          E2E Validation Summary                       ║
+  ║                                                       ║
+  ╚═══════════════════════════════════════════════════════╝
+
+
+  Results:
+    ✓ All 9 service pods running in certchain
+    ✓ All 7 service pods running in certchain-techpulse
+    ✓ All 7 service pods running in certchain-dataforge
+    ✓ All 7 service pods running in certchain-neuralpath
+    ✓ CertChain Portal (HTTP 200)
+    ✓ Verify API health (HTTP 200)
+    ✓ TechPulse Course Manager (HTTP 200)
+    ✓ TechPulse cert-admin-api health (HTTP 200)
+    ✓ DataForge cert-admin-api health (HTTP 200)
+    ✓ NeuralPath cert-admin-api health (HTTP 200)
+    ✓ Central Keycloak (HTTP 200)
+    ✓ TechPulse Keycloak (HTTP 200)
+    ✓ DataForge Keycloak (HTTP 200)
+    ✓ NeuralPath Keycloak (HTTP 200)
+    ✓ Keycloak authentication (TechPulse)
+    ✓ Dashboard stats API
+    ✓ Certificate issuance (HTTP 201)
+    ✓ Certificate verification (status: VALID)
+    ✓ Certificate revocation (HTTP 200)
+    ✓ Post-revocation verification (status: REVOKED)
+    ⊘ Cross-org verification (seeded certs not found — seed script may not have run)
+    ✓ ServiceMonitors in certchain (2 found)
+    ✓ ServiceMonitors in certchain-techpulse (3 found)
+    ✓ Grafana reachable (HTTP 200)
+    ✓ Custom certificate metrics present
+    ✓ User workload monitoring pods running (5 pods)
+
+  Passed: 25  Failed: 0  Skipped: 1
+
+  All tests passed! ✓
+
+  Next steps:
+    • Capture screenshots by opening each URL in a browser
+    • Save to media/screenshots/ and uncomment image refs in README.md
+    • Run ./scripts/demo-walkthrough.sh for the interactive demo
+

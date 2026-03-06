@@ -1,0 +1,61 @@
+# Chaincode as a Service (CcaaS) — certcontract gRPC server
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: certcontract
+  labels:
+    app: certcontract
+    app.kubernetes.io/name: certcontract
+    {{- include "certchain-central.labels" . | nindent 4 }}
+    app.kubernetes.io/component: chaincode
+  annotations:
+    argocd.argoproj.io/sync-wave: "12"
+spec:
+  replicas: 1
+  selector:
+    matchLabels:
+      app: certcontract
+  template:
+    metadata:
+      labels:
+        app: certcontract
+        app.kubernetes.io/name: certcontract
+        {{- include "certchain-central.labels" . | nindent 8 }}
+        app.kubernetes.io/component: chaincode
+    spec:
+      containers:
+        - name: certcontract
+          image: "{{ .Values.global.registry }}/certcontract:{{ .Values.global.imageTag }}"
+          ports:
+            - containerPort: 7052
+          env:
+            - name: CHAINCODE_SERVER_ADDRESS
+              value: "0.0.0.0:7052"
+            - name: CORE_CHAINCODE_ID_NAME
+              valueFrom:
+                configMapKeyRef:
+                  name: chaincode-id
+                  key: package-id
+                  optional: true
+          resources:
+            requests:
+              cpu: 100m
+              memory: 128Mi
+            limits:
+              cpu: 500m
+              memory: 512Mi
+---
+apiVersion: v1
+kind: Service
+metadata:
+  name: certcontract
+  labels:
+    app: certcontract
+    {{- include "certchain-central.labels" . | nindent 4 }}
+spec:
+  selector:
+    app: certcontract
+  ports:
+    - name: chaincode
+      port: 7052
+      targetPort: 7052

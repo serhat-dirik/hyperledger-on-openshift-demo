@@ -1,0 +1,66 @@
+# Fabric CA — generates enrollment certs for all orgs.
+# Demo: single CA instance (production: one per org).
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: fabric-ca
+  labels:
+    app: fabric-ca
+    app.kubernetes.io/name: fabric-ca
+    {{- include "certchain-central.labels" . | nindent 4 }}
+    app.kubernetes.io/component: blockchain
+    app.openshift.io/runtime: other
+  annotations:
+    argocd.argoproj.io/sync-wave: "0"
+spec:
+  replicas: 1
+  selector:
+    matchLabels:
+      app: fabric-ca
+  template:
+    metadata:
+      labels:
+        app: fabric-ca
+        app.kubernetes.io/name: fabric-ca
+        {{- include "certchain-central.labels" . | nindent 8 }}
+        app.kubernetes.io/component: blockchain
+        app.openshift.io/runtime: other
+    spec:
+      containers:
+        - name: fabric-ca
+          image: "{{ .Values.fabricCA.image.repository }}:{{ .Values.fabricCA.image.tag }}"
+          command: ["fabric-ca-server"]
+          args: ["start", "-b", "admin:adminpw", "-d"]
+          ports:
+            - containerPort: 7054
+          env:
+            - name: FABRIC_CA_HOME
+              value: /var/hyperledger/fabric-ca-server
+            - name: FABRIC_CA_SERVER_CA_NAME
+              value: ca-certchain
+            - name: FABRIC_CA_SERVER_PORT
+              value: "7054"
+          volumeMounts:
+            - name: ca-data
+              mountPath: /var/hyperledger
+          resources:
+            requests:
+              cpu: {{ .Values.fabricCA.resources.requests.cpu }}
+              memory: {{ .Values.fabricCA.resources.requests.memory }}
+            limits:
+              cpu: {{ .Values.fabricCA.resources.limits.cpu }}
+              memory: {{ .Values.fabricCA.resources.limits.memory }}
+      volumes:
+        - name: ca-data
+          emptyDir: {}
+---
+apiVersion: v1
+kind: Service
+metadata:
+  name: fabric-ca
+spec:
+  selector:
+    app: fabric-ca
+  ports:
+    - port: 7054
+      targetPort: 7054

@@ -1,0 +1,27 @@
+=== CertChain Routes ===
+
+--- certchain ---
+cert-portal               cert-portal-certchain.apps.cluster-8nbj2.8nbj2.sandbox5529.opentlc.com                     cert-portal                 8080   edge/Redirect   None
+certchain-grafana-route   certchain-grafana-route-certchain.apps.cluster-8nbj2.8nbj2.sandbox5529.opentlc.com         certchain-grafana-service   3000   edge/Redirect   None
+keycloak                  keycloak-certchain.apps.cluster-8nbj2.8nbj2.sandbox5529.opentlc.com                        keycloak                    8080   edge/Redirect   None
+orderer0                  orderer0-certchain.apps.cluster-8nbj2.8nbj2.sandbox5529.opentlc.com                        orderer0                    grpc   passthrough     None
+verify-api                verify-api-certchain.apps.cluster-8nbj2.8nbj2.sandbox5529.opentlc.com                      verify-api                  8080   edge/Redirect   None
+
+--- certchain-techpulse ---
+cert-admin-api      cert-admin-api-techpulse.apps.cluster-8nbj2.8nbj2.sandbox5529.opentlc.com            cert-admin-api      8080   edge            None
+course-manager-ui   course-manager-ui-techpulse.apps.cluster-8nbj2.8nbj2.sandbox5529.opentlc.com         course-manager-ui   8080   edge/Redirect   None
+keycloak            keycloak-techpulse.apps.cluster-8nbj2.8nbj2.sandbox5529.opentlc.com                  keycloak            8080   edge/Redirect   None
+orderer             orderer-certchain-techpulse.apps.cluster-8nbj2.8nbj2.sandbox5529.opentlc.com         orderer             grpc   passthrough     None
+
+--- certchain-dataforge ---
+cert-admin-api      cert-admin-api-dataforge.apps.cluster-8nbj2.8nbj2.sandbox5529.opentlc.com            cert-admin-api      8080   edge            None
+course-manager-ui   course-manager-ui-dataforge.apps.cluster-8nbj2.8nbj2.sandbox5529.opentlc.com         course-manager-ui   8080   edge/Redirect   None
+keycloak            keycloak-dataforge.apps.cluster-8nbj2.8nbj2.sandbox5529.opentlc.com                  keycloak            8080   edge/Redirect   None
+orderer             orderer-certchain-dataforge.apps.cluster-8nbj2.8nbj2.sandbox5529.opentlc.com         orderer             grpc   passthrough     None
+
+--- certchain-neuralpath ---
+cert-admin-api      cert-admin-api-neuralpath.apps.cluster-8nbj2.8nbj2.sandbox5529.opentlc.com            cert-admin-api      8080   edge            None
+course-manager-ui   course-manager-ui-neuralpath.apps.cluster-8nbj2.8nbj2.sandbox5529.opentlc.com         course-manager-ui   8080   edge/Redirect   None
+keycloak            keycloak-neuralpath.apps.cluster-8nbj2.8nbj2.sandbox5529.opentlc.com                  keycloak            8080   edge/Redirect   None
+orderer             orderer-certchain-neuralpath.apps.cluster-8nbj2.8nbj2.sandbox5529.opentlc.com         orderer             grpc   passthrough     None
+

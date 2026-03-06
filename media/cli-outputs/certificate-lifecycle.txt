@@ -1,0 +1,71 @@
+=== Certificate Lifecycle Demo ===
+
+1. Issue certificate:
+{
+    "certID": "DEMO-001",
+    "studentID": "demo-student",
+    "studentName": "Jane Smith",
+    "courseID": "BLK-201",
+    "courseName": "Advanced Blockchain",
+    "orgID": "techpulse",
+    "orgName": "TechPulse Academy",
+    "issueDate": "2026-03-07",
+    "expiryDate": "2028-12-31",
+    "status": "ACTIVE",
+    "revokeReason": "",
+    "metadata": "",
+    "txID": "41ebde98e6e9e1b014a852fa45980892180376c9ca74d84edbc558f4eee3e5f8",
+    "timestamp": "2026-03-07T19:24:43Z"
+}
+
+2. Verify certificate:
+{
+    "certID": "DEMO-001",
+    "status": "VALID",
+    "studentName": "Jane Smith",
+    "courseName": "Advanced Blockchain",
+    "orgName": "TechPulse Academy",
+    "issueDate": "2026-03-07",
+    "expiryDate": "2028-12-31",
+    "revokeReason": "",
+    "verifiedAt": "2026-03-07T19:24:46.832776604Z"
+}
+
+3. Revoke certificate:
+{
+    "certID": "DEMO-001",
+    "studentID": "demo-student",
+    "studentName": "Jane Smith",
+    "courseID": "BLK-201",
+    "courseName": "Advanced Blockchain",
+    "orgID": "techpulse",
+    "orgName": "TechPulse Academy",
+    "issueDate": "2026-03-07",
+    "expiryDate": "2028-12-31",
+    "status": "REVOKED",
+    "revokeReason": "Demo revocation test",
+    "metadata": "",
+    "txID": "41ebde98e6e9e1b014a852fa45980892180376c9ca74d84edbc558f4eee3e5f8",
+    "timestamp": "2026-03-07T19:24:47Z"
+}
+
+4. Re-verify (should be REVOKED):
+{
+    "certID": "DEMO-001",
+    "status": "REVOKED",
+    "studentName": "Jane Smith",
+    "courseName": "Advanced Blockchain",
+    "orgName": "TechPulse Academy",
+    "issueDate": "2026-03-07",
+    "expiryDate": "2028-12-31",
+    "revokeReason": "Demo revocation test",
+    "verifiedAt": "2026-03-07T19:24:50.638179486Z"
+}
+
+5. Dashboard stats:
+{
+    "totalCerts": 5,
+    "activeCerts": 1,
+    "revokedCerts": 4,
+    "expiredCerts": 0
+}

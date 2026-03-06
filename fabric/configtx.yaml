@@ -1,0 +1,203 @@
+# configtx.yaml — Fabric channel configuration for CertChain BFT demo.
+# Used by configtxgen to create genesis block and channel transaction.
+# All orgs share the same Fabric CA — MSP root certs are identical.
+---
+Organizations:
+  - &OrdererOrg
+    Name: OrdererOrg
+    ID: OrdererMSP
+    MSPDir: /work/msp/orderer
+    OrdererEndpoints:
+      - orderer0.certchain.svc.cluster.local:7050
+    Policies:
+      Readers:
+        Type: Signature
+        Rule: "OR('OrdererMSP.member')"
+      Writers:
+        Type: Signature
+        Rule: "OR('OrdererMSP.member')"
+      Admins:
+        Type: Signature
+        Rule: "OR('OrdererMSP.admin')"
+
+  - &TechPulse
+    Name: TechPulseMSP
+    ID: TechPulseMSP
+    MSPDir: /work/msp/techpulse
+    OrdererEndpoints:
+      - orderer.certchain-techpulse.svc.cluster.local:7050
+    Policies:
+      Readers:
+        Type: Signature
+        Rule: "OR('TechPulseMSP.admin', 'TechPulseMSP.peer', 'TechPulseMSP.client', 'TechPulseMSP.orderer')"
+      Writers:
+        Type: Signature
+        Rule: "OR('TechPulseMSP.admin', 'TechPulseMSP.client', 'TechPulseMSP.orderer')"
+      Admins:
+        Type: Signature
+        Rule: "OR('TechPulseMSP.admin')"
+      Endorsement:
+        Type: Signature
+        Rule: "OR('TechPulseMSP.peer')"
+    AnchorPeers:
+      - Host: peer0.certchain-techpulse.svc.cluster.local
+        Port: 7051
+
+  - &DataForge
+    Name: DataForgeMSP
+    ID: DataForgeMSP
+    MSPDir: /work/msp/dataforge
+    OrdererEndpoints:
+      - orderer.certchain-dataforge.svc.cluster.local:7050
+    Policies:
+      Readers:
+        Type: Signature
+        Rule: "OR('DataForgeMSP.admin', 'DataForgeMSP.peer', 'DataForgeMSP.client', 'DataForgeMSP.orderer')"
+      Writers:
+        Type: Signature
+        Rule: "OR('DataForgeMSP.admin', 'DataForgeMSP.client', 'DataForgeMSP.orderer')"
+      Admins:
+        Type: Signature
+        Rule: "OR('DataForgeMSP.admin')"
+      Endorsement:
+        Type: Signature
+        Rule: "OR('DataForgeMSP.peer')"
+    AnchorPeers:
+      - Host: peer0.certchain-dataforge.svc.cluster.local
+        Port: 7051
+
+  - &NeuralPath
+    Name: NeuralPathMSP
+    ID: NeuralPathMSP
+    MSPDir: /work/msp/neuralpath
+    OrdererEndpoints:
+      - orderer.certchain-neuralpath.svc.cluster.local:7050
+    Policies:
+      Readers:
+        Type: Signature
+        Rule: "OR('NeuralPathMSP.admin', 'NeuralPathMSP.peer', 'NeuralPathMSP.client', 'NeuralPathMSP.orderer')"
+      Writers:
+        Type: Signature
+        Rule: "OR('NeuralPathMSP.admin', 'NeuralPathMSP.client', 'NeuralPathMSP.orderer')"
+      Admins:
+        Type: Signature
+        Rule: "OR('NeuralPathMSP.admin')"
+      Endorsement:
+        Type: Signature
+        Rule: "OR('NeuralPathMSP.peer')"
+    AnchorPeers:
+      - Host: peer0.certchain-neuralpath.svc.cluster.local
+        Port: 7051
+
+Capabilities:
+  Channel: &ChannelCapabilities
+    V3_0: true
+  Orderer: &OrdererCapabilities
+    V2_0: true
+  Application: &ApplicationCapabilities
+    V2_5: true
+
+Application: &ApplicationDefaults
+  Organizations:
+  Policies:
+    Readers:
+      Type: ImplicitMeta
+      Rule: "ANY Readers"
+    Writers:
+      Type: ImplicitMeta
+      Rule: "ANY Writers"
+    Admins:
+      Type: ImplicitMeta
+      Rule: "MAJORITY Admins"
+    LifecycleEndorsement:
+      Type: ImplicitMeta
+      Rule: "MAJORITY Endorsement"
+    Endorsement:
+      Type: ImplicitMeta
+      Rule: "MAJORITY Endorsement"
+  Capabilities:
+    <<: *ApplicationCapabilities
+
+Orderer: &OrdererDefaults
+  OrdererType: BFT
+  BatchTimeout: 2s
+  BatchSize:
+    MaxMessageCount: 10
+    AbsoluteMaxBytes: 99 MB
+    PreferredMaxBytes: 512 KB
+  Organizations:
+  Policies:
+    Readers:
+      Type: ImplicitMeta
+      Rule: "ANY Readers"
+    Writers:
+      Type: ImplicitMeta
+      Rule: "ANY Writers"
+    Admins:
+      Type: ImplicitMeta
+      Rule: "MAJORITY Admins"
+    BlockValidation:
+      Type: ImplicitMeta
+      Rule: "ANY Writers"
+  Capabilities:
+    <<: *OrdererCapabilities
+  ConsenterMapping:
+    - ID: 1
+      Host: orderer0.certchain.svc.cluster.local
+      Port: 7050
+      MSPID: OrdererMSP
+      Identity: /work/msp/orderer/orderers/orderer0/msp/signcerts/cert.pem
+      ClientTLSCert: /work/tls/orderer0/server.crt
+      ServerTLSCert: /work/tls/orderer0/server.crt
+    - ID: 2
+      Host: orderer.certchain-techpulse.svc.cluster.local
+      Port: 7050
+      MSPID: TechPulseMSP
+      Identity: /work/msp/techpulse/orderers/orderer1/msp/signcerts/cert.pem
+      ClientTLSCert: /work/tls/orderer1/server.crt
+      ServerTLSCert: /work/tls/orderer1/server.crt
+    - ID: 3
+      Host: orderer.certchain-dataforge.svc.cluster.local
+      Port: 7050
+      MSPID: DataForgeMSP
+      Identity: /work/msp/dataforge/orderers/orderer2/msp/signcerts/cert.pem
+      ClientTLSCert: /work/tls/orderer2/server.crt
+      ServerTLSCert: /work/tls/orderer2/server.crt
+    - ID: 4
+      Host: orderer.certchain-neuralpath.svc.cluster.local
+      Port: 7050
+      MSPID: NeuralPathMSP
+      Identity: /work/msp/neuralpath/orderers/orderer3/msp/signcerts/cert.pem
+      ClientTLSCert: /work/tls/orderer3/server.crt
+      ServerTLSCert: /work/tls/orderer3/server.crt
+
+Channel: &ChannelDefaults
+  Policies:
+    Readers:
+      Type: ImplicitMeta
+      Rule: "ANY Readers"
+    Writers:
+      Type: ImplicitMeta
+      Rule: "ANY Writers"
+    Admins:
+      Type: ImplicitMeta
+      Rule: "MAJORITY Admins"
+  Capabilities:
+    <<: *ChannelCapabilities
+
+Profiles:
+  CertChannelGenesis:
+    <<: *ChannelDefaults
+    Orderer:
+      <<: *OrdererDefaults
+      Organizations:
+        - *OrdererOrg
+        - *TechPulse
+        - *DataForge
+        - *NeuralPath
+    Application:
+      <<: *ApplicationDefaults
+      Organizations:
+        - *TechPulse
+        - *DataForge
+        - *NeuralPath

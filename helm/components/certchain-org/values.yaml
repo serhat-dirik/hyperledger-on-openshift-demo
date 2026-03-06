@@ -1,0 +1,133 @@
+# =============================================================================
+# CertChain Org — Default Values
+# =============================================================================
+# For ArgoCD: values flow from helm/values.yaml via Application valuesObject.
+# For local dev:
+#   helm install certchain-techpulse helm/components/certchain-org \
+#     -f helm/components/certchain-org/values-techpulse.yaml \
+#     -n certchain-techpulse --set global.domain=apps.cluster.example.com
+# =============================================================================
+
+global:
+  # Auto-detected by deploy script, passed via --set
+  domain: apps.example.com
+  registry: image-registry.openshift-image-registry.svc:5000/certchain
+  imageTag: latest
+  # Central namespace — used for cross-namespace references
+  centralNamespace: certchain
+
+# --- Organization identity ---------------------------------------------------
+org:
+  name: org-placeholder
+  displayName: Org Placeholder
+  mspId: OrgMSP
+  primaryColor: "#6b7280"
+
+# --- Fabric Peer -------------------------------------------------------------
+peer:
+  image:
+    repository: hyperledger/fabric-peer
+    tag: "3.1.0"
+  resources:
+    requests:
+      cpu: 200m
+      memory: 256Mi
+    limits:
+      cpu: 400m
+      memory: 512Mi
+  storage: 2Gi
+
+# --- Fabric Orderer (per-org BFT node) --------------------------------------
+orderer:
+  image:
+    repository: hyperledger/fabric-orderer
+    tag: "3.1.0"
+  resources:
+    requests:
+      cpu: 200m
+      memory: 256Mi
+    limits:
+      cpu: 400m
+      memory: 512Mi
+  storage: 1Gi
+
+# --- CouchDB (Fabric state database) ----------------------------------------
+couchdb:
+  image:
+    repository: couchdb
+    tag: "3.3"
+  storage: 1Gi
+  resources:
+    requests:
+      cpu: 100m
+      memory: 128Mi
+    limits:
+      cpu: 200m
+      memory: 256Mi
+
+# --- Keycloak (org-level identity management) --------------------------------
+keycloak:
+  image:
+    repository: quay.io/keycloak/keycloak
+    tag: "26.1.4"
+  admin:
+    username: admin
+    password: admin
+  resources:
+    requests:
+      cpu: 500m
+      memory: 768Mi
+    limits:
+      cpu: "1"
+      memory: 1Gi
+
+# --- PostgreSQL (Keycloak persistence) ---------------------------------------
+postgres:
+  image:
+    repository: postgres
+    tag: "17-alpine"
+  storage: 1Gi
+  resources:
+    requests:
+      cpu: 100m
+      memory: 256Mi
+    limits:
+      cpu: 200m
+      memory: 256Mi
+
+# --- Image builds -----------------------------------------------------------
+images:
+  buildEnabled: true
+
+# --- GitOps source -----------------------------------------------------------
+gitops:
+  repoUrl: ""
+  revision: "main"
+
+# --- cert-admin-api (per-org certificate management API) ---------------------
+certAdminApi:
+  image:
+    repository: ""
+    tag: ""
+  fabric:
+    channelName: certchannel
+  resources:
+    requests:
+      cpu: 200m
+      memory: 256Mi
+    limits:
+      cpu: 400m
+      memory: 512Mi
+
+# --- course-manager-ui (per-org registrar dashboard) -------------------------
+courseManagerUi:
+  image:
+    repository: ""
+    tag: ""
+  resources:
+    requests:
+      cpu: 100m
+      memory: 128Mi
+    limits:
+      cpu: 200m
+      memory: 256Mi

@@ -1,0 +1,54 @@
+{{- if .Values.grafana.enabled }}
+# Grafana Instance + Datasource + Route
+apiVersion: grafana.integreatly.org/v1beta1
+kind: Grafana
+metadata:
+  name: certchain-grafana
+  labels:
+    app.kubernetes.io/name: grafana
+    {{- include "certchain-central.labels" . | nindent 4 }}
+    app.kubernetes.io/component: monitoring
+    dashboards: certchain
+  annotations:
+    argocd.argoproj.io/sync-wave: "7"
+spec:
+  route:
+    spec:
+      tls:
+        termination: edge
+        insecureEdgeTerminationPolicy: Redirect
+  config:
+    log:
+      mode: console
+    auth.anonymous:
+      enabled: "true"
+    security:
+      admin_user: {{ .Values.grafana.admin.user }}
+      admin_password: {{ .Values.grafana.admin.password }}
+---
+# Datasource — OpenShift Thanos Querier
+apiVersion: grafana.integreatly.org/v1beta1
+kind: GrafanaDatasource
+metadata:
+  name: prometheus
+  labels:
+    {{- include "certchain-central.labels" . | nindent 4 }}
+  annotations:
+    argocd.argoproj.io/sync-wave: "7"
+spec:
+  instanceSelector:
+    matchLabels:
+      dashboards: certchain
+  datasource:
+    name: Prometheus
+    type: prometheus
+    access: proxy
+    url: https://thanos-querier.openshift-monitoring.svc.cluster.local:9091
+    isDefault: true
+    jsonData:
+      httpHeaderName1: Authorization
+      timeInterval: 30s
+      tlsSkipVerify: true
+    secureJsonData:
+      httpHeaderValue1: "Bearer {{ .Values.grafana.saToken }}"
+{{- end }}

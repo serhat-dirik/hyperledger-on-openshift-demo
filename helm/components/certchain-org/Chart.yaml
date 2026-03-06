@@ -1,0 +1,6 @@
+apiVersion: v2
+name: certchain-org
+description: CertChain — per-organization components (peer, orderer, CouchDB, Keycloak, cert-admin-api, course-manager-ui)
+type: application
+version: 0.1.0
+appVersion: "1.0.0"

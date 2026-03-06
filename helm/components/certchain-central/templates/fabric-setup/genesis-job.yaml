@@ -1,0 +1,51 @@
+# Genesis block generation Job — downloads configtxgen, builds MSP dirs from secrets
+apiVersion: batch/v1
+kind: Job
+metadata:
+  name: generate-genesis
+  labels:
+    {{- include "certchain-central.labels" . | nindent 4 }}
+  annotations:
+    argocd.argoproj.io/sync-wave: "9"
+spec:
+  backoffLimit: 3
+  ttlSecondsAfterFinished: 600
+  template:
+    spec:
+      serviceAccountName: fabric-setup
+      restartPolicy: Never
+      containers:
+        - name: genesis
+          image: registry.access.redhat.com/ubi9/ubi:latest
+          command: ["/bin/bash", "/scripts/generate-genesis.sh"]
+          env:
+            - name: CENTRAL_NS
+              value: {{ .Release.Namespace }}
+            - name: CHANNEL_NAME
+              value: {{ .Values.verifyApi.fabric.channelName | default "certchannel" }}
+            - name: FABRIC_VERSION
+              value: "3.1.0"
+          volumeMounts:
+            - name: scripts
+              mountPath: /scripts
+            - name: configtx
+              mountPath: /configtx
+            - name: work
+              mountPath: /work
+          resources:
+            requests:
+              cpu: 200m
+              memory: 256Mi
+            limits:
+              cpu: 500m
+              memory: 512Mi
+      volumes:
+        - name: scripts
+          configMap:
+            name: fabric-setup-scripts
+            defaultMode: 0755
+        - name: configtx
+          configMap:
+            name: fabric-configtx
+        - name: work
+          emptyDir: {}

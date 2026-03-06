@@ -1,0 +1,15 @@
+# Multi-stage build for cert-admin-api
+ARG JAVA_VERSION=21
+
+# Stage 1: Build with Maven
+FROM registry.access.redhat.com/ubi9/openjdk-${JAVA_VERSION}:latest AS build
+COPY --chown=185 pom.xml ./
+COPY --chown=185 src ./src/
+RUN mvn package -Dmaven.test.skip=true -Dmaven.javadoc.skip=true
+
+# Stage 2: Runtime
+FROM registry.access.redhat.com/ubi9/openjdk-${JAVA_VERSION}-runtime:latest
+COPY --from=build /home/default/target/quarkus-app/ /deployments/
+EXPOSE 8080
+ENV JAVA_OPTS_APPEND="-Dquarkus.http.host=0.0.0.0"
+ENTRYPOINT ["java", "-jar", "/deployments/quarkus-run.jar"]

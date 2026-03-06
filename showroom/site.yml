@@ -1,0 +1,34 @@
+site:
+  title: "CertChain — Blockchain Credentialing Demo"
+  start_page: certchain::index.adoc
+
+content:
+  sources:
+    - url: /showroom/repo
+      start_path: showroom/content
+
+asciidoc:
+  attributes:
+    experimental: true
+    idprefix: ""
+    idseparator: "-"
+
+ui:
+  bundle:
+    url: https://github.com/rhpds/rhdp_showroom_theme/releases/download/v0.0.1/ui-bundle.zip
+    snapshot: true
+  supplemental_files:
+    - path: partials/header-content.hbs
+    - path: ui.yml
+      contents: |
+        header:
+          tabs:
+            - id: docs
+              title: Guide
+              url: /
+            - id: terminal
+              title: Terminal
+              url: /terminal/
+            - id: console
+              title: OpenShift Console
+              url_key: openshift_console_url

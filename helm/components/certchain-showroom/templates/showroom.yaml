@@ -1,0 +1,302 @@
+{{- if .Values.showroom.enabled }}
+# =============================================================================
+# CertChain Showroom — Lab Guide + Terminal
+# Adapted from RHDP field-sourced-content-template showroom pattern
+# =============================================================================
+
+# --- ServiceAccount ---
+apiVersion: v1
+kind: ServiceAccount
+metadata:
+  name: {{ .Values.showroom.name }}
+  labels:
+    {{- include "certchain-showroom.labels" . | nindent 4 }}
+
+---
+# --- RBAC ---
+apiVersion: rbac.authorization.k8s.io/v1
+kind: RoleBinding
+metadata:
+  name: edit-{{ .Values.showroom.name }}-sa
+roleRef:
+  apiGroup: rbac.authorization.k8s.io
+  kind: ClusterRole
+  name: edit
+subjects:
+  - kind: ServiceAccount
+    name: {{ .Values.showroom.name }}
+    namespace: {{ .Release.Namespace }}
+
+---
+# --- Nginx proxy config ---
+apiVersion: v1
+kind: ConfigMap
+metadata:
+  name: {{ .Values.showroom.name }}-proxy-config
+  labels:
+    {{- include "certchain-showroom.labels" . | nindent 4 }}
+data:
+  nginx.conf: |
+    events {}
+    error_log /dev/stdout info;
+    http {
+      include /etc/nginx/mime.types;
+      proxy_cache off;
+      expires -1;
+      proxy_cache_path /dev/null keys_zone=mycache:10m;
+      map $http_upgrade $connection_upgrade {
+          default upgrade;
+          '' close;
+      }
+      server {
+        listen 8080;
+        absolute_redirect off;
+        location / {
+          proxy_pass http://127.0.0.1:8000;
+          expires off;
+          proxy_cache off;
+          proxy_pass_request_headers on;
+          proxy_set_header Accept-Encoding "gzip";
+          proxy_set_header X-Forwarded-For $proxy_add_x_forwarded_for;
+          proxy_set_header X-Forwarded-Proto $scheme;
+        }
+        {{- if .Values.showroom.terminal.enabled }}
+        location /terminal/ {
+          proxy_pass http://127.0.0.1:7681;
+          rewrite ^/terminal/(.*)$ /$1 break;
+          proxy_http_version 1.1;
+          proxy_set_header Upgrade $http_upgrade;
+          proxy_set_header Connection "upgrade";
+          proxy_read_timeout 43200000;
+          proxy_set_header X-Real-IP $remote_addr;
+          proxy_set_header X-Forwarded-For $proxy_add_x_forwarded_for;
+          proxy_set_header Host $http_host;
+          proxy_set_header X-NginX-Proxy true;
+        }
+        {{- end }}
+      }
+    }
+
+---
+# --- Userdata ConfigMap (Antora attributes) ---
+apiVersion: v1
+kind: ConfigMap
+metadata:
+  name: {{ .Values.showroom.name }}-userdata
+  labels:
+    {{- include "certchain-showroom.labels" . | nindent 4 }}
+data:
+  user_data.yml: |
+    cluster_domain: {{ .Values.global.domain }}
+    central_namespace: {{ .Values.demo.centralNamespace }}
+    cert_portal_url: https://cert-portal-{{ .Values.demo.centralNamespace }}.{{ .Values.global.domain }}
+    verify_api_url: https://verify-api-{{ .Values.demo.centralNamespace }}.{{ .Values.global.domain }}
+    central_keycloak_url: https://keycloak-{{ .Values.demo.centralNamespace }}.{{ .Values.global.domain }}
+    techpulse_course_manager_url: https://course-manager-ui-{{ .Values.demo.centralNamespace }}-techpulse.{{ .Values.global.domain }}
+    dataforge_course_manager_url: https://course-manager-ui-{{ .Values.demo.centralNamespace }}-dataforge.{{ .Values.global.domain }}
+    neuralpath_course_manager_url: https://course-manager-ui-{{ .Values.demo.centralNamespace }}-neuralpath.{{ .Values.global.domain }}
+    grafana_url: https://certchain-grafana-route-{{ .Values.demo.centralNamespace }}.{{ .Values.global.domain }}
+    techpulse_keycloak_url: https://keycloak-{{ .Values.demo.centralNamespace }}-techpulse.{{ .Values.global.domain }}
+    dataforge_keycloak_url: https://keycloak-{{ .Values.demo.centralNamespace }}-dataforge.{{ .Values.global.domain }}
+    neuralpath_keycloak_url: https://keycloak-{{ .Values.demo.centralNamespace }}-neuralpath.{{ .Values.global.domain }}
+
+---
+# --- Terminal PVC ---
+{{- if .Values.showroom.terminal.enabled }}
+apiVersion: v1
+kind: PersistentVolumeClaim
+metadata:
+  name: {{ .Values.showroom.name }}-terminal-lab-user-home
+  labels:
+    {{- include "certchain-showroom.labels" . | nindent 4 }}
+spec:
+  accessModes:
+    - ReadWriteOnce
+  resources:
+    requests:
+      storage: 5Gi
+{{- end }}
+
+---
+# --- Service ---
+apiVersion: v1
+kind: Service
+metadata:
+  name: {{ .Values.showroom.name }}
+  labels:
+    {{- include "certchain-showroom.labels" . | nindent 4 }}
+spec:
+  type: ClusterIP
+  ports:
+    - port: 8080
+      protocol: TCP
+      targetPort: 8080
+  selector:
+    app.kubernetes.io/name: {{ .Values.showroom.name }}
+
+---
+# --- Deployment ---
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: {{ .Values.showroom.name }}
+  labels:
+    {{- include "certchain-showroom.labels" . | nindent 4 }}
+    demo.redhat.com/application: showroom
+spec:
+  replicas: 1
+  selector:
+    matchLabels:
+      app.kubernetes.io/name: {{ .Values.showroom.name }}
+  strategy:
+    type: Recreate
+  template:
+    metadata:
+      labels:
+        app.kubernetes.io/name: {{ .Values.showroom.name }}
+    spec:
+      serviceAccountName: {{ .Values.showroom.name }}
+      initContainers:
+        - name: git-cloner
+          image: "quay.io/rhpds/git-cloner:v1.1.2"
+          env:
+            - name: GIT_REPO_URL
+              value: {{ .Values.showroom.content.repoUrl | quote }}
+            - name: GIT_REPO_REF
+              value: {{ .Values.showroom.content.repoRef | quote }}
+            - name: CLONE_DIR
+              value: /showroom/repo
+          volumeMounts:
+            - mountPath: /showroom/repo
+              name: showroom-files
+              subPath: repo
+        - name: antora-builder
+          image: "quay.io/rhpds/antora:v1.0.1"
+          env:
+            - name: FILES_DIR
+              value: /showroom/repo
+            - name: OUTPUT_DIR
+              value: /showroom/www
+            - name: ANTORA_SITE_FILE
+              value: {{ .Values.showroom.content.antoraPlaybook | quote }}
+          volumeMounts:
+            - mountPath: /showroom/repo
+              name: showroom-files
+              subPath: repo
+            - name: user-data
+              mountPath: /user_data/
+            - mountPath: /showroom/www
+              name: showroom-files
+              subPath: www
+      containers:
+        - name: nginx
+          image: "quay.io/rhpds/nginx:1.25"
+          imagePullPolicy: IfNotPresent
+          ports:
+            - name: web
+              containerPort: 8080
+          volumeMounts:
+            - mountPath: /etc/nginx/nginx.conf
+              name: nginx-config
+              subPath: nginx.conf
+            - mountPath: /var/cache/nginx
+              name: nginx-cache
+            - mountPath: /var/run
+              name: nginx-pid
+        - name: content
+          image: {{ .Values.showroom.content.image | quote }}
+          imagePullPolicy: IfNotPresent
+          env:
+            - name: GIT_REPO_URL
+              value: {{ .Values.showroom.content.repoUrl | quote }}
+            - name: GIT_REPO_REF
+              value: {{ .Values.showroom.content.repoRef | quote }}
+            - name: ANTORA_PLAYBOOK
+              value: {{ .Values.showroom.content.antoraPlaybook | quote }}
+            - name: DOMAIN
+              value: {{ .Values.global.domain | quote }}
+          ports:
+            - containerPort: 8000
+              protocol: TCP
+          volumeMounts:
+            - name: user-data
+              mountPath: /user_data/
+            - mountPath: /showroom/repo
+              name: showroom-files
+              subPath: repo
+            - mountPath: /showroom/www
+              name: showroom-files
+              subPath: www
+          livenessProbe:
+            httpGet:
+              path: /
+              port: 8000
+          readinessProbe:
+            httpGet:
+              path: /
+              port: 8000
+        {{- if .Values.showroom.terminal.enabled }}
+        - name: terminal
+          image: {{ .Values.showroom.terminal.image | quote }}
+          imagePullPolicy: IfNotPresent
+          env:
+            - name: NAMESPACE
+              valueFrom:
+                fieldRef:
+                  fieldPath: metadata.namespace
+          ports:
+            - containerPort: 7681
+              protocol: TCP
+          volumeMounts:
+            - name: terminal-lab-user-home
+              mountPath: /home/lab-user
+          resources:
+            requests:
+              cpu: {{ .Values.showroom.terminal.resources.requests.cpu }}
+              memory: {{ .Values.showroom.terminal.resources.requests.memory }}
+            limits:
+              cpu: {{ .Values.showroom.terminal.resources.limits.cpu }}
+              memory: {{ .Values.showroom.terminal.resources.limits.memory }}
+        {{- end }}
+      volumes:
+        - name: showroom-files
+          emptyDir: {}
+        - name: user-data
+          configMap:
+            name: {{ .Values.showroom.name }}-userdata
+        - name: nginx-config
+          configMap:
+            defaultMode: 420
+            name: {{ .Values.showroom.name }}-proxy-config
+        - name: nginx-pid
+          emptyDir: {}
+        - name: nginx-cache
+          emptyDir: {}
+        {{- if .Values.showroom.terminal.enabled }}
+        - name: terminal-lab-user-home
+          persistentVolumeClaim:
+            claimName: {{ .Values.showroom.name }}-terminal-lab-user-home
+        {{- end }}
+
+---
+# --- Route ---
+apiVersion: route.openshift.io/v1
+kind: Route
+metadata:
+  name: {{ .Values.showroom.name }}
+  annotations:
+    haproxy.router.openshift.io/timeout: 1h
+    haproxy.router.openshift.io/timeout-tunnel: 1h
+  labels:
+    {{- include "certchain-showroom.labels" . | nindent 4 }}
+spec:
+  to:
+    kind: Service
+    name: {{ .Values.showroom.name }}
+  port:
+    targetPort: 8080
+  tls:
+    termination: edge
+    insecureEdgeTerminationPolicy: Redirect
+  wildcardPolicy: None
+{{- end }}

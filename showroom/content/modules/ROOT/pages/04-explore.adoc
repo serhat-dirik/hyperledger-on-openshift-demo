@@ -1,0 +1,45 @@
+= Explore Monitoring
+
+CertChain includes Grafana dashboards for monitoring both the Fabric blockchain network and the application APIs.
+
+== Open Grafana
+
+Navigate to Grafana: {grafana_url}
+
+Grafana is configured with anonymous access — no login required.
+
+== Fabric Network Dashboard
+
+Select *CertChain — Fabric Network* from the dashboard list.
+
+This dashboard shows:
+
+* *Peer — Proposals Received* — Rate of endorsement proposals across all peers
+* *Peer — Endorsement Failures* — Failed endorsement attempts (should be zero in normal operation)
+* *Peer — Blocks Committed* — Total blocks committed per peer
+* *Peer — Block Commit Latency (p99)* — 99th percentile block commit time
+* *Orderer — Blocks Cut* — Rate of new blocks created by orderers
+* *Orderer — Consensus Latency (p99)* — BFT consensus round-trip time
+* *gRPC Active Connections* — Active gRPC streams between peers and orderers
+
+== Application APIs Dashboard
+
+Select *CertChain — Application APIs*.
+
+This dashboard shows:
+
+* *Certificate Counters* — Total certificates issued, revoked, verified, and not-found
+* *Certificate Operations Rate* — Rate of certificate operations over time
+* *HTTP Request Rate* — Requests per second for cert-admin-api and verify-api
+* *HTTP Latency p99* — 99th percentile response times
+* *JVM Heap Used* — Memory consumption of the Quarkus APIs
+* *JVM GC Pauses* — Garbage collection pause times
+
+== Generate Traffic
+
+To see the dashboards come alive, repeat the certificate issuance and verification steps from the previous sections. Each operation generates metrics that appear in the dashboards within 30 seconds.
+
+[TIP]
+====
+Use the *Terminal* tab to run `curl` commands against the APIs for rapid traffic generation. See the xref:05-api.adoc[API Walkthrough] for examples.
+====

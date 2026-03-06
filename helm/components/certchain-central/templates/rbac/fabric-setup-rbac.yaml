@@ -1,0 +1,65 @@
+# RBAC for Fabric setup Jobs — SA, ClusterRole, bindings
+apiVersion: v1
+kind: ServiceAccount
+metadata:
+  name: fabric-setup
+  labels:
+    {{- include "certchain-central.labels" . | nindent 4 }}
+  annotations:
+    argocd.argoproj.io/sync-wave: "0"
+---
+apiVersion: rbac.authorization.k8s.io/v1
+kind: ClusterRole
+metadata:
+  name: fabric-setup-{{ .Release.Namespace }}
+  labels:
+    {{- include "certchain-central.labels" . | nindent 4 }}
+  annotations:
+    argocd.argoproj.io/sync-wave: "0"
+rules:
+  - apiGroups: [""]
+    resources: ["secrets", "configmaps"]
+    verbs: ["get", "list", "create", "update", "patch", "delete"]
+  - apiGroups: [""]
+    resources: ["pods", "pods/exec"]
+    verbs: ["get", "list", "create", "delete"]
+---
+apiVersion: rbac.authorization.k8s.io/v1
+kind: ClusterRoleBinding
+metadata:
+  name: fabric-setup-{{ .Release.Namespace }}
+  labels:
+    {{- include "certchain-central.labels" . | nindent 4 }}
+  annotations:
+    argocd.argoproj.io/sync-wave: "0"
+subjects:
+  - kind: ServiceAccount
+    name: fabric-setup
+    namespace: {{ .Release.Namespace }}
+roleRef:
+  kind: ClusterRole
+  name: fabric-setup-{{ .Release.Namespace }}
+  apiGroup: rbac.authorization.k8s.io
+---
+# Image puller RoleBindings — org namespaces pull from central registry
+{{- $centralNS := .Release.Namespace }}
+{{- range $org := list "techpulse" "dataforge" "neuralpath" }}
+---
+apiVersion: rbac.authorization.k8s.io/v1
+kind: RoleBinding
+metadata:
+  name: image-puller-{{ $org }}
+  namespace: {{ $centralNS }}
+  labels:
+    app.kubernetes.io/part-of: certchain
+  annotations:
+    argocd.argoproj.io/sync-wave: "0"
+subjects:
+  - kind: Group
+    name: system:serviceaccounts:{{ $centralNS }}-{{ $org }}
+    apiGroup: rbac.authorization.k8s.io
+roleRef:
+  kind: ClusterRole
+  name: system:image-puller
+  apiGroup: rbac.authorization.k8s.io
+{{- end }}

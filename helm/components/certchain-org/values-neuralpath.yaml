@@ -1,0 +1,6 @@
+# NeuralPath Labs — org-specific overrides
+org:
+  name: neuralpath
+  displayName: NeuralPath Labs
+  mspId: NeuralPathMSP
+  primaryColor: "#7c3aed"

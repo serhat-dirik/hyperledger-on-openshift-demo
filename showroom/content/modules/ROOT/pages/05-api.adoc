@@ -1,0 +1,73 @@
+= API Walkthrough
+
+Use the *Terminal* tab to interact directly with the CertChain REST APIs using `curl`.
+
+== Get an Access Token
+
+First, obtain a Keycloak token for the TechPulse organization:
+
+[source,bash,subs="attributes"]
+----
+TOKEN=$(curl -sk -X POST \
+  "{techpulse_keycloak_url}/realms/certchain/protocol/openid-connect/token" \
+  -d "grant_type=password" \
+  -d "client_id=cert-admin" \
+  -d "username=admin" \
+  -d "password=admin" | jq -r '.access_token')
+echo "Token: ${TOKEN:0:20}..."
+----
+
+== Issue a Certificate
+
+Submit a certificate issuance request to the cert-admin-api:
+
+[source,bash,subs="attributes"]
+----
+CERT_ID=$(curl -sk -X POST \
+  "{techpulse_course_manager_url}/api/certificates" \
+  -H "Authorization: Bearer $TOKEN" \
+  -H "Content-Type: application/json" \
+  -d '{
+    "studentName": "API Test Student",
+    "courseName": "Kubernetes Fundamentals",
+    "issueDate": "2026-03-09"
+  }' | jq -r '.certificateId')
+echo "Certificate ID: $CERT_ID"
+----
+
+== Verify a Certificate
+
+Query the public verify-api (no authentication needed):
+
+[source,bash,subs="attributes"]
+----
+curl -sk "{cert_portal_url}/api/verify/$CERT_ID" | jq .
+----
+
+Expected output includes the student name, course name, issuing organization, and blockchain transaction ID.
+
+== List Certificates
+
+List all certificates issued by TechPulse:
+
+[source,bash,subs="attributes"]
+----
+curl -sk \
+  "{techpulse_course_manager_url}/api/certificates" \
+  -H "Authorization: Bearer $TOKEN" | jq .
+----
+
+== Verify a Non-Existent Certificate
+
+[source,bash,subs="attributes"]
+----
+curl -sk "{cert_portal_url}/api/verify/does-not-exist" | jq .
+----
+
+This should return a 404 response indicating the certificate was not found on the blockchain.
+
+== Next Steps
+
+* Try issuing certificates from *DataForge* or *NeuralPath* using their respective Keycloak endpoints
+* Monitor the traffic in the xref:04-explore.adoc[Grafana dashboards]
+* Explore the blockchain state in the OpenShift Console by checking CouchDB pod logs

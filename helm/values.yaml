@@ -1,0 +1,74 @@
+# =============================================================================
+# CertChain — Root App-of-Apps Values
+# =============================================================================
+# This chart generates ArgoCD Application CRs for each CertChain component.
+# RHDP injects deployer.domain and deployer.apiUrl at order time.
+# =============================================================================
+
+# --- RHDP-injected values (set by platform, do not hardcode) ----------------
+deployer:
+  domain: ""       # Injected: apps.cluster-xyz.example.com
+  apiUrl: ""       # Injected: https://api.cluster-xyz.example.com:6443
+
+# --- GitOps source configuration -------------------------------------------
+gitops:
+  repoUrl: ""      # Set at RHDP order time
+  revision: "main"
+  basePath: "helm"
+
+# --- ArgoCD settings --------------------------------------------------------
+argocd:
+  namespace: openshift-gitops
+  project: default
+
+# --- Central namespace ------------------------------------------------------
+central:
+  namespace: certchain
+
+# --- Image registry ---------------------------------------------------------
+images:
+  # For RHDP: pre-built images on quay.io
+  # For local dev: internal OpenShift registry
+  registry: image-registry.openshift-image-registry.svc:5000/certchain
+  tag: latest
+  # Enable in-cluster BuildConfigs (set false for pre-built images)
+  buildEnabled: true
+
+# --- Components (enable/disable + org-specific config) ----------------------
+components:
+  central:
+    enabled: true
+
+  techpulse:
+    enabled: true
+    org:
+      name: techpulse
+      displayName: TechPulse Academy
+      mspId: TechPulseMSP
+      primaryColor: "#2563eb"
+
+  dataforge:
+    enabled: true
+    org:
+      name: dataforge
+      displayName: DataForge Institute
+      mspId: DataForgeMSP
+      primaryColor: "#059669"
+
+  neuralpath:
+    enabled: true
+    org:
+      name: neuralpath
+      displayName: NeuralPath Labs
+      mspId: NeuralPathMSP
+      primaryColor: "#7c3aed"
+
+  showroom:
+    enabled: true
+    namespace: showroom
+    content:
+      repoUrl: ""    # Defaults to gitops.repoUrl at deploy time
+      repoRef: "main"
+      antoraPlaybook: "showroom/site.yml"
+    terminal:
+      enabled: true

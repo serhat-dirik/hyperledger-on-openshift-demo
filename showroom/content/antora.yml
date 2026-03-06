@@ -1,0 +1,5 @@
+name: certchain
+title: CertChain Demo Guide
+version: master
+nav:
+  - modules/ROOT/nav.adoc

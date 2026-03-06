@@ -1,0 +1,40 @@
+# ServiceMonitors — central namespace
+# Tells OpenShift Prometheus how to scrape metrics from central services.
+---
+# Orderer metrics (port 8443 /metrics)
+apiVersion: monitoring.coreos.com/v1
+kind: ServiceMonitor
+metadata:
+  name: orderer-metrics
+  labels:
+    {{- include "certchain-central.labels" . | nindent 4 }}
+    app.kubernetes.io/component: monitoring
+  annotations:
+    argocd.argoproj.io/sync-wave: "5"
+spec:
+  selector:
+    matchLabels:
+      app: orderer
+  endpoints:
+    - port: operations
+      path: /metrics
+      interval: 30s
+---
+# Verify API metrics (port 8080 /q/metrics)
+apiVersion: monitoring.coreos.com/v1
+kind: ServiceMonitor
+metadata:
+  name: verify-api-metrics
+  labels:
+    {{- include "certchain-central.labels" . | nindent 4 }}
+    app.kubernetes.io/component: monitoring
+  annotations:
+    argocd.argoproj.io/sync-wave: "5"
+spec:
+  selector:
+    matchLabels:
+      app: verify-api
+  endpoints:
+    - targetPort: 8080
+      path: /q/metrics
+      interval: 30s

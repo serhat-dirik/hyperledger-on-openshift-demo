@@ -1,0 +1,61 @@
+# Cross-namespace ExternalName services — org orderers + peers in central NS
+{{- $centralNS := .Release.Namespace }}
+
+# --- Org orderer aliases (BFT requires all 4 orderers reachable) ---
+{{- range $entry := list
+  (dict "name" "orderer1" "org" "techpulse")
+  (dict "name" "orderer2" "org" "dataforge")
+  (dict "name" "orderer3" "org" "neuralpath")
+}}
+---
+apiVersion: v1
+kind: Service
+metadata:
+  name: {{ $entry.name }}
+  labels:
+    app.kubernetes.io/part-of: certchain
+    certchain/service-type: cross-namespace
+  annotations:
+    argocd.argoproj.io/sync-wave: "0"
+spec:
+  type: ExternalName
+  externalName: orderer.{{ $centralNS }}-{{ $entry.org }}.svc.cluster.local
+  ports:
+    - name: grpc
+      port: 7050
+      protocol: TCP
+    - name: admin
+      port: 7053
+      protocol: TCP
+{{- end }}
+
+# --- Org peer aliases (for channel setup + chaincode lifecycle) ---
+{{- range $entry := list
+  (dict "name" "peer0-techpulse" "org" "techpulse")
+  (dict "name" "peer0-dataforge" "org" "dataforge")
+  (dict "name" "peer0-neuralpath" "org" "neuralpath")
+}}
+---
+apiVersion: v1
+kind: Service
+metadata:
+  name: {{ $entry.name }}
+  labels:
+    app.kubernetes.io/part-of: certchain
+    certchain/service-type: cross-namespace
+  annotations:
+    argocd.argoproj.io/sync-wave: "0"
+spec:
+  type: ExternalName
+  externalName: peer0.{{ $centralNS }}-{{ $entry.org }}.svc.cluster.local
+  ports:
+    - name: grpc
+      port: 7051
+      protocol: TCP
+    - name: chaincode
+      port: 7052
+      protocol: TCP
+    - name: operations
+      port: 9443
+      protocol: TCP
+{{- end }}

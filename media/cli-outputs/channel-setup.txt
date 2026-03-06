@@ -1,0 +1,3 @@
+=== Channel Setup Output ===
+
+error: error from server (NotFound): jobs.batch "fabric-channel-setup" not found in namespace "certchain"

@@ -1,0 +1,142 @@
+schemaVersion: 2.2.2
+metadata:
+  name: certchain-demo
+  displayName: CertChain Blockchain Demo
+  description: Hyperledger Fabric credentialing demo on OpenShift
+  language: Java
+  projectType: Quarkus
+components:
+  - name: tools
+    container:
+      image: registry.redhat.io/devspaces/udi-rhel9:latest
+      memoryLimit: 4Gi
+      cpuLimit: 2000m
+      mountSources: true
+      env:
+        - name: MAVEN_OPTS
+          value: "-Xmx1g"
+        - name: GOPATH
+          value: /projects
+      endpoints:
+        - name: admin-api
+          targetPort: 8080
+          exposure: public
+        - name: course-manager-ui
+          targetPort: 5173
+          exposure: public
+        - name: cert-portal
+          targetPort: 5174
+          exposure: public
+commands:
+  # --- cert-admin-api (Quarkus) ---
+  - id: admin-api-build
+    exec:
+      component: tools
+      commandLine: "cd apps/cert-admin-api && ./mvnw package -DskipTests"
+      workingDir: ${PROJECT_SOURCE}
+      group:
+        kind: build
+  - id: admin-api-dev
+    exec:
+      component: tools
+      commandLine: "cd apps/cert-admin-api && ./mvnw quarkus:dev"
+      workingDir: ${PROJECT_SOURCE}
+      group:
+        kind: run
+  - id: admin-api-test
+    exec:
+      component: tools
+      commandLine: "cd apps/cert-admin-api && ./mvnw test"
+      workingDir: ${PROJECT_SOURCE}
+      group:
+        kind: test
+  # --- verify-api (Quarkus) ---
+  - id: verify-api-build
+    exec:
+      component: tools
+      commandLine: "cd apps/verify-api && ./mvnw package -DskipTests"
+      workingDir: ${PROJECT_SOURCE}
+      group:
+        kind: build
+  - id: verify-api-dev
+    exec:
+      component: tools
+      commandLine: "cd apps/verify-api && ./mvnw quarkus:dev -Dquarkus.http.port=8081"
+      workingDir: ${PROJECT_SOURCE}
+      group:
+        kind: run
+  - id: verify-api-test
+    exec:
+      component: tools
+      commandLine: "cd apps/verify-api && ./mvnw test"
+      workingDir: ${PROJECT_SOURCE}
+      group:
+        kind: test
+  # --- course-manager-ui (React/Vite) ---
+  - id: course-manager-ui-install
+    exec:
+      component: tools
+      commandLine: "cd apps/course-manager-ui && npm install"
+      workingDir: ${PROJECT_SOURCE}
+      group:
+        kind: build
+  - id: course-manager-ui-dev
+    exec:
+      component: tools
+      commandLine: "cd apps/course-manager-ui && npm run dev -- --host 0.0.0.0"
+      workingDir: ${PROJECT_SOURCE}
+      group:
+        kind: run
+  - id: course-manager-ui-test
+    exec:
+      component: tools
+      commandLine: "cd apps/course-manager-ui && npm test"
+      workingDir: ${PROJECT_SOURCE}
+      group:
+        kind: test
+  # --- cert-portal (React/Vite PWA) ---
+  - id: cert-portal-install
+    exec:
+      component: tools
+      commandLine: "cd apps/cert-portal && npm install"
+      workingDir: ${PROJECT_SOURCE}
+      group:
+        kind: build
+  - id: cert-portal-dev
+    exec:
+      component: tools
+      commandLine: "cd apps/cert-portal && npm run dev -- --host 0.0.0.0"
+      workingDir: ${PROJECT_SOURCE}
+      group:
+        kind: run
+  - id: cert-portal-test
+    exec:
+      component: tools
+      commandLine: "cd apps/cert-portal && npm test"
+      workingDir: ${PROJECT_SOURCE}
+      group:
+        kind: test
+  # --- certcontract (Go chaincode) ---
+  - id: chaincode-build
+    exec:
+      component: tools
+      commandLine: "cd fabric/chaincode/certcontract && go build ./..."
+      workingDir: ${PROJECT_SOURCE}
+      group:
+        kind: build
+  - id: chaincode-test
+    exec:
+      component: tools
+      commandLine: "cd fabric/chaincode/certcontract && go test ./... -v"
+      workingDir: ${PROJECT_SOURCE}
+      group:
+        kind: test
+  # --- Full project ---
+  - id: test-all
+    exec:
+      component: tools
+      commandLine: "make test"
+      workingDir: ${PROJECT_SOURCE}
+      group:
+        kind: test
+        isDefault: true

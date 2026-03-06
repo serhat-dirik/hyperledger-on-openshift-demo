@@ -1,0 +1,140 @@
+# =============================================================================
+# ArgoCD Application CRs — App of Apps pattern
+# =============================================================================
+# Each enabled component gets its own ArgoCD Application, pointing at the
+# sub-chart under {{ .Values.gitops.basePath }}/components/<name>.
+# =============================================================================
+
+# --- Central infrastructure --------------------------------------------------
+{{- if .Values.components.central.enabled }}
+apiVersion: argoproj.io/v1alpha1
+kind: Application
+metadata:
+  name: {{ .Release.Name }}-central
+  namespace: {{ .Values.argocd.namespace }}
+  labels:
+    app.kubernetes.io/part-of: certchain
+    demo.redhat.com/application: "certchain"
+  finalizers:
+    - resources-finalizer.argocd.argoproj.io
+spec:
+  project: {{ .Values.argocd.project }}
+  source:
+    repoURL: {{ .Values.gitops.repoUrl }}
+    targetRevision: {{ .Values.gitops.revision }}
+    path: {{ .Values.gitops.basePath }}/components/certchain-central
+    helm:
+      valuesObject:
+        global:
+          domain: {{ .Values.deployer.domain }}
+          registry: {{ .Values.images.registry }}
+          imageTag: {{ .Values.images.tag | quote }}
+        images:
+          buildEnabled: {{ .Values.images.buildEnabled }}
+        gitops:
+          repoUrl: {{ .Values.gitops.repoUrl }}
+          revision: {{ .Values.gitops.revision }}
+  destination:
+    server: https://kubernetes.default.svc
+    namespace: {{ .Values.central.namespace }}
+  syncPolicy:
+    automated:
+      prune: true
+      selfHeal: true
+    syncOptions:
+      - CreateNamespace=true
+{{- end }}
+
+# --- Per-org components (one Application per org) ----------------------------
+{{- $orgs := list "techpulse" "dataforge" "neuralpath" }}
+{{- range $orgKey := $orgs }}
+{{- $orgConfig := index $.Values.components $orgKey }}
+{{- if $orgConfig.enabled }}
+---
+apiVersion: argoproj.io/v1alpha1
+kind: Application
+metadata:
+  name: {{ $.Release.Name }}-{{ $orgKey }}
+  namespace: {{ $.Values.argocd.namespace }}
+  labels:
+    app.kubernetes.io/part-of: certchain
+    demo.redhat.com/application: "certchain"
+  finalizers:
+    - resources-finalizer.argocd.argoproj.io
+spec:
+  project: {{ $.Values.argocd.project }}
+  source:
+    repoURL: {{ $.Values.gitops.repoUrl }}
+    targetRevision: {{ $.Values.gitops.revision }}
+    path: {{ $.Values.gitops.basePath }}/components/certchain-org
+    helm:
+      valuesObject:
+        global:
+          domain: {{ $.Values.deployer.domain }}
+          registry: {{ $.Values.images.registry }}
+          imageTag: {{ $.Values.images.tag | quote }}
+          centralNamespace: {{ $.Values.central.namespace }}
+        images:
+          buildEnabled: {{ $.Values.images.buildEnabled }}
+        gitops:
+          repoUrl: {{ $.Values.gitops.repoUrl }}
+          revision: {{ $.Values.gitops.revision }}
+        org:
+          name: {{ $orgConfig.org.name }}
+          displayName: {{ $orgConfig.org.displayName }}
+          mspId: {{ $orgConfig.org.mspId }}
+          primaryColor: {{ $orgConfig.org.primaryColor | quote }}
+  destination:
+    server: https://kubernetes.default.svc
+    namespace: {{ $.Values.central.namespace }}-{{ $orgKey }}
+  syncPolicy:
+    automated:
+      prune: true
+      selfHeal: true
+    syncOptions:
+      - CreateNamespace=true
+{{- end }}
+{{- end }}
+
+# --- Showroom lab guide -------------------------------------------------------
+{{- if .Values.components.showroom.enabled }}
+---
+apiVersion: argoproj.io/v1alpha1
+kind: Application
+metadata:
+  name: {{ .Release.Name }}-showroom
+  namespace: {{ .Values.argocd.namespace }}
+  labels:
+    app.kubernetes.io/part-of: certchain
+    demo.redhat.com/application: "certchain"
+  finalizers:
+    - resources-finalizer.argocd.argoproj.io
+spec:
+  project: {{ .Values.argocd.project }}
+  source:
+    repoURL: {{ .Values.gitops.repoUrl }}
+    targetRevision: {{ .Values.gitops.revision }}
+    path: {{ .Values.gitops.basePath }}/components/certchain-showroom
+    helm:
+      valuesObject:
+        global:
+          domain: {{ .Values.deployer.domain }}
+        showroom:
+          content:
+            repoUrl: {{ .Values.components.showroom.content.repoUrl | default .Values.gitops.repoUrl }}
+            repoRef: {{ .Values.components.showroom.content.repoRef | default .Values.gitops.revision }}
+            antoraPlaybook: {{ .Values.components.showroom.content.antoraPlaybook }}
+          terminal:
+            enabled: {{ .Values.components.showroom.terminal.enabled }}
+        demo:
+          centralNamespace: {{ .Values.central.namespace }}
+  destination:
+    server: https://kubernetes.default.svc
+    namespace: {{ .Values.components.showroom.namespace | default "showroom" }}
+  syncPolicy:
+    automated:
+      prune: true
+      selfHeal: true
+    syncOptions:
+      - CreateNamespace=true
+{{- end }}

@@ -1,0 +1,48 @@
+# Chaincode lifecycle Job — install, approve, commit (CcaaS pattern)
+apiVersion: batch/v1
+kind: Job
+metadata:
+  name: chaincode-lifecycle
+  labels:
+    {{- include "certchain-central.labels" . | nindent 4 }}
+  annotations:
+    argocd.argoproj.io/sync-wave: "11"
+spec:
+  backoffLimit: 2
+  ttlSecondsAfterFinished: 600
+  template:
+    spec:
+      serviceAccountName: fabric-setup
+      restartPolicy: Never
+      containers:
+        - name: lifecycle
+          image: registry.access.redhat.com/ubi9/ubi:latest
+          command: ["/bin/bash", "-c"]
+          args:
+            - |
+              set -euo pipefail
+              cd /tmp
+              echo "Installing Fabric 3.1.0 binaries..."
+              curl -sL "https://github.com/hyperledger/fabric/releases/download/v3.1.0/hyperledger-fabric-linux-amd64-3.1.0.tar.gz" | tar xz -C /tmp
+              export PATH="/tmp/bin:$PATH"
+              export FABRIC_CFG_PATH=/tmp/config
+              exec /bin/bash /scripts/chaincode-lifecycle.sh
+          volumeMounts:
+            - name: scripts
+              mountPath: /scripts
+            - name: work
+              mountPath: /work
+          resources:
+            requests:
+              cpu: 200m
+              memory: 256Mi
+            limits:
+              cpu: 1
+              memory: 1Gi
+      volumes:
+        - name: scripts
+          configMap:
+            name: fabric-setup-scripts
+            defaultMode: 0755
+        - name: work
+          emptyDir: {}

@@ -1,0 +1,113 @@
+# Channel setup Job — join orderers + peers, set anchor peers
+apiVersion: batch/v1
+kind: Job
+metadata:
+  name: fabric-channel-setup
+  labels:
+    {{- include "certchain-central.labels" . | nindent 4 }}
+  annotations:
+    argocd.argoproj.io/sync-wave: "10"
+spec:
+  backoffLimit: 3
+  ttlSecondsAfterFinished: 600
+  template:
+    spec:
+      serviceAccountName: fabric-setup
+      restartPolicy: Never
+      containers:
+        - name: channel-setup
+          image: registry.access.redhat.com/ubi9/ubi:latest
+          command: ["/bin/bash", "-c"]
+          args:
+            - |
+              set -euo pipefail
+              cd /tmp
+              echo "Installing Fabric 3.1.0 binaries..."
+              curl -sL "https://github.com/hyperledger/fabric/releases/download/v3.1.0/hyperledger-fabric-linux-amd64-3.1.0.tar.gz" | tar xz -C /tmp
+              export PATH="/tmp/bin:$PATH"
+              curl -sL "https://github.com/jqlang/jq/releases/download/jq-1.7.1/jq-linux-amd64" -o /tmp/bin/jq && chmod +x /tmp/bin/jq
+              export FABRIC_CFG_PATH=/tmp/config
+              exec /bin/bash /scripts/channel-setup.sh
+          volumeMounts:
+            - name: scripts
+              mountPath: /scripts
+            - name: orderer-tls
+              mountPath: /orderer-tls
+              readOnly: true
+            - name: genesis
+              mountPath: /channel-artifacts/genesis.block
+              subPath: genesis.block
+            {{- range $org := list "techpulse" "dataforge" "neuralpath" }}
+            # {{ $org }} admin MSP
+            - name: {{ $org }}-admin-signcerts
+              mountPath: /admin-msp/{{ $org }}/signcerts
+            - name: {{ $org }}-admin-keystore
+              mountPath: /admin-msp/{{ $org }}/keystore
+            - name: {{ $org }}-admin-cacerts
+              mountPath: /admin-msp/{{ $org }}/cacerts
+            - name: {{ $org }}-admin-tlscacerts
+              mountPath: /admin-msp/{{ $org }}/tlscacerts
+            - name: {{ $org }}-admin-config
+              mountPath: /admin-msp/{{ $org }}/config.yaml
+              subPath: config.yaml
+            # {{ $org }} peer TLS CA
+            - name: {{ $org }}-peer-tls
+              mountPath: /peer-tls/{{ $org }}
+            {{- end }}
+          resources:
+            requests:
+              cpu: 100m
+              memory: 128Mi
+            limits:
+              cpu: 500m
+              memory: 512Mi
+      volumes:
+        - name: scripts
+          configMap:
+            name: fabric-setup-scripts
+            defaultMode: 0755
+        - name: orderer-tls
+          secret:
+            secretName: orderer0-tls
+        - name: genesis
+          configMap:
+            name: fabric-genesis
+        {{- range $org := list "techpulse" "dataforge" "neuralpath" }}
+        # {{ $org }} admin MSP volumes
+        - name: {{ $org }}-admin-signcerts
+          secret:
+            secretName: {{ $org }}-admin-msp
+            items:
+              - key: signcerts
+                path: cert.pem
+        - name: {{ $org }}-admin-keystore
+          secret:
+            secretName: {{ $org }}-admin-msp
+            items:
+              - key: keystore
+                path: priv_sk
+        - name: {{ $org }}-admin-cacerts
+          secret:
+            secretName: {{ $org }}-admin-msp
+            items:
+              - key: cacerts
+                path: ca-cert.pem
+        - name: {{ $org }}-admin-tlscacerts
+          secret:
+            secretName: {{ $org }}-admin-msp
+            items:
+              - key: tlscacerts
+                path: tlsca-cert.pem
+        - name: {{ $org }}-admin-config
+          secret:
+            secretName: {{ $org }}-admin-msp
+            items:
+              - key: config.yaml
+                path: config.yaml
+        - name: {{ $org }}-peer-tls
+          secret:
+            secretName: peer0-{{ $org }}-tls
+            items:
+              - key: ca.crt
+                path: ca.crt
+        {{- end }}

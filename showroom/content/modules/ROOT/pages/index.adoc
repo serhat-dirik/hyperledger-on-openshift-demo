@@ -1,0 +1,40 @@
+= How to Use This Guide
+
+Welcome to the *CertChain Blockchain Credentialing* demo on Red Hat OpenShift.
+
+This guide walks you through the demo environment — from issuing academic certificates on a Hyperledger Fabric blockchain to verifying them through a public portal.
+
+== What You'll Need
+
+* Access to the OpenShift Console (see the *OpenShift Console* tab above)
+* Access to the embedded Terminal (see the *Terminal* tab above)
+* A modern web browser
+
+== Environment URLs
+
+[cols="1,2"]
+|===
+| Component | URL
+
+| Cert Portal (verification)
+| {cert_portal_url}
+
+| TechPulse Course Manager
+| {techpulse_course_manager_url}
+
+| DataForge Course Manager
+| {dataforge_course_manager_url}
+
+| NeuralPath Course Manager
+| {neuralpath_course_manager_url}
+
+| Grafana Dashboards
+| {grafana_url}
+|===
+
+== Demo Flow
+
+. *Admin: Issue Certificates* — Log in to a Course Manager UI, create a course, enroll students, and issue blockchain-backed certificates.
+. *User: Verify Certificates* — Use the public Cert Portal to verify certificates by ID.
+. *Explore Monitoring* — View Fabric network and application metrics in Grafana.
+. *API Walkthrough* — Use `curl` to interact directly with the REST APIs.

@@ -1,0 +1,63 @@
+= Admin: Issue Certificates
+
+In this section you will act as a training administrator — creating a course, enrolling a student, and issuing a blockchain certificate.
+
+== Step 1: Log in to a Course Manager
+
+. Open the *TechPulse Course Manager*: {techpulse_course_manager_url}
+. Click *Login* and use the Keycloak credentials:
++
+[cols="1,1"]
+|===
+| Username | `admin`
+| Password | `admin`
+|===
+
+== Step 2: Create a Course
+
+. Click *Create Course*.
+. Fill in the details:
++
+[cols="1,2"]
+|===
+| Field | Value
+
+| Course Name | `OpenShift Administration`
+| Description | `Red Hat OpenShift cluster administration fundamentals`
+| Duration | `40`
+|===
+. Click *Save*.
+
+== Step 3: Enroll a Student
+
+. Select the course you just created.
+. Click *Enroll Student*.
+. Enter student details:
++
+[cols="1,2"]
+|===
+| Field | Value
+
+| Name | `Jane Doe`
+| Email | `jane.doe@example.com`
+|===
+. Click *Enroll*.
+
+== Step 4: Issue a Certificate
+
+. In the enrolled students list, select *Jane Doe*.
+. Click *Issue Certificate*.
+. The certificate is now recorded on the Hyperledger Fabric blockchain.
+. Copy the *Certificate ID* — you will need it in the next section.
+
+[NOTE]
+====
+The certificate issuance calls the `cert-admin-api`, which submits a transaction to the `certcontract` chaincode. The transaction is endorsed by the peer, ordered by the BFT orderers, and committed to the ledger.
+====
+
+== Try Other Organizations
+
+Repeat the same flow with *DataForge* or *NeuralPath* to see how each org operates independently on the same blockchain network.
+
+* DataForge: {dataforge_course_manager_url}
+* NeuralPath: {neuralpath_course_manager_url}

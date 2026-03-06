@@ -1,0 +1,33 @@
+# =============================================================================
+# CertChain Showroom — Default Values
+# =============================================================================
+
+global:
+  domain: apps.example.com
+
+# --- Showroom content --------------------------------------------------------
+showroom:
+  enabled: true
+  name: showroom
+
+  content:
+    repoUrl: ""
+    repoRef: "main"
+    antoraPlaybook: "showroom/site.yml"
+    image: "quay.io/rhpds/showroom-content:v1.3.1"
+
+  terminal:
+    enabled: true
+    image: "quay.io/rhpds/openshift-showroom-terminal-ocp:latest"
+    resources:
+      requests:
+        cpu: 500m
+        memory: 512Mi
+      limits:
+        cpu: 500m
+        memory: 1Gi
+
+# --- Demo references (injected by parent chart) ------------------------------
+demo:
+  centralNamespace: certchain
+  appName: certchain

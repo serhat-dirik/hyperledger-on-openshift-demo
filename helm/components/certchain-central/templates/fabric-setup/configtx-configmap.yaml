@@ -1,0 +1,14 @@
+# ConfigMaps for configtx.yaml and MSP config.yaml — used by genesis Job
+apiVersion: v1
+kind: ConfigMap
+metadata:
+  name: fabric-configtx
+  labels:
+    {{- include "certchain-central.labels" . | nindent 4 }}
+  annotations:
+    argocd.argoproj.io/sync-wave: "0"
+data:
+  configtx.yaml: |
+{{ .Files.Get "files/configtx.yaml" | indent 4 }}
+  config.yaml: |
+{{ .Files.Get "files/config.yaml" | indent 4 }}

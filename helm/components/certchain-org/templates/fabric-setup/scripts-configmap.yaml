@@ -1,0 +1,12 @@
+# ConfigMap packaging org enrollment script
+apiVersion: v1
+kind: ConfigMap
+metadata:
+  name: fabric-setup-scripts
+  labels:
+    {{- include "certchain-org.labels" . | nindent 4 }}
+  annotations:
+    argocd.argoproj.io/sync-wave: "0"
+data:
+  org-enrollment.sh: |
+{{ .Files.Get "scripts/org-enrollment.sh" | indent 4 }}

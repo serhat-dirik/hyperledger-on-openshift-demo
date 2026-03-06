@@ -1,0 +1,19 @@
+# CertChain chaincode — CcaaS (Chaincode as a Service) container
+# Build: multi-stage with UBI base for OpenShift compatibility
+ARG GO_VERSION=1.23
+
+# --- Build stage ---
+FROM registry.access.redhat.com/ubi9/go-toolset:${GO_VERSION} AS builder
+USER root
+WORKDIR /src
+COPY . .
+RUN go mod tidy && go mod download
+RUN CGO_ENABLED=0 GOOS=linux go build -o /chaincode ./cmd
+
+# --- Runtime stage ---
+FROM registry.access.redhat.com/ubi9-micro:latest
+COPY --from=builder /chaincode /chaincode
+USER 1001
+EXPOSE 7052
+ENV CHAINCODE_SERVER_ADDRESS=0.0.0.0:7052
+CMD ["/chaincode"]

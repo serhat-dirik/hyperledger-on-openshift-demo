@@ -1,0 +1,6 @@
+# TechPulse Academy — org-specific overrides
+org:
+  name: techpulse
+  displayName: TechPulse Academy
+  mspId: TechPulseMSP
+  primaryColor: "#2563eb"

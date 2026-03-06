@@ -1,0 +1,3 @@
+=== Chaincode Lifecycle Output ===
+
+error: error from server (NotFound): jobs.batch "chaincode-lifecycle" not found in namespace "certchain"

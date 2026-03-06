@@ -1,0 +1,6 @@
+# DataForge Institute — org-specific overrides
+org:
+  name: dataforge
+  displayName: DataForge Institute
+  mspId: DataForgeMSP
+  primaryColor: "#059669"

@@ -1,0 +1,41 @@
+= Verify Certificates
+
+In this section you will verify a certificate's authenticity using the public verification portal — no login required.
+
+== Step 1: Open the Cert Portal
+
+Navigate to the *Cert Portal*: {cert_portal_url}
+
+This is the public-facing verification interface. Anyone (employers, universities, students) can use it to verify a certificate.
+
+== Step 2: Verify by Certificate ID
+
+. Paste the *Certificate ID* you copied in the previous section into the search field.
+. Click *Verify*.
+. The portal queries the `verify-api`, which reads directly from the blockchain ledger.
+. You should see the certificate details:
+** Student name
+** Course name
+** Issuing organization
+** Issue date
+** Blockchain transaction ID
+
+== Step 3: Try an Invalid ID
+
+. Enter a random string (e.g., `invalid-cert-123`).
+. Click *Verify*.
+. The portal should show *Certificate Not Found* — confirming that only legitimate certificates exist on the blockchain.
+
+== How It Works
+
+The verification flow:
+
+. *cert-portal* (frontend) sends the certificate ID to the *verify-api*.
+. *verify-api* queries the Fabric peer using the `evaluateTransaction` gateway call.
+. The peer reads the certificate from its CouchDB state database.
+. The result is returned — no blockchain write occurs (read-only query).
+
+[TIP]
+====
+Verification is a read-only operation — it does not create a new blockchain transaction. This makes it fast and free of ordering/consensus overhead.
+====

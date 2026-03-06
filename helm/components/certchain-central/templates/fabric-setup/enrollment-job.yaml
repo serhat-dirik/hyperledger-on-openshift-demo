@@ -1,0 +1,50 @@
+# Central enrollment Job — enrolls orderer0, registers org identities
+apiVersion: batch/v1
+kind: Job
+metadata:
+  name: central-enrollment
+  labels:
+    {{- include "certchain-central.labels" . | nindent 4 }}
+  annotations:
+    argocd.argoproj.io/sync-wave: "3"
+spec:
+  backoffLimit: 3
+  ttlSecondsAfterFinished: 600
+  template:
+    spec:
+      serviceAccountName: fabric-setup
+      restartPolicy: Never
+      containers:
+        - name: enrollment
+          image: registry.access.redhat.com/ubi9/ubi:latest
+          command: ["/bin/bash", "/scripts/central-enrollment.sh"]
+          env:
+            - name: CENTRAL_NS
+              value: {{ .Release.Namespace }}
+            - name: CA_URL
+              value: "http://fabric-ca:7054"
+            - name: DOMAIN_SUFFIX
+              value: {{ .Values.global.domain }}
+          volumeMounts:
+            - name: scripts
+              mountPath: /scripts
+            - name: msp-config
+              mountPath: /msp-config
+          resources:
+            requests:
+              cpu: 100m
+              memory: 128Mi
+            limits:
+              cpu: 500m
+              memory: 512Mi
+      volumes:
+        - name: scripts
+          configMap:
+            name: fabric-setup-scripts
+            defaultMode: 0755
+        - name: msp-config
+          configMap:
+            name: fabric-configtx
+            items:
+              - key: config.yaml
+                path: config.yaml

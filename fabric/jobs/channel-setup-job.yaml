@@ -1,0 +1,218 @@
+# Job: Create the Fabric channel, join all orderers (BFT) and peers.
+# Runs after setup-central.sh and setup-org.sh have enrolled crypto.
+# Uses the Channel Participation API (osnadmin) for Fabric 3.1.
+#
+# BFT note: All 4 orderers must join the channel for consensus to start.
+# The genesis block must include all 4 orderers as BFT consenters.
+apiVersion: batch/v1
+kind: Job
+metadata:
+  name: fabric-channel-setup
+  labels:
+    app.kubernetes.io/part-of: certchain
+spec:
+  backoffLimit: 3
+  ttlSecondsAfterFinished: 600
+  template:
+    spec:
+      serviceAccountName: fabric-setup
+      restartPolicy: Never
+      containers:
+        - name: channel-setup
+          image: registry.access.redhat.com/ubi9/ubi:latest
+          command: ["/bin/bash", "-c"]
+          args:
+            - |
+              set -euo pipefail
+              cd /tmp
+              echo "Installing Fabric 3.1.0 binaries..."
+              curl -sL "https://github.com/hyperledger/fabric/releases/download/v3.1.0/hyperledger-fabric-linux-amd64-3.1.0.tar.gz" | tar xz -C /tmp
+              export PATH="/tmp/bin:$PATH"
+              # jq is needed for anchor peer updates — install from GitHub
+              curl -sL "https://github.com/jqlang/jq/releases/download/jq-1.7.1/jq-linux-amd64" -o /tmp/bin/jq && chmod +x /tmp/bin/jq
+              export FABRIC_CFG_PATH=/tmp/config
+              exec /bin/bash /scripts/channel-setup.sh
+          volumeMounts:
+            - name: scripts
+              mountPath: /scripts
+            # Orderer TLS (for osnadmin and peer channel commands)
+            - name: orderer-tls
+              mountPath: /orderer-tls
+              readOnly: true
+            # Channel artifacts
+            - name: genesis
+              mountPath: /channel-artifacts/genesis.block
+              subPath: genesis.block
+            # Admin MSPs (for peer channel commands)
+            - name: techpulse-admin-signcerts
+              mountPath: /admin-msp/techpulse/signcerts
+            - name: techpulse-admin-keystore
+              mountPath: /admin-msp/techpulse/keystore
+            - name: techpulse-admin-cacerts
+              mountPath: /admin-msp/techpulse/cacerts
+            - name: techpulse-admin-tlscacerts
+              mountPath: /admin-msp/techpulse/tlscacerts
+            - name: techpulse-admin-config
+              mountPath: /admin-msp/techpulse/config.yaml
+              subPath: config.yaml
+            - name: dataforge-admin-signcerts
+              mountPath: /admin-msp/dataforge/signcerts
+            - name: dataforge-admin-keystore
+              mountPath: /admin-msp/dataforge/keystore
+            - name: dataforge-admin-cacerts
+              mountPath: /admin-msp/dataforge/cacerts
+            - name: dataforge-admin-tlscacerts
+              mountPath: /admin-msp/dataforge/tlscacerts
+            - name: dataforge-admin-config
+              mountPath: /admin-msp/dataforge/config.yaml
+              subPath: config.yaml
+            - name: neuralpath-admin-signcerts
+              mountPath: /admin-msp/neuralpath/signcerts
+            - name: neuralpath-admin-keystore
+              mountPath: /admin-msp/neuralpath/keystore
+            - name: neuralpath-admin-cacerts
+              mountPath: /admin-msp/neuralpath/cacerts
+            - name: neuralpath-admin-tlscacerts
+              mountPath: /admin-msp/neuralpath/tlscacerts
+            - name: neuralpath-admin-config
+              mountPath: /admin-msp/neuralpath/config.yaml
+              subPath: config.yaml
+            # Peer TLS CA certs (for connecting to peers)
+            - name: techpulse-peer-tls
+              mountPath: /peer-tls/techpulse
+            - name: dataforge-peer-tls
+              mountPath: /peer-tls/dataforge
+            - name: neuralpath-peer-tls
+              mountPath: /peer-tls/neuralpath
+          resources:
+            requests:
+              cpu: 100m
+              memory: 128Mi
+            limits:
+              cpu: 500m
+              memory: 512Mi
+      volumes:
+        - name: scripts
+          configMap:
+            name: fabric-setup-scripts
+            defaultMode: 0755
+        # Orderer TLS (orderer0 — used as admin client cert for all orderers)
+        - name: orderer-tls
+          secret:
+            secretName: orderer0-tls
+        # Channel artifacts
+        - name: genesis
+          configMap:
+            name: fabric-genesis
+        # TechPulse admin MSP (created by setup-org.sh, copied to central NS)
+        - name: techpulse-admin-signcerts
+          secret:
+            secretName: techpulse-admin-msp
+            items:
+              - key: signcerts
+                path: cert.pem
+        - name: techpulse-admin-keystore
+          secret:
+            secretName: techpulse-admin-msp
+            items:
+              - key: keystore
+                path: priv_sk
+        - name: techpulse-admin-cacerts
+          secret:
+            secretName: techpulse-admin-msp
+            items:
+              - key: cacerts
+                path: ca-cert.pem
+        - name: techpulse-admin-tlscacerts
+          secret:
+            secretName: techpulse-admin-msp
+            items:
+              - key: tlscacerts
+                path: tlsca-cert.pem
+        - name: techpulse-admin-config
+          secret:
+            secretName: techpulse-admin-msp
+            items:
+              - key: config.yaml
+                path: config.yaml
+        # DataForge admin MSP
+        - name: dataforge-admin-signcerts
+          secret:
+            secretName: dataforge-admin-msp
+            items:
+              - key: signcerts
+                path: cert.pem
+        - name: dataforge-admin-keystore
+          secret:
+            secretName: dataforge-admin-msp
+            items:
+              - key: keystore
+                path: priv_sk
+        - name: dataforge-admin-cacerts
+          secret:
+            secretName: dataforge-admin-msp
+            items:
+              - key: cacerts
+                path: ca-cert.pem
+        - name: dataforge-admin-tlscacerts
+          secret:
+            secretName: dataforge-admin-msp
+            items:
+              - key: tlscacerts
+                path: tlsca-cert.pem
+        - name: dataforge-admin-config
+          secret:
+            secretName: dataforge-admin-msp
+            items:
+              - key: config.yaml
+                path: config.yaml
+        # NeuralPath admin MSP
+        - name: neuralpath-admin-signcerts
+          secret:
+            secretName: neuralpath-admin-msp
+            items:
+              - key: signcerts
+                path: cert.pem
+        - name: neuralpath-admin-keystore
+          secret:
+            secretName: neuralpath-admin-msp
+            items:
+              - key: keystore
+                path: priv_sk
+        - name: neuralpath-admin-cacerts
+          secret:
+            secretName: neuralpath-admin-msp
+            items:
+              - key: cacerts
+                path: ca-cert.pem
+        - name: neuralpath-admin-tlscacerts
+          secret:
+            secretName: neuralpath-admin-msp
+            items:
+              - key: tlscacerts
+                path: tlsca-cert.pem
+        - name: neuralpath-admin-config
+          secret:
+            secretName: neuralpath-admin-msp
+            items:
+              - key: config.yaml
+                path: config.yaml
+        # Peer TLS CA certs
+        - name: techpulse-peer-tls
+          secret:
+            secretName: peer0-techpulse-tls
+            items:
+              - key: ca.crt
+                path: ca.crt
+        - name: dataforge-peer-tls
+          secret:
+            secretName: peer0-dataforge-tls
+            items:
+              - key: ca.crt
+                path: ca.crt
+        - name: neuralpath-peer-tls
+          secret:
+            secretName: peer0-neuralpath-tls
+            items:
+              - key: ca.crt
+                path: ca.crt

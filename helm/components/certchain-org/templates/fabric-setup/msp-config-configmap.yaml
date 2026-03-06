@@ -1,0 +1,12 @@
+# MSP NodeOU config.yaml — needed by enrollment job for secret creation
+apiVersion: v1
+kind: ConfigMap
+metadata:
+  name: msp-config
+  labels:
+    {{- include "certchain-org.labels" . | nindent 4 }}
+  annotations:
+    argocd.argoproj.io/sync-wave: "0"
+data:
+  config.yaml: |
+{{ .Files.Get "files/config.yaml" | indent 4 }}

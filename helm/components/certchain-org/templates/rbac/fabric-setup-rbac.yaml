@@ -1,0 +1,26 @@
+# RBAC for org-level Fabric setup Jobs
+apiVersion: v1
+kind: ServiceAccount
+metadata:
+  name: fabric-setup
+  labels:
+    {{- include "certchain-org.labels" . | nindent 4 }}
+  annotations:
+    argocd.argoproj.io/sync-wave: "0"
+---
+apiVersion: rbac.authorization.k8s.io/v1
+kind: RoleBinding
+metadata:
+  name: fabric-setup-binding
+  labels:
+    {{- include "certchain-org.labels" . | nindent 4 }}
+  annotations:
+    argocd.argoproj.io/sync-wave: "0"
+subjects:
+  - kind: ServiceAccount
+    name: fabric-setup
+    namespace: {{ include "certchain-org.namespace" . }}
+roleRef:
+  kind: ClusterRole
+  name: fabric-setup-{{ .Values.global.centralNamespace }}
+  apiGroup: rbac.authorization.k8s.io

@@ -1,0 +1,58 @@
+# ServiceMonitors — per-org namespace
+---
+# Peer metrics (port 9443 /metrics)
+apiVersion: monitoring.coreos.com/v1
+kind: ServiceMonitor
+metadata:
+  name: peer-metrics
+  labels:
+    {{- include "certchain-org.labels" . | nindent 4 }}
+    app.kubernetes.io/component: monitoring
+  annotations:
+    argocd.argoproj.io/sync-wave: "5"
+spec:
+  selector:
+    matchLabels:
+      app: peer
+  endpoints:
+    - port: operations
+      path: /metrics
+      interval: 30s
+---
+# Orderer metrics (port 8443 /metrics)
+apiVersion: monitoring.coreos.com/v1
+kind: ServiceMonitor
+metadata:
+  name: orderer-metrics
+  labels:
+    {{- include "certchain-org.labels" . | nindent 4 }}
+    app.kubernetes.io/component: monitoring
+  annotations:
+    argocd.argoproj.io/sync-wave: "5"
+spec:
+  selector:
+    matchLabels:
+      app: orderer
+  endpoints:
+    - port: operations
+      path: /metrics
+      interval: 30s
+---
+# cert-admin-api metrics (port 8080 /q/metrics)
+apiVersion: monitoring.coreos.com/v1
+kind: ServiceMonitor
+metadata:
+  name: cert-admin-api-metrics
+  labels:
+    {{- include "certchain-org.labels" . | nindent 4 }}
+    app.kubernetes.io/component: monitoring
+  annotations:
+    argocd.argoproj.io/sync-wave: "5"
+spec:
+  selector:
+    matchLabels:
+      app: cert-admin-api
+  endpoints:
+    - targetPort: 8080
+      path: /q/metrics
+      interval: 30s

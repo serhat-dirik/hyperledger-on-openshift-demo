@@ -1,0 +1,20 @@
+# ConfigMap packaging setup scripts for Fabric Jobs
+apiVersion: v1
+kind: ConfigMap
+metadata:
+  name: fabric-setup-scripts
+  labels:
+    {{- include "certchain-central.labels" . | nindent 4 }}
+  annotations:
+    argocd.argoproj.io/sync-wave: "0"
+data:
+  central-enrollment.sh: |
+{{ .Files.Get "scripts/central-enrollment.sh" | indent 4 }}
+  generate-genesis.sh: |
+{{ .Files.Get "scripts/generate-genesis.sh" | indent 4 }}
+  copy-org-secrets.sh: |
+{{ .Files.Get "scripts/copy-org-secrets.sh" | indent 4 }}
+  channel-setup.sh: |
+{{ .Files.Get "scripts/channel-setup.sh" | indent 4 }}
+  chaincode-lifecycle.sh: |
+{{ .Files.Get "scripts/chaincode-lifecycle.sh" | indent 4 }}

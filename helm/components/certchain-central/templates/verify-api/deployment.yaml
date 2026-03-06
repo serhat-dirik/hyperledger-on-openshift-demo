@@ -1,0 +1,120 @@
+# verify-api — Central verification service
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: verify-api
+  labels:
+    app: verify-api
+    app.kubernetes.io/name: verify-api
+    {{- include "certchain-central.labels" . | nindent 4 }}
+    app.kubernetes.io/component: api
+    app.openshift.io/runtime: quarkus
+  annotations:
+    argocd.argoproj.io/sync-wave: "9"
+    app.openshift.io/connects-to: '["orderer0"]'
+spec:
+  replicas: 1
+  selector:
+    matchLabels:
+      app: verify-api
+  template:
+    metadata:
+      labels:
+        app: verify-api
+        app.kubernetes.io/name: verify-api
+        {{- include "certchain-central.labels" . | nindent 8 }}
+        app.kubernetes.io/component: api
+        app.openshift.io/runtime: quarkus
+    spec:
+      containers:
+        - name: verify-api
+          image: "{{ .Values.global.registry }}/verify-api:{{ .Values.global.imageTag }}"
+          ports:
+            - containerPort: 8080
+          env:
+            - name: KEYCLOAK_URL
+              value: http://keycloak:8080
+            - name: KEYCLOAK_REALM
+              value: {{ .Values.keycloak.realm }}
+            - name: FABRIC_CHANNEL_NAME
+              value: {{ .Values.verifyApi.fabric.channelName }}
+            - name: FABRIC_PEER_ENDPOINT
+              value: {{ .Values.verifyApi.fabric.peerEndpoint }}
+            - name: VERIFY_BASE_URL
+              value: https://cert-portal-{{ .Release.Namespace }}.{{ .Values.global.domain }}
+          volumeMounts:
+            - name: fabric-cert
+              mountPath: /etc/fabric/certs/cert.pem
+              subPath: cert.pem
+              readOnly: true
+            - name: fabric-key
+              mountPath: /etc/fabric/certs/key.pem
+              subPath: key.pem
+              readOnly: true
+            - name: fabric-tls
+              mountPath: /etc/fabric/tls/ca.crt
+              subPath: ca.crt
+              readOnly: true
+          resources:
+            requests:
+              cpu: {{ .Values.verifyApi.resources.requests.cpu }}
+              memory: {{ .Values.verifyApi.resources.requests.memory }}
+            limits:
+              cpu: {{ .Values.verifyApi.resources.limits.cpu }}
+              memory: {{ .Values.verifyApi.resources.limits.memory }}
+          readinessProbe:
+            httpGet:
+              path: /q/health/ready
+              port: 8080
+            initialDelaySeconds: 10
+          livenessProbe:
+            httpGet:
+              path: /q/health/live
+              port: 8080
+            initialDelaySeconds: 30
+            periodSeconds: 10
+      volumes:
+        - name: fabric-cert
+          secret:
+            secretName: techpulse-admin-msp
+            items:
+              - key: signcerts
+                path: cert.pem
+        - name: fabric-key
+          secret:
+            secretName: techpulse-admin-msp
+            items:
+              - key: keystore
+                path: key.pem
+        - name: fabric-tls
+          secret:
+            secretName: peer0-techpulse-tls
+            items:
+              - key: ca.crt
+                path: ca.crt
+---
+apiVersion: v1
+kind: Service
+metadata:
+  name: verify-api
+spec:
+  selector:
+    app: verify-api
+  ports:
+    - port: 8080
+      targetPort: 8080
+---
+apiVersion: route.openshift.io/v1
+kind: Route
+metadata:
+  name: verify-api
+spec:
+  host: verify-api-{{ .Release.Namespace }}.{{ .Values.global.domain }}
+  to:
+    kind: Service
+    name: verify-api
+  port:
+    targetPort: 8080
+  tls:
+    termination: edge
+    insecureEdgeTerminationPolicy: Redirect

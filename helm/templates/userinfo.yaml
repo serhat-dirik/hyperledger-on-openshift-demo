@@ -1,0 +1,26 @@
+# =============================================================================
+# RHDP UserInfo ConfigMap — passes URLs and credentials back to the platform
+# =============================================================================
+apiVersion: v1
+kind: ConfigMap
+metadata:
+  name: certchain-userinfo
+  namespace: {{ .Values.central.namespace }}
+  labels:
+    demo.redhat.com/userinfo: ""
+    app.kubernetes.io/part-of: certchain
+data:
+  demo_title: "CertChain — Blockchain Academic Credentialing"
+  access_instructions: |
+    CertChain deploys a multi-org Hyperledger Fabric network with 3 training
+    organizations (TechPulse, DataForge, NeuralPath) and a central verification
+    portal. After ArgoCD sync completes, run the post-deploy scripts to set up
+    the Fabric channel, deploy chaincode, and configure identity brokering.
+  cert_portal_url: "https://cert-portal-{{ .Values.central.namespace }}.{{ .Values.deployer.domain }}"
+  verify_api_url: "https://verify-api-{{ .Values.central.namespace }}.{{ .Values.deployer.domain }}"
+  central_keycloak_url: "https://keycloak-{{ .Values.central.namespace }}.{{ .Values.deployer.domain }}"
+  techpulse_course_manager_url: "https://course-manager-ui-{{ .Values.central.namespace }}-techpulse.{{ .Values.deployer.domain }}"
+  dataforge_course_manager_url: "https://course-manager-ui-{{ .Values.central.namespace }}-dataforge.{{ .Values.deployer.domain }}"
+  neuralpath_course_manager_url: "https://course-manager-ui-{{ .Values.central.namespace }}-neuralpath.{{ .Values.deployer.domain }}"
+  showroom_url: "https://showroom-{{ .Values.components.showroom.namespace | default "showroom" }}.{{ .Values.deployer.domain }}"
+  cluster_domain: "{{ .Values.deployer.domain }}"

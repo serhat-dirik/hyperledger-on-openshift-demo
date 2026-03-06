@@ -1,0 +1,55 @@
+# Cross-namespace ExternalName services — orderer cluster + chaincode in org NS
+{{- $centralNS := .Values.global.centralNamespace }}
+{{- $orgNS := include "certchain-org.namespace" . }}
+{{- $localOrderer := include "certchain-org.localOrderer" . }}
+
+# --- Orderer aliases (BFT requires all 4 orderers reachable) ---
+# Skip the local orderer — Helm already creates a Service for it in this NS.
+{{- $ordererMap := dict
+  "orderer0" (printf "orderer0.%s.svc.cluster.local" $centralNS)
+  "orderer1" (printf "orderer.%s-techpulse.svc.cluster.local" $centralNS)
+  "orderer2" (printf "orderer.%s-dataforge.svc.cluster.local" $centralNS)
+  "orderer3" (printf "orderer.%s-neuralpath.svc.cluster.local" $centralNS)
+}}
+{{- range $name, $host := $ordererMap }}
+{{- if ne $name $localOrderer }}
+---
+apiVersion: v1
+kind: Service
+metadata:
+  name: {{ $name }}
+  labels:
+    {{- include "certchain-org.labels" $ | nindent 4 }}
+    certchain/service-type: cross-namespace
+  annotations:
+    argocd.argoproj.io/sync-wave: "0"
+spec:
+  type: ExternalName
+  externalName: {{ $host }}
+  ports:
+    - name: grpc
+      port: 7050
+      protocol: TCP
+    - name: admin
+      port: 7053
+      protocol: TCP
+{{- end }}
+{{- end }}
+---
+# Chaincode service (CcaaS lives in central namespace)
+apiVersion: v1
+kind: Service
+metadata:
+  name: certcontract
+  labels:
+    {{- include "certchain-org.labels" . | nindent 4 }}
+    certchain/service-type: cross-namespace
+  annotations:
+    argocd.argoproj.io/sync-wave: "0"
+spec:
+  type: ExternalName
+  externalName: certcontract.{{ $centralNS }}.svc.cluster.local
+  ports:
+    - name: chaincode
+      port: 7052
+      protocol: TCP

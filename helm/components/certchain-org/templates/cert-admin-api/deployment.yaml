@@ -1,0 +1,118 @@
+# cert-admin-api — per-org certificate management API
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: cert-admin-api
+  labels:
+    app: cert-admin-api
+    app.kubernetes.io/name: cert-admin-api
+    {{- include "certchain-org.labels" . | nindent 4 }}
+    app.kubernetes.io/component: api
+    app.openshift.io/runtime: quarkus
+  annotations:
+    argocd.argoproj.io/sync-wave: "5"
+    app.openshift.io/connects-to: '["peer0","keycloak"]'
+spec:
+  replicas: 1
+  selector:
+    matchLabels:
+      app: cert-admin-api
+  template:
+    metadata:
+      labels:
+        app: cert-admin-api
+        app.kubernetes.io/name: cert-admin-api
+        {{- include "certchain-org.labels" . | nindent 8 }}
+        app.kubernetes.io/component: api
+        app.openshift.io/runtime: quarkus
+    spec:
+      containers:
+        - name: cert-admin-api
+          image: "image-registry.openshift-image-registry.svc:5000/{{ .Release.Namespace }}/cert-admin-api:{{ .Values.global.imageTag }}"
+          ports:
+            - containerPort: 8080
+          env:
+            - name: KEYCLOAK_URL
+              value: http://keycloak:8080
+            - name: KEYCLOAK_REALM
+              value: {{ .Values.org.name }}
+            - name: FABRIC_CHANNEL_NAME
+              value: {{ .Values.certAdminApi.fabric.channelName }}
+            - name: FABRIC_PEER_ENDPOINT
+              value: peer0:7051
+            - name: FABRIC_MSP_ID
+              value: {{ .Values.org.mspId }}
+          volumeMounts:
+            - name: fabric-cert
+              mountPath: /etc/fabric/certs/cert.pem
+              subPath: cert.pem
+              readOnly: true
+            - name: fabric-key
+              mountPath: /etc/fabric/certs/key.pem
+              subPath: key.pem
+              readOnly: true
+            - name: fabric-tls
+              mountPath: /etc/fabric/tls/ca.crt
+              subPath: ca.crt
+              readOnly: true
+          resources:
+            requests:
+              cpu: {{ .Values.certAdminApi.resources.requests.cpu }}
+              memory: {{ .Values.certAdminApi.resources.requests.memory }}
+            limits:
+              cpu: {{ .Values.certAdminApi.resources.limits.cpu }}
+              memory: {{ .Values.certAdminApi.resources.limits.memory }}
+          readinessProbe:
+            httpGet:
+              path: /q/health/ready
+              port: 8080
+            initialDelaySeconds: 10
+          livenessProbe:
+            httpGet:
+              path: /q/health/live
+              port: 8080
+            initialDelaySeconds: 15
+      volumes:
+        - name: fabric-cert
+          secret:
+            secretName: admin-msp
+            items:
+              - key: signcerts
+                path: cert.pem
+        - name: fabric-key
+          secret:
+            secretName: admin-msp
+            items:
+              - key: keystore
+                path: key.pem
+        - name: fabric-tls
+          secret:
+            secretName: peer0-tls
+            items:
+              - key: ca.crt
+                path: ca.crt
+---
+apiVersion: v1
+kind: Service
+metadata:
+  name: cert-admin-api
+spec:
+  selector:
+    app: cert-admin-api
+  ports:
+    - port: 8080
+      targetPort: 8080
+---
+apiVersion: route.openshift.io/v1
+kind: Route
+metadata:
+  name: cert-admin-api
+spec:
+  host: cert-admin-api-{{ include "certchain-org.namespace" . }}.{{ .Values.global.domain }}
+  to:
+    kind: Service
+    name: cert-admin-api
+  port:
+    targetPort: 8080
+  tls:
+    termination: edge

@@ -1,0 +1,82 @@
+{
+    "realm": "certchain",
+    "displayName": "CertChain Central",
+    "enabled": true,
+    "sslRequired": "external",
+    "registrationAllowed": false,
+    "loginWithEmailAllowed": true,
+    "duplicateEmailsAllowed": false,
+    "resetPasswordAllowed": false,
+    "editUsernameAllowed": false,
+    "bruteForceProtected": false,
+    "accessTokenLifespan": 300,
+    "ssoSessionIdleTimeout": 1800,
+    "ssoSessionMaxLifespan": 36000,
+    "requiredCredentials": ["password"],
+    "organizationsEnabled": true,
+    "firstBrokerLoginFlow": "first broker login",
+    "browserFlow": "browser",
+    "roles": {
+        "realm": [
+            {
+                "name": "student",
+                "description": "Authenticated student (JIT-provisioned via identity brokering)"
+            }
+        ]
+    },
+    "clientScopes": [
+        {
+            "name": "org-membership",
+            "description": "Organization membership claims",
+            "protocol": "openid-connect",
+            "attributes": {
+                "include.in.token.scope": "true",
+                "display.on.consent.screen": "false"
+            },
+            "protocolMappers": [
+                {
+                    "name": "organization",
+                    "protocol": "openid-connect",
+                    "protocolMapper": "oidc-organization-membership-mapper",
+                    "config": {
+                        "id.token.claim": "true",
+                        "access.token.claim": "true",
+                        "claim.name": "organization",
+                        "userinfo.token.claim": "true"
+                    }
+                }
+            ]
+        }
+    ],
+    "defaultDefaultClientScopes": ["openid", "profile", "email", "org-membership"],
+    "clients": [
+        {
+            "clientId": "cert-portal",
+            "name": "CertChain Portal",
+            "description": "Central certification verification portal (PWA)",
+            "enabled": true,
+            "publicClient": true,
+            "standardFlowEnabled": true,
+            "directAccessGrantsEnabled": false,
+            "redirectUris": [
+                "http://localhost:5174/*",
+                "https://cert-portal-certchain.*"
+            ],
+            "webOrigins": ["*"],
+            "attributes": {
+                "post.logout.redirect.uris": "+"
+            },
+            "defaultClientScopes": ["openid", "profile", "email", "org-membership"]
+        },
+        {
+            "clientId": "verify-api",
+            "name": "CertChain Verify API",
+            "description": "Bearer-only client for authenticated transcript endpoints",
+            "enabled": true,
+            "bearerOnly": true,
+            "publicClient": false,
+            "defaultClientScopes": ["openid", "profile", "org-membership"]
+        }
+    ],
+    "users": []
+}

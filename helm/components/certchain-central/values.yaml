@@ -1,0 +1,120 @@
+# =============================================================================
+# CertChain Central — Default Values
+# =============================================================================
+# For ArgoCD: values flow from helm/values.yaml via Application valuesObject.
+# For local dev:
+#   helm install certchain-central helm/components/certchain-central \
+#     --set global.domain=apps.cluster.example.com
+# =============================================================================
+
+global:
+  # Auto-detected by deploy script, passed via --set
+  domain: apps.example.com
+  registry: image-registry.openshift-image-registry.svc:5000/certchain
+  imageTag: latest
+
+# --- Image builds (ArgoCD Git-source BuildConfigs) ----------------------------
+images:
+  buildEnabled: true
+
+# --- GitOps source (for BuildConfig Git source) -------------------------------
+gitops:
+  repoUrl: ""
+  revision: "main"
+
+# --- Fabric CA ---------------------------------------------------------------
+fabricCA:
+  image:
+    repository: hyperledger/fabric-ca
+    tag: "1.5.15"
+  resources:
+    requests:
+      cpu: 100m
+      memory: 128Mi
+    limits:
+      cpu: 200m
+      memory: 256Mi
+
+# --- Orderer (orderer0 — central BFT node) ----------------------------------
+orderer:
+  image:
+    repository: hyperledger/fabric-orderer
+    tag: "3.1.0"
+  resources:
+    requests:
+      cpu: 200m
+      memory: 256Mi
+    limits:
+      cpu: 400m
+      memory: 512Mi
+  storage: 1Gi
+
+# --- Keycloak (central identity broker) -------------------------------------
+keycloak:
+  image:
+    repository: quay.io/keycloak/keycloak
+    tag: "26.1.4"
+  admin:
+    username: admin
+    password: admin
+  realm: certchain
+  resources:
+    requests:
+      cpu: 500m
+      memory: 768Mi
+    limits:
+      cpu: "1"
+      memory: 1Gi
+
+# --- PostgreSQL (Keycloak persistence) ---------------------------------------
+postgres:
+  image:
+    repository: postgres
+    tag: "17-alpine"
+  storage: 1Gi
+  resources:
+    requests:
+      cpu: 100m
+      memory: 256Mi
+    limits:
+      cpu: 200m
+      memory: 256Mi
+
+# --- Verify API (central verification service) -------------------------------
+verifyApi:
+  image:
+    # Uses internal registry — set by deploy script
+    repository: ""
+    tag: ""
+  resources:
+    requests:
+      cpu: 200m
+      memory: 256Mi
+    limits:
+      cpu: 400m
+      memory: 512Mi
+  fabric:
+    channelName: certchannel
+    peerEndpoint: peer0.certchain-techpulse.svc.cluster.local:7051
+
+# --- CertChain Portal (verification PWA) ------------------------------------
+certPortal:
+  image:
+    repository: ""
+    tag: ""
+  resources:
+    requests:
+      cpu: 100m
+      memory: 128Mi
+    limits:
+      cpu: 200m
+      memory: 256Mi
+
+# --- Grafana -----------------------------------------------------------------
+grafana:
+  enabled: true
+  admin:
+    user: admin
+    password: certchain
+  # SA token injected by deploy script via --set
+  saToken: ""

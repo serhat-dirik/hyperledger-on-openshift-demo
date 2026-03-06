@@ -1,0 +1,49 @@
+{{- if .Values.images.buildEnabled }}
+# BuildConfigs + ImageStreams for central applications
+# Git source builds — ArgoCD compatible (no --from-dir binary builds)
+{{- $builds := list
+  (dict "name" "verify-api" "contextDir" "apps/verify-api")
+  (dict "name" "cert-portal" "contextDir" "apps/cert-portal")
+  (dict "name" "certcontract" "contextDir" "fabric/chaincode/certcontract")
+}}
+{{- range $build := $builds }}
+---
+apiVersion: image.openshift.io/v1
+kind: ImageStream
+metadata:
+  name: {{ $build.name }}
+  labels:
+    {{- include "certchain-central.labels" $ | nindent 4 }}
+  annotations:
+    argocd.argoproj.io/sync-wave: "2"
+spec:
+  lookupPolicy:
+    local: true
+---
+apiVersion: build.openshift.io/v1
+kind: BuildConfig
+metadata:
+  name: {{ $build.name }}
+  labels:
+    {{- include "certchain-central.labels" $ | nindent 4 }}
+  annotations:
+    argocd.argoproj.io/sync-wave: "2"
+spec:
+  source:
+    type: Git
+    git:
+      uri: {{ $.Values.gitops.repoUrl }}
+      ref: {{ $.Values.gitops.revision | default "main" }}
+    contextDir: {{ $build.contextDir }}
+  strategy:
+    type: Docker
+    dockerStrategy:
+      dockerfilePath: Containerfile
+  output:
+    to:
+      kind: ImageStreamTag
+      name: {{ $build.name }}:{{ $.Values.global.imageTag | default "latest" }}
+  triggers:
+    - type: ConfigChange
+{{- end }}
+{{- end }}

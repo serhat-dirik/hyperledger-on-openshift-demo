@@ -1,0 +1,52 @@
+= Architecture Overview
+
+CertChain demonstrates a multi-organization blockchain credentialing system running on Red Hat OpenShift.
+
+== Use Case
+
+Training organizations issue tamper-proof academic certificates stored on a Hyperledger Fabric blockchain. Anyone can verify a certificate's authenticity through a public verification portal — no account required.
+
+== Organizations
+
+[cols="1,1,1"]
+|===
+| Organization | Role | Namespace
+
+| *Central Infrastructure*
+| Orderer, CA, Verification Portal
+| `{central_namespace}`
+
+| *TechPulse Academy*
+| Training org (peer + orderer)
+| `{central_namespace}-techpulse`
+
+| *DataForge Institute*
+| Training org (peer + orderer)
+| `{central_namespace}-dataforge`
+
+| *NeuralPath Labs*
+| Training org (peer + orderer)
+| `{central_namespace}-neuralpath`
+|===
+
+== Key Components
+
+* *Hyperledger Fabric 3.1* — BFT consensus with 4 orderers, 3 peers, CouchDB state stores
+* *CertContract* — Go chaincode (CcaaS) for certificate issuance, revocation, verification
+* *cert-admin-api* — Quarkus REST API per org for managing certificates
+* *course-manager-ui* — Node.js UI per org for course/student management
+* *verify-api* — Quarkus REST API for public verification
+* *cert-portal* — Node.js public verification UI
+* *Keycloak* — Per-org identity management with central SSO brokering
+* *Grafana* — Dashboards for Fabric metrics and application metrics
+
+== Blockchain Network
+
+The Fabric network uses *BFT (Byzantine Fault Tolerant)* consensus across 4 orderers:
+
+* `orderer0` — Central namespace
+* `orderer1` — TechPulse namespace
+* `orderer2` — DataForge namespace
+* `orderer3` — NeuralPath namespace
+
+Each organization runs a peer node connected to CouchDB for rich queries.
