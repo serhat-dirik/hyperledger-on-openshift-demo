@@ -298,18 +298,61 @@ for e in execs:
 "
 }
 
-# --- Allow non-member org-domain users to be redirected to IDP -----------
-# By default, KC 26 Organization Identity-First Login blocks users whose
-# email domain matches an org but who aren't yet members. Disabling
-# requiresUserMembership lets the IDP redirect happen for first-time users
-# — the auto-idp-link flow then JIT-provisions and adds them as members.
+# --- Fix Organization browser flow for JIT provisioning -------------------
+# Two changes needed for first-time org-domain users:
+#
+# 1. DISABLE "Condition - user configured" in the Organization conditional
+#    flow.  This condition checks if the user has credentials set up, which
+#    fails for first-time users who don't exist in central KC yet.  When it
+#    fails, the entire CONDITIONAL flow is skipped and the Organization
+#    Identity-First Login never runs — the user falls through to the
+#    username/password form which shows "no account yet".
+#
+# 2. Set requiresUserMembership=false on the Organization Identity-First
+#    Login execution so non-member org-domain users are redirected to the
+#    org IDP for authentication (the auto-idp-link flow then JIT-provisions
+#    and adds them as org members).
 configure_org_identity_first_login() {
-  echo "==> Configuring Organization Identity-First Login (requiresUserMembership=false)..."
+  echo "==> Configuring Organization browser flow for JIT provisioning..."
 
   local BROWSER_EXECS
   BROWSER_EXECS=$(curl -s "${CENTRAL_KC_URL}/admin/realms/certchain/authentication/flows/browser/executions" \
     -H "Authorization: Bearer ${ADMIN_TOKEN}")
 
+  # --- 1. Disable "Condition - user configured" inside the Org conditional flow ---
+  # Find the conditional-user-configured execution that's inside the
+  # "Browser - Conditional Organization" flow (level 2, before the org provider).
+  local CONDITION_EXEC_ID
+  CONDITION_EXEC_ID=$(echo "${BROWSER_EXECS}" | python3 -c "
+import sys, json
+execs = json.load(sys.stdin)
+in_org_conditional = False
+for e in execs:
+    name = e.get('displayName', '')
+    if 'Conditional Organization' in name:
+        in_org_conditional = True
+        continue
+    if in_org_conditional:
+        if e.get('providerId') == 'conditional-user-configured':
+            print(e['id'])
+            break
+        if e.get('level', 99) <= 1:
+            break
+" 2>/dev/null)
+
+  if [ -n "${CONDITION_EXEC_ID}" ]; then
+    local HTTP_CODE
+    HTTP_CODE=$(curl -s -o /dev/null -w "%{http_code}" -X PUT \
+      "${CENTRAL_KC_URL}/admin/realms/certchain/authentication/flows/browser/executions" \
+      -H "Authorization: Bearer ${ADMIN_TOKEN}" \
+      -H "Content-Type: application/json" \
+      -d "{\"id\": \"${CONDITION_EXEC_ID}\", \"requirement\": \"DISABLED\"}")
+    echo "  Condition - user configured: DISABLED (HTTP ${HTTP_CODE})"
+  else
+    echo "  WARNING: Condition - user configured not found in Organization flow"
+  fi
+
+  # --- 2. Set requiresUserMembership=false on Organization Identity-First Login ---
   local ORG_EXEC_ID
   ORG_EXEC_ID=$(echo "${BROWSER_EXECS}" | python3 -c "
 import sys, json
@@ -320,7 +363,7 @@ for e in json.load(sys.stdin):
 " 2>/dev/null)
 
   if [ -z "${ORG_EXEC_ID}" ]; then
-    echo "  WARNING: Organization Identity-First Login execution not found in browser flow"
+    echo "  WARNING: Organization Identity-First Login execution not found"
     return
   fi
 
@@ -335,9 +378,9 @@ for e in json.load(sys.stdin):
     }')
 
   if [ "${HTTP_CODE}" = "201" ]; then
-    echo "  Configured: requiresUserMembership=false."
+    echo "  requiresUserMembership=false configured."
   elif [ "${HTTP_CODE}" = "409" ]; then
-    echo "  Config already exists."
+    echo "  requiresUserMembership config already exists."
   else
     echo "  WARNING: Unexpected response ${HTTP_CODE} setting org config"
   fi
@@ -373,7 +416,7 @@ echo ""
 echo "==> Keycloak configuration complete!"
 echo "    - Realm registration enabled for JIT provisioning"
 echo "    - auto-idp-link flow: no profile review, no link confirmation"
-echo "    - Organization Identity-First Login: requiresUserMembership=false"
+echo "    - Organization flow: Condition-user-configured DISABLED, requiresUserMembership=false"
 echo "    - 3 OIDC Identity Brokers created in central KC"
 echo "    - 3 Organizations with email-domain routing configured"
 echo "    - Student login: email → org domain detected → org KC IDP → JIT account creation"
