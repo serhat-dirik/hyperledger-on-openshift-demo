@@ -95,7 +95,8 @@ create_idp_broker() {
   "trustEmail": true,
   "storeToken": false,
   "addReadTokenRoleOnCreate": false,
-  "firstBrokerLoginFlowAlias": "first broker login",
+  "firstBrokerLoginFlowAlias": "auto-idp-link",
+  "hideOnLogin": true,
   "config": {
     "clientId": "broker-client",
     "clientSecret": "${CLIENT_SECRET}",
@@ -236,7 +237,74 @@ EOF
   fi
 }
 
+# --- Enable realm registration for org JIT provisioning -------------------
+enable_realm_registration() {
+  echo "==> Enabling realm registration for organization JIT provisioning..."
+  curl -s -o /dev/null -X PUT \
+    "${CENTRAL_KC_URL}/admin/realms/certchain" \
+    -H "Authorization: Bearer ${ADMIN_TOKEN}" \
+    -H "Content-Type: application/json" \
+    -d '{"registrationAllowed": true, "registrationEmailAsUsername": true}'
+  echo "  Enabled registrationAllowed + registrationEmailAsUsername."
+}
+
+# --- Create custom auto-idp-link flow (skip profile review) ---------------
+create_auto_idp_link_flow() {
+  echo "==> Creating auto-idp-link authentication flow..."
+
+  local HTTP_CODE
+  HTTP_CODE=$(curl -s -o /dev/null -w "%{http_code}" -X POST \
+    "${CENTRAL_KC_URL}/admin/realms/certchain/authentication/flows/first%20broker%20login/copy" \
+    -H "Authorization: Bearer ${ADMIN_TOKEN}" \
+    -H "Content-Type: application/json" \
+    -d '{"newName": "auto-idp-link"}')
+
+  if [ "${HTTP_CODE}" = "201" ]; then
+    echo "  Created auto-idp-link flow."
+  elif [ "${HTTP_CODE}" = "409" ]; then
+    echo "  auto-idp-link flow already exists."
+    return
+  else
+    echo "  WARNING: Unexpected response ${HTTP_CODE} creating flow"
+    return
+  fi
+
+  # Disable "Review Profile" and "Confirm link existing account" steps
+  # — we trust org IDP data and want seamless JIT provisioning
+  local EXECS
+  EXECS=$(curl -s "${CENTRAL_KC_URL}/admin/realms/certchain/authentication/flows/auto-idp-link/executions" \
+    -H "Authorization: Bearer ${ADMIN_TOKEN}")
+
+  echo "${EXECS}" | python3 -c "
+import sys, json, urllib.request, urllib.error, ssl
+ctx = ssl.create_default_context()
+ctx.check_hostname = False
+ctx.verify_mode = ssl.CERT_NONE
+
+execs = json.load(sys.stdin)
+kc = '${CENTRAL_KC_URL}'
+token = '${ADMIN_TOKEN}'
+headers = {'Authorization': f'Bearer {token}', 'Content-Type': 'application/json'}
+
+disable_providers = {'idp-review-profile': 'Review Profile', 'idp-confirm-link': 'Confirm link existing account'}
+for e in execs:
+    pid = e.get('providerId', '')
+    if pid in disable_providers:
+        payload = json.dumps({'id': e['id'], 'requirement': 'DISABLED', 'displayName': e.get('displayName',''), 'providerId': pid}).encode()
+        req = urllib.request.Request(f'{kc}/admin/realms/certchain/authentication/flows/auto-idp-link/executions',
+            data=payload, headers=headers, method='PUT')
+        urllib.request.urlopen(req, context=ctx)
+        print(f'  Disabled {disable_providers[pid]} step.')
+"
+}
+
 # --- Execute ---------------------------------------------------------------
+
+# Enable realm registration (required for org JIT provisioning in KC 26+)
+enable_realm_registration
+
+# Create auto-idp-link flow (before creating IDPs that reference it)
+create_auto_idp_link_flow
 
 # Update broker-client redirect URIs on each org KC
 update_org_broker_redirect "${TP_KC_URL}" "techpulse" "broker-secret-techpulse"
@@ -255,6 +323,8 @@ create_organization "neuralpath" "NeuralPath Labs" "neuralpath.demo" "neuralpath
 
 echo ""
 echo "==> Keycloak configuration complete!"
+echo "    - Realm registration enabled for JIT provisioning"
+echo "    - auto-idp-link flow: no profile review, no link confirmation"
 echo "    - 3 OIDC Identity Brokers created in central KC"
 echo "    - 3 Organizations with email-domain routing configured"
-echo "    - Student login flow: email → domain detection → org KC → JIT provisioning"
+echo "    - Student login: email → org domain detected → org KC IDP → JIT account creation"
