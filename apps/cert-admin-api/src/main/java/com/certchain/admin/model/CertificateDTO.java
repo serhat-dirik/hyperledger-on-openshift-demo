@@ -24,6 +24,10 @@ public record CertificateDTO(
     String issueDate,
     @Schema(description = "Certificate expiry date (ISO 8601)", example = "2028-12-31")
     String expiryDate,
+    @Schema(description = "Grade or score achieved", example = "A")
+    String grade,
+    @Schema(description = "Degree or credential type", example = "Professional Certificate")
+    String degree,
     @Schema(description = "Certificate status", example = "ACTIVE", enumeration = {"ACTIVE", "REVOKED", "EXPIRED"})
     String status,
     @Schema(description = "Reason for revocation, if applicable")

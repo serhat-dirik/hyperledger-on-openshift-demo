@@ -22,6 +22,10 @@ public record IssueCertificateRequest(
     String issueDate,
     @Schema(description = "Expiry date (ISO 8601)", example = "2028-12-31")
     String expiryDate,
+    @Schema(description = "Grade or score achieved", example = "A")
+    String grade,
+    @Schema(description = "Degree or credential type", example = "Professional Certificate")
+    String degree,
     @Schema(description = "Optional metadata (JSON string)")
     String metadata
 ) {}

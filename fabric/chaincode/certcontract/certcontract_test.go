@@ -137,10 +137,10 @@ func newTestContext() (*certcontract.CertContract, *MockTransactionContext, *Moc
 func issueSampleCert(t *testing.T, cc *certcontract.CertContract, ctx *MockTransactionContext) {
 	t.Helper()
 	err := cc.IssueCertificate(ctx,
-		"TP-FSWD-001", "student01", "Alice Chen",
+		"TP-FSWD-001", "student01@techpulse.demo", "Alice Chen",
 		"FSWD-101", "Full-Stack Web Dev",
 		"techpulse", "TechPulse Academy",
-		"2026-01-15", "2028-01-15", "")
+		"2026-01-15", "2028-01-15", "A", "Professional Certificate", "")
 	assert.NoError(t, err)
 }
 
@@ -150,10 +150,10 @@ func TestIssueCertificate_HappyPath(t *testing.T) {
 	cc, ctx, stub := newTestContext()
 
 	err := cc.IssueCertificate(ctx,
-		"TP-FSWD-001", "student01", "Alice Chen",
+		"TP-FSWD-001", "student01@techpulse.demo", "Alice Chen",
 		"FSWD-101", "Full-Stack Web Dev",
 		"techpulse", "TechPulse Academy",
-		"2026-01-15", "2028-01-15", "")
+		"2026-01-15", "2028-01-15", "A", "Professional Certificate", "")
 	assert.NoError(t, err)
 
 	certJSON := stub.state["TP-FSWD-001"]
@@ -166,6 +166,8 @@ func TestIssueCertificate_HappyPath(t *testing.T) {
 	assert.Equal(t, "certificate", cert.DocType)
 	assert.Equal(t, "Alice Chen", cert.StudentName)
 	assert.Equal(t, "techpulse", cert.OrgID)
+	assert.Equal(t, "A", cert.Grade)
+	assert.Equal(t, "Professional Certificate", cert.Degree)
 }
 
 func TestIssueCertificate_Duplicate(t *testing.T) {
@@ -173,10 +175,10 @@ func TestIssueCertificate_Duplicate(t *testing.T) {
 	issueSampleCert(t, cc, ctx)
 
 	err := cc.IssueCertificate(ctx,
-		"TP-FSWD-001", "student02", "Bob",
+		"TP-FSWD-001", "student02@techpulse.demo", "Bob Smith",
 		"FSWD-101", "Full-Stack Web Dev",
 		"techpulse", "TechPulse Academy",
-		"2026-01-15", "2028-01-15", "")
+		"2026-01-15", "2028-01-15", "B", "", "")
 	assert.Error(t, err)
 	assert.Contains(t, err.Error(), "already exists")
 }
@@ -185,10 +187,10 @@ func TestIssueCertificate_MissingFields(t *testing.T) {
 	cc, ctx, _ := newTestContext()
 
 	err := cc.IssueCertificate(ctx,
-		"", "student01", "Alice",
+		"", "student01@techpulse.demo", "Alice Chen",
 		"FSWD-101", "Full-Stack Web Dev",
 		"techpulse", "TechPulse Academy",
-		"2026-01-15", "2028-01-15", "")
+		"2026-01-15", "2028-01-15", "", "", "")
 	assert.Error(t, err)
 	assert.Contains(t, err.Error(), "required")
 }
@@ -225,10 +227,10 @@ func TestVerifyCertificate_Expired(t *testing.T) {
 	cc, ctx, _ := newTestContext()
 
 	err := cc.IssueCertificate(ctx,
-		"TP-OLD-001", "student01", "Alice Chen",
+		"TP-OLD-001", "student01@techpulse.demo", "Alice Chen",
 		"FSWD-101", "Full-Stack Web Dev",
 		"techpulse", "TechPulse Academy",
-		"2020-01-15", "2022-01-15", "")
+		"2020-01-15", "2022-01-15", "B+", "", "")
 	assert.NoError(t, err)
 
 	cert, err := cc.VerifyCertificate(ctx, "TP-OLD-001")
@@ -279,10 +281,12 @@ func TestGetCertificatesByStudent(t *testing.T) {
 	})
 	stub.On("GetQueryResult", mock.Anything).Return(iter, nil)
 
-	certs, err := cc.GetCertificatesByStudent(ctx, "student01")
+	certs, err := cc.GetCertificatesByStudent(ctx, "student01@techpulse.demo")
 	assert.NoError(t, err)
 	assert.Len(t, certs, 1)
 	assert.Equal(t, "Alice Chen", certs[0].StudentName)
+	assert.Equal(t, "A", certs[0].Grade)
+	assert.Equal(t, "Professional Certificate", certs[0].Degree)
 }
 
 func TestGetCertificatesByStudent_NoCerts(t *testing.T) {
@@ -354,4 +358,6 @@ func TestInitLedger(t *testing.T) {
 	_ = json.Unmarshal(stub.state["DF-PGA-001"], &cert)
 	assert.Equal(t, "dataforge", cert.OrgID)
 	assert.Equal(t, "Carol Wang", cert.StudentName)
+	assert.NotEmpty(t, cert.Grade)
+	assert.NotEmpty(t, cert.Degree)
 }

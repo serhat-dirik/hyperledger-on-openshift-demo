@@ -48,17 +48,21 @@ describe('TranscriptPage', () => {
         certID: 'CERT-TP-001',
         courseName: 'Full-Stack Web Dev',
         orgName: 'TechPulse Academy',
-        status: 'ACTIVE',
+        status: 'VALID',
         issueDate: '2026-01-15',
         expiryDate: '2028-01-15',
+        grade: 'A',
+        degree: 'Professional Certificate',
       },
       {
         certID: 'CERT-DF-001',
         courseName: 'PostgreSQL Administration',
         orgName: 'DataForge Institute',
-        status: 'ACTIVE',
+        status: 'VALID',
         issueDate: '2026-02-01',
         expiryDate: null,
+        grade: '3.8 GPA',
+        degree: null,
       },
     ];
 
@@ -81,6 +85,9 @@ describe('TranscriptPage', () => {
     expect(screen.getByText('DataForge Institute')).toBeInTheDocument();
     expect(screen.getByText('My Transcript')).toBeInTheDocument();
     expect(screen.getByText(/Alice Johnson/)).toBeInTheDocument();
+    // Private fields (grade, degree) shown in transcript
+    expect(screen.getByText('Professional Certificate')).toBeInTheDocument();
+    expect(screen.getByText(/Grade: A/)).toBeInTheDocument();
   });
 
   it('shows error when auth fails', async () => {

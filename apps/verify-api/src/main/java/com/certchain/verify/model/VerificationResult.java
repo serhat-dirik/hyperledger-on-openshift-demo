@@ -1,8 +1,10 @@
 package com.certchain.verify.model;
 
+import com.fasterxml.jackson.annotation.JsonInclude;
 import org.eclipse.microprofile.openapi.annotations.media.Schema;
 
 @Schema(description = "Certificate verification result from the Hyperledger Fabric ledger")
+@JsonInclude(JsonInclude.Include.NON_NULL)
 public record VerificationResult(
     @Schema(description = "Certificate identifier", example = "TP-2026-001")
     String certID,
@@ -18,6 +20,10 @@ public record VerificationResult(
     String issueDate,
     @Schema(description = "Certificate expiry date (ISO 8601)", example = "2028-12-31")
     String expiryDate,
+    @Schema(description = "Grade or score (private — only visible in authenticated transcript)")
+    String grade,
+    @Schema(description = "Degree or credential type (private — only visible in authenticated transcript)")
+    String degree,
     @Schema(description = "Reason for revocation, if applicable")
     String revokeReason,
     @Schema(description = "Timestamp of this verification query (ISO 8601)")

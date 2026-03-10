@@ -37,13 +37,15 @@ describe('IssueCertificate', () => {
   it('renders issue form', async () => {
     renderWithProviders(<IssueCertificate />);
 
-    expect(screen.getByText('Issue Certificate')).toBeInTheDocument();
+    expect(screen.getByRole('heading', { name: 'Issue Certificate' })).toBeInTheDocument();
     expect(screen.getByLabelText('Certificate ID')).toBeInTheDocument();
     expect(screen.getByLabelText('Student ID')).toBeInTheDocument();
     expect(screen.getByLabelText('Student Name')).toBeInTheDocument();
     expect(screen.getByLabelText('Course')).toBeInTheDocument();
     expect(screen.getByLabelText('Issue Date')).toBeInTheDocument();
     expect(screen.getByLabelText('Expiry Date')).toBeInTheDocument();
+    expect(screen.getByLabelText(/Grade/)).toBeInTheDocument();
+    expect(screen.getByLabelText(/Degree/)).toBeInTheDocument();
     expect(
       screen.getByRole('button', { name: 'Issue Certificate' })
     ).toBeInTheDocument();

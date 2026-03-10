@@ -20,6 +20,8 @@ type Certificate struct {
 	OrgName      string `json:"orgName"`
 	IssueDate    string `json:"issueDate"`
 	ExpiryDate   string `json:"expiryDate"`
+	Grade        string `json:"grade"`        // e.g. "A", "3.8 GPA", "Distinction"
+	Degree       string `json:"degree"`       // e.g. "Bachelor of Science", "Professional Certificate"
 	Status       string `json:"status"`       // ACTIVE | REVOKED | EXPIRED
 	RevokeReason string `json:"revokeReason"`
 	Metadata     string `json:"metadata"`
@@ -44,7 +46,7 @@ const compositeKeyPrefix = "CERT"
 
 func (cc *CertContract) IssueCertificate(ctx contractapi.TransactionContextInterface,
 	certID, studentID, studentName, courseID, courseName,
-	orgID, orgName, issueDate, expiryDate, metadata string) error {
+	orgID, orgName, issueDate, expiryDate, grade, degree, metadata string) error {
 
 	if certID == "" || studentID == "" || orgID == "" || courseID == "" {
 		return fmt.Errorf("certID, studentID, orgID, and courseID are required")
@@ -74,6 +76,8 @@ func (cc *CertContract) IssueCertificate(ctx contractapi.TransactionContextInter
 		OrgName:     orgName,
 		IssueDate:   issueDate,
 		ExpiryDate:  expiryDate,
+		Grade:       grade,
+		Degree:      degree,
 		Status:      "ACTIVE",
 		Metadata:    metadata,
 		TxID:        ctx.GetStub().GetTxID(),
@@ -262,12 +266,12 @@ func (cc *CertContract) InitLedger(ctx contractapi.TransactionContextInterface) 
 	expiryDate := now.AddDate(2, 0, 0).Format("2006-01-02")
 
 	sampleCerts := []Certificate{
-		{CertID: "TP-FSWD-001", StudentID: "student01", StudentName: "Alice Chen", CourseID: "FSWD-101", CourseName: "Full-Stack Web Dev", OrgID: "techpulse", OrgName: "TechPulse Academy", IssueDate: issueDate, ExpiryDate: expiryDate},
-		{CertID: "TP-CNM-002", StudentID: "student02", StudentName: "Bob Martinez", CourseID: "CNM-201", CourseName: "Cloud-Native Microservices", OrgID: "techpulse", OrgName: "TechPulse Academy", IssueDate: issueDate, ExpiryDate: expiryDate},
-		{CertID: "DF-PGA-001", StudentID: "student03", StudentName: "Carol Wang", CourseID: "PGA-101", CourseName: "PostgreSQL Administration", OrgID: "dataforge", OrgName: "DataForge Institute", IssueDate: issueDate, ExpiryDate: expiryDate},
-		{CertID: "DF-DPE-002", StudentID: "student04", StudentName: "David Kim", CourseID: "DPE-201", CourseName: "Data Pipeline Engineering", OrgID: "dataforge", OrgName: "DataForge Institute", IssueDate: issueDate, ExpiryDate: expiryDate},
-		{CertID: "NP-AML-001", StudentID: "student05", StudentName: "Eva Patel", CourseID: "AML-101", CourseName: "Applied Machine Learning", OrgID: "neuralpath", OrgName: "NeuralPath Labs", IssueDate: issueDate, ExpiryDate: expiryDate},
-		{CertID: "NP-LFT-002", StudentID: "student06", StudentName: "Frank Liu", CourseID: "LFT-201", CourseName: "LLM Fine-Tuning Workshop", OrgID: "neuralpath", OrgName: "NeuralPath Labs", IssueDate: issueDate, ExpiryDate: expiryDate},
+		{CertID: "TP-FSWD-001", StudentID: "student01@techpulse.demo", StudentName: "Alice Chen", CourseID: "FSWD-101", CourseName: "Full-Stack Web Dev", OrgID: "techpulse", OrgName: "TechPulse Academy", IssueDate: issueDate, ExpiryDate: expiryDate, Grade: "A", Degree: "Professional Certificate"},
+		{CertID: "TP-CNM-002", StudentID: "student02@techpulse.demo", StudentName: "Bob Martinez", CourseID: "CNM-201", CourseName: "Cloud-Native Microservices", OrgID: "techpulse", OrgName: "TechPulse Academy", IssueDate: issueDate, ExpiryDate: expiryDate, Grade: "A-", Degree: "Professional Certificate"},
+		{CertID: "DF-PGA-001", StudentID: "student03@dataforge.demo", StudentName: "Carol Wang", CourseID: "PGA-101", CourseName: "PostgreSQL Administration", OrgID: "dataforge", OrgName: "DataForge Institute", IssueDate: issueDate, ExpiryDate: expiryDate, Grade: "Distinction", Degree: "Associate Certification"},
+		{CertID: "DF-DPE-002", StudentID: "student04@dataforge.demo", StudentName: "David Kim", CourseID: "DPE-201", CourseName: "Data Pipeline Engineering", OrgID: "dataforge", OrgName: "DataForge Institute", IssueDate: issueDate, ExpiryDate: expiryDate, Grade: "B+", Degree: "Associate Certification"},
+		{CertID: "NP-AML-001", StudentID: "student05@neuralpath.demo", StudentName: "Eva Patel", CourseID: "AML-101", CourseName: "Applied Machine Learning", OrgID: "neuralpath", OrgName: "NeuralPath Labs", IssueDate: issueDate, ExpiryDate: expiryDate, Grade: "3.9 GPA", Degree: "Graduate Certificate"},
+		{CertID: "NP-LFT-002", StudentID: "student06@neuralpath.demo", StudentName: "Frank Liu", CourseID: "LFT-201", CourseName: "LLM Fine-Tuning Workshop", OrgID: "neuralpath", OrgName: "NeuralPath Labs", IssueDate: issueDate, ExpiryDate: expiryDate, Grade: "3.7 GPA", Degree: "Graduate Certificate"},
 	}
 
 	for _, cert := range sampleCerts {
@@ -275,7 +279,8 @@ func (cc *CertContract) InitLedger(ctx contractapi.TransactionContextInterface) 
 			cert.CertID, cert.StudentID, cert.StudentName,
 			cert.CourseID, cert.CourseName,
 			cert.OrgID, cert.OrgName,
-			cert.IssueDate, cert.ExpiryDate, "")
+			cert.IssueDate, cert.ExpiryDate,
+			cert.Grade, cert.Degree, "")
 		if err != nil {
 			return fmt.Errorf("failed to issue sample cert %s: %w", cert.CertID, err)
 		}

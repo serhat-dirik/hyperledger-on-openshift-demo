@@ -32,6 +32,8 @@ class VerifyResourceTest {
                 "orgName": "TechPulse Academy",
                 "issueDate": "2026-01-15",
                 "expiryDate": "2028-12-31",
+                "grade": "A",
+                "degree": "Professional Certificate",
                 "revokeReason": null
             }
             """;
@@ -72,7 +74,10 @@ class VerifyResourceTest {
                 .body("orgName", equalTo("TechPulse Academy"))
                 .body("issueDate", equalTo("2026-01-15"))
                 .body("expiryDate", equalTo("2028-12-31"))
-                .body("verifiedAt", notNullValue());
+                .body("verifiedAt", notNullValue())
+                // Public verify omits private fields (grade, degree)
+                .body("$", not(hasKey("grade")))
+                .body("$", not(hasKey("degree")));
     }
 
     @Test

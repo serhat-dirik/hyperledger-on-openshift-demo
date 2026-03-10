@@ -43,7 +43,9 @@ class VerificationServiceTest {
                     "courseName": "Full-Stack Web Dev",
                     "orgName": "TechPulse Academy",
                     "issueDate": "2026-01-15",
-                    "expiryDate": "2028-12-31"
+                    "expiryDate": "2028-12-31",
+                    "grade": "A",
+                    "degree": "Professional Certificate"
                 }
                 """;
         when(fabricClient.evaluateTransaction(eq("VerifyCertificate"), eq("TP-2026-001")))
@@ -57,6 +59,9 @@ class VerificationServiceTest {
         assertEquals("Full-Stack Web Dev", result.courseName());
         assertEquals("TechPulse Academy", result.orgName());
         assertNotNull(result.verifiedAt());
+        // Public verify hides private fields
+        assertNull(result.grade());
+        assertNull(result.degree());
     }
 
     @Test
@@ -140,7 +145,9 @@ class VerificationServiceTest {
                         "courseName": "Full-Stack Web Dev",
                         "orgName": "TechPulse Academy",
                         "issueDate": "2026-01-15",
-                        "expiryDate": "2028-12-31"
+                        "expiryDate": "2028-12-31",
+                        "grade": "A",
+                        "degree": "Professional Certificate"
                     },
                     {
                         "certID": "DF-2026-010",
@@ -149,7 +156,9 @@ class VerificationServiceTest {
                         "courseName": "PostgreSQL Administration",
                         "orgName": "DataForge Institute",
                         "issueDate": "2026-02-20",
-                        "expiryDate": "2029-02-20"
+                        "expiryDate": "2029-02-20",
+                        "grade": "3.8 GPA",
+                        "degree": "Associate Certificate"
                     }
                 ]
                 """;
@@ -161,8 +170,12 @@ class VerificationServiceTest {
         assertEquals(2, results.size());
         assertEquals("TP-2026-001", results.get(0).certID());
         assertEquals("VALID", results.get(0).status());
+        // Transcript includes private fields
+        assertEquals("A", results.get(0).grade());
+        assertEquals("Professional Certificate", results.get(0).degree());
         assertEquals("DF-2026-010", results.get(1).certID());
         assertEquals("DataForge Institute", results.get(1).orgName());
+        assertEquals("3.8 GPA", results.get(1).grade());
     }
 
     @Test
@@ -189,6 +202,33 @@ class VerificationServiceTest {
         assertEquals("VALID", results.get(0).status());
         assertEquals("NOT_FOUND", results.get(1).status());
         assertEquals("MISSING", results.get(1).certID());
+    }
+
+    @Test
+    void testVerifyFullIncludesPrivateFields() throws Exception {
+        String json = """
+                {
+                    "certID": "TP-2026-001",
+                    "status": "ACTIVE",
+                    "studentName": "Jane Doe",
+                    "courseName": "Full-Stack Web Dev",
+                    "orgName": "TechPulse Academy",
+                    "issueDate": "2026-01-15",
+                    "expiryDate": "2028-12-31",
+                    "grade": "A",
+                    "degree": "Professional Certificate"
+                }
+                """;
+        when(fabricClient.evaluateTransaction(eq("VerifyCertificate"), eq("TP-2026-001")))
+                .thenReturn(json.getBytes(StandardCharsets.UTF_8));
+
+        VerificationResult result = verificationService.verifyFull("TP-2026-001");
+
+        assertEquals("TP-2026-001", result.certID());
+        assertEquals("VALID", result.status());
+        // verifyFull includes private fields
+        assertEquals("A", result.grade());
+        assertEquals("Professional Certificate", result.degree());
     }
 
     @Test

@@ -31,6 +31,8 @@ export default function IssueCertificate() {
     courseID: '',
     issueDate: todayISO(),
     expiryDate: oneYearFromNow(),
+    grade: '',
+    degree: '',
   });
 
   const [feedback, setFeedback] = useState(null);
@@ -93,7 +95,12 @@ export default function IssueCertificate() {
     }
     setErrors({});
     const selectedCourse = courses.find((c) => c.courseID === form.courseID);
-    mutation.mutate({ ...form, courseName: selectedCourse?.courseName || '' });
+    mutation.mutate({
+      ...form,
+      courseName: selectedCourse?.courseName || '',
+      grade: form.grade || undefined,
+      degree: form.degree || undefined,
+    });
   }
 
   function handleRegenId() {
@@ -260,6 +267,36 @@ export default function IssueCertificate() {
             {errors.expiryDate && (
               <p className="text-xs text-red-600 mt-1">{errors.expiryDate}</p>
             )}
+          </div>
+        </div>
+
+        {/* Grade & Degree (optional — private fields visible only in student transcript) */}
+        <div className="grid grid-cols-2 gap-4">
+          <div>
+            <label htmlFor="grade" className="block text-sm font-medium text-gray-700 mb-1">
+              Grade <span className="text-gray-400 font-normal">(optional)</span>
+            </label>
+            <input
+              id="grade"
+              name="grade"
+              value={form.grade}
+              onChange={handleChange}
+              placeholder="e.g. A, 3.8 GPA"
+              className="w-full rounded-md border border-gray-300 px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-indigo-500 focus:border-indigo-500"
+            />
+          </div>
+          <div>
+            <label htmlFor="degree" className="block text-sm font-medium text-gray-700 mb-1">
+              Degree <span className="text-gray-400 font-normal">(optional)</span>
+            </label>
+            <input
+              id="degree"
+              name="degree"
+              value={form.degree}
+              onChange={handleChange}
+              placeholder="e.g. Professional Certificate"
+              className="w-full rounded-md border border-gray-300 px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-indigo-500 focus:border-indigo-500"
+            />
           </div>
         </div>
 

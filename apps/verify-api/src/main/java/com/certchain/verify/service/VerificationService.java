@@ -76,6 +76,7 @@ public class VerificationService {
 
             verifiedCounter.increment();
 
+            // Public verification — omit private fields (grade, degree)
             return new VerificationResult(
                     cert.path("certID").asText(certId),
                     mappedStatus,
@@ -84,6 +85,8 @@ public class VerificationService {
                     cert.path("orgName").asText(""),
                     cert.path("issueDate").asText(""),
                     cert.path("expiryDate").asText(""),
+                    null,  // grade — private
+                    null,  // degree — private
                     cert.path("revokeReason").asText(null),
                     verifiedAt
             );
@@ -154,6 +157,7 @@ public class VerificationService {
             if (certs.isArray()) {
                 for (JsonNode cert : certs) {
                     String ledgerStatus = cert.path("status").asText("");
+                    // Transcript — include private fields (grade, degree)
                     results.add(new VerificationResult(
                             cert.path("certID").asText(""),
                             mapStatus(ledgerStatus),
@@ -162,6 +166,8 @@ public class VerificationService {
                             cert.path("orgName").asText(""),
                             cert.path("issueDate").asText(""),
                             cert.path("expiryDate").asText(""),
+                            cert.path("grade").asText(null),
+                            cert.path("degree").asText(null),
                             cert.path("revokeReason").asText(null),
                             verifiedAt
                     ));
@@ -180,6 +186,41 @@ public class VerificationService {
      * @param certIds the list of certificate IDs to verify
      * @return list of verification results (one per ID, including NOT_FOUND entries)
      */
+    /**
+     * Verify a certificate and include private fields (grade, degree).
+     * Used by the authenticated transcript detail endpoint.
+     */
+    public VerificationResult verifyFull(String certId) {
+        try {
+            byte[] response = fabricClient.evaluateTransaction("VerifyCertificate", certId);
+            JsonNode cert = MAPPER.readTree(response);
+
+            String ledgerStatus = cert.path("status").asText("");
+            String mappedStatus = mapStatus(ledgerStatus);
+            String verifiedAt = Instant.now().toString();
+
+            return new VerificationResult(
+                    cert.path("certID").asText(certId),
+                    mappedStatus,
+                    cert.path("studentName").asText(""),
+                    cert.path("courseName").asText(""),
+                    cert.path("orgName").asText(""),
+                    cert.path("issueDate").asText(""),
+                    cert.path("expiryDate").asText(""),
+                    cert.path("grade").asText(null),
+                    cert.path("degree").asText(null),
+                    cert.path("revokeReason").asText(null),
+                    verifiedAt
+            );
+        } catch (Exception e) {
+            String message = e.getMessage() != null ? e.getMessage() : "";
+            if (message.contains("not found") || message.contains("does not exist")) {
+                throw new CertificateNotFoundException(certId);
+            }
+            throw new VerificationException("Failed to verify certificate: " + certId, e);
+        }
+    }
+
     public List<VerificationResult> batchVerify(List<String> certIds) {
         List<VerificationResult> results = new ArrayList<>();
         for (String certId : certIds) {
@@ -188,7 +229,7 @@ public class VerificationService {
             } catch (CertificateNotFoundException e) {
                 results.add(new VerificationResult(
                         certId, "NOT_FOUND",
-                        null, null, null, null, null, null,
+                        null, null, null, null, null, null, null, null,
                         Instant.now().toString()
                 ));
             }

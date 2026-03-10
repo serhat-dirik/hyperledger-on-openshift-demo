@@ -64,6 +64,8 @@ public class CertificateService {
                 dto.orgName(),
                 dto.issueDate(),
                 dto.expiryDate(),
+                dto.grade() != null ? dto.grade() : "",
+                dto.degree() != null ? dto.degree() : "",
                 "");
 
         issuedCounter.increment();

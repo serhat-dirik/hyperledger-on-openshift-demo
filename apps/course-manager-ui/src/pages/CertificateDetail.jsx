@@ -126,6 +126,8 @@ export default function CertificateDetail() {
         <InfoRow label="Course" value={cert.courseName} />
         <InfoRow label="Issue Date" value={cert.issueDate} />
         <InfoRow label="Expiry Date" value={cert.expiryDate} />
+        {cert.grade && <InfoRow label="Grade" value={cert.grade} />}
+        {cert.degree && <InfoRow label="Degree" value={cert.degree} />}
         <InfoRow label="Organization" value={cert.orgID} />
         <InfoRow label="Status" value={cert.status} />
         {cert.revokeReason && <InfoRow label="Revoke Reason" value={cert.revokeReason} />}

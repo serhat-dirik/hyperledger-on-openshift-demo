@@ -3,7 +3,7 @@ package com.certchain.admin.resource;
 import com.certchain.admin.client.FabricGatewayClient;
 
 import io.quarkus.test.InjectMock;
-import io.quarkus.test.junit5.QuarkusTest;
+import io.quarkus.test.junit.QuarkusTest;
 import io.quarkus.test.security.TestSecurity;
 import io.quarkus.test.security.oidc.Claim;
 import io.quarkus.test.security.oidc.OidcSecurity;
@@ -34,6 +34,8 @@ class CertificateResourceTest {
                   "orgName": "TechPulse Academy",
                   "issueDate": "2026-03-06",
                   "expiryDate": "2028-12-31",
+                  "grade": "A",
+                  "degree": "Professional Certificate",
                   "status": "%s",
                   "revokeReason": null,
                   "metadata": "",
@@ -56,6 +58,8 @@ class CertificateResourceTest {
                     "orgName": "TechPulse Academy",
                     "issueDate": "2026-03-06",
                     "expiryDate": "2028-12-31",
+                    "grade": "A",
+                    "degree": "Professional Certificate",
                     "status": "ACTIVE",
                     "revokeReason": null,
                     "metadata": "",
@@ -72,6 +76,8 @@ class CertificateResourceTest {
                     "orgName": "TechPulse Academy",
                     "issueDate": "2026-03-07",
                     "expiryDate": "2028-12-31",
+                    "grade": "B+",
+                    "degree": "Professional Certificate",
                     "status": "ACTIVE",
                     "revokeReason": null,
                     "metadata": "",

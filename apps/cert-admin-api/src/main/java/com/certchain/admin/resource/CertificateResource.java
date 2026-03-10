@@ -92,6 +92,8 @@ public class CertificateResource {
                 orgName,
                 request.issueDate(),
                 request.expiryDate(),
+                request.grade(),
+                request.degree(),
                 null,  // status — set by chaincode
                 null,  // revokeReason
                 request.metadata() != null ? request.metadata() : "",  // metadata

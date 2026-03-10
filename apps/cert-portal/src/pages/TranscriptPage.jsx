@@ -1,5 +1,5 @@
 import React, { useState, useEffect } from 'react';
-import { FileText, Award, Calendar, Building2, QrCode } from 'lucide-react';
+import { FileText, Award, Calendar, Building2, QrCode, GraduationCap } from 'lucide-react';
 import { getToken, getUserInfo } from '../services/keycloak';
 import { getQRCodeUrl } from '../services/api';
 
@@ -97,7 +97,7 @@ export default function TranscriptPage() {
                 </div>
                 <span
                   className={`text-xs font-medium px-2 py-1 rounded-full ${
-                    cert.status === 'ACTIVE'
+                    cert.status === 'VALID'
                       ? 'bg-green-100 text-green-700'
                       : cert.status === 'REVOKED'
                       ? 'bg-red-100 text-red-700'
@@ -107,6 +107,19 @@ export default function TranscriptPage() {
                   {cert.status}
                 </span>
               </div>
+              {(cert.grade || cert.degree) && (
+                <div className="mt-3 flex items-center gap-4 text-sm">
+                  <GraduationCap className="w-4 h-4 text-indigo-500 shrink-0" />
+                  {cert.degree && (
+                    <span className="text-gray-700 font-medium">{cert.degree}</span>
+                  )}
+                  {cert.grade && (
+                    <span className="bg-indigo-50 text-indigo-700 text-xs font-medium px-2 py-0.5 rounded">
+                      Grade: {cert.grade}
+                    </span>
+                  )}
+                </div>
+              )}
               <div className="mt-3 flex items-center gap-4 text-xs text-gray-400">
                 <span className="flex items-center gap-1">
                   <Calendar className="w-3 h-3" />
@@ -116,7 +129,7 @@ export default function TranscriptPage() {
               </div>
               <div className="mt-2 flex items-center justify-between">
                 <span className="text-xs text-gray-400 font-mono">{cert.certID}</span>
-                {cert.status === 'ACTIVE' && (
+                {cert.status === 'VALID' && (
                   <a
                     href={getQRCodeUrl(cert.certID)}
                     target="_blank"

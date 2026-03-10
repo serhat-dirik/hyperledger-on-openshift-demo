@@ -32,6 +32,8 @@ class TranscriptResourceTest {
                     "orgName": "TechPulse Academy",
                     "issueDate": "2026-01-15",
                     "expiryDate": "2028-12-31",
+                    "grade": "A",
+                    "degree": "Professional Certificate",
                     "revokeReason": null
                 },
                 {
@@ -42,6 +44,8 @@ class TranscriptResourceTest {
                     "orgName": "DataForge Institute",
                     "issueDate": "2026-02-20",
                     "expiryDate": "2029-02-20",
+                    "grade": "3.8 GPA",
+                    "degree": "Associate Certificate",
                     "revokeReason": null
                 }
             ]
@@ -56,6 +60,8 @@ class TranscriptResourceTest {
                 "orgName": "TechPulse Academy",
                 "issueDate": "2026-01-15",
                 "expiryDate": "2028-12-31",
+                "grade": "A",
+                "degree": "Professional Certificate",
                 "revokeReason": null
             }
             """;
@@ -80,8 +86,12 @@ class TranscriptResourceTest {
                 .body("[0].certID", equalTo("TP-2026-001"))
                 .body("[0].status", equalTo("VALID"))
                 .body("[0].courseName", equalTo("Full-Stack Web Dev"))
+                // Transcript includes private fields
+                .body("[0].grade", equalTo("A"))
+                .body("[0].degree", equalTo("Professional Certificate"))
                 .body("[1].certID", equalTo("DF-2026-010"))
-                .body("[1].orgName", equalTo("DataForge Institute"));
+                .body("[1].orgName", equalTo("DataForge Institute"))
+                .body("[1].grade", equalTo("3.8 GPA"));
     }
 
     @Test
@@ -109,7 +119,10 @@ class TranscriptResourceTest {
                 .body("status", equalTo("VALID"))
                 .body("studentName", equalTo("Jane Doe"))
                 .body("courseName", equalTo("Full-Stack Web Dev"))
-                .body("orgName", equalTo("TechPulse Academy"));
+                .body("orgName", equalTo("TechPulse Academy"))
+                // Transcript detail includes private fields
+                .body("grade", equalTo("A"))
+                .body("degree", equalTo("Professional Certificate"));
     }
 
     @Test
