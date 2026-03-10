@@ -96,7 +96,7 @@ spec:
           "targets": [
             {
               "datasource": { "type": "prometheus", "uid": "prometheus" },
-              "expr": "rate(consensus_smartbft_committed_block_number{job=~\".*orderer.*\"}[5m])",
+              "expr": "rate(consensus_BFT_committed_block_number{job=~\".*orderer.*\"}[5m])",
               "legendFormat": "{{`{{namespace}}`}}/{{`{{pod}}`}}"
             }
           ],
@@ -126,19 +126,32 @@ spec:
           }
         },
         {
-          "title": "gRPC Active Connections",
+          "title": "Gossip — Known Peers",
+          "type": "stat",
+          "gridPos": { "h": 4, "w": 6, "x": 6, "y": 8 },
+          "targets": [
+            {
+              "datasource": { "type": "prometheus", "uid": "prometheus" },
+              "expr": "gossip_membership_total_peers_known{job=~\".*peer.*\"}",
+              "legendFormat": "{{`{{namespace}}`}}"
+            }
+          ],
+          "fieldConfig": { "defaults": { "unit": "short" } }
+        },
+        {
+          "title": "gRPC Requests Received",
           "type": "timeseries",
           "gridPos": { "h": 8, "w": 12, "x": 12, "y": 20 },
           "targets": [
             {
               "datasource": { "type": "prometheus", "uid": "prometheus" },
-              "expr": "grpc_server_active_streams{job=~\".*peer.*|.*orderer.*\"}",
-              "legendFormat": "{{`{{namespace}}`}}/{{`{{pod}}`}}"
+              "expr": "rate(grpc_server_stream_requests_received{job=~\".*peer.*|.*orderer.*\"}[5m])",
+              "legendFormat": "{{`{{namespace}}`}}/{{`{{service}}`}}"
             }
           ],
           "fieldConfig": {
             "defaults": {
-              "unit": "short",
+              "unit": "ops",
               "custom": { "drawStyle": "line", "fillOpacity": 10 }
             }
           }

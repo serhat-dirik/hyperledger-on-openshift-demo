@@ -37,12 +37,18 @@ spec:
   destination:
     server: https://kubernetes.default.svc
     namespace: {{ .Values.central.namespace }}
+  ignoreDifferences:
+    - group: grafana.integreatly.org
+      kind: GrafanaDatasource
+      jsonPointers:
+        - /spec/datasource/secureJsonData
   syncPolicy:
     automated:
       prune: true
       selfHeal: true
     syncOptions:
       - CreateNamespace=true
+      - RespectIgnoreDifferences=true
 {{- end }}
 
 # --- Per-org components (one Application per org) ----------------------------

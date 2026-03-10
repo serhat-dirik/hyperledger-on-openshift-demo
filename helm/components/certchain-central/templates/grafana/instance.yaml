@@ -121,6 +121,7 @@ spec:
   datasource:
     name: Prometheus
     type: prometheus
+    uid: prometheus
     access: proxy
     url: https://thanos-querier.openshift-monitoring.svc.cluster.local:9091
     isDefault: true

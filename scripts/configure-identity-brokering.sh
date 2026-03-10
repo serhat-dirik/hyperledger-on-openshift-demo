@@ -298,6 +298,51 @@ for e in execs:
 "
 }
 
+# --- Allow non-member org-domain users to be redirected to IDP -----------
+# By default, KC 26 Organization Identity-First Login blocks users whose
+# email domain matches an org but who aren't yet members. Disabling
+# requiresUserMembership lets the IDP redirect happen for first-time users
+# — the auto-idp-link flow then JIT-provisions and adds them as members.
+configure_org_identity_first_login() {
+  echo "==> Configuring Organization Identity-First Login (requiresUserMembership=false)..."
+
+  local BROWSER_EXECS
+  BROWSER_EXECS=$(curl -s "${CENTRAL_KC_URL}/admin/realms/certchain/authentication/flows/browser/executions" \
+    -H "Authorization: Bearer ${ADMIN_TOKEN}")
+
+  local ORG_EXEC_ID
+  ORG_EXEC_ID=$(echo "${BROWSER_EXECS}" | python3 -c "
+import sys, json
+for e in json.load(sys.stdin):
+    if e.get('providerId') == 'organization':
+        print(e['id'])
+        break
+" 2>/dev/null)
+
+  if [ -z "${ORG_EXEC_ID}" ]; then
+    echo "  WARNING: Organization Identity-First Login execution not found in browser flow"
+    return
+  fi
+
+  local HTTP_CODE
+  HTTP_CODE=$(curl -s -o /dev/null -w "%{http_code}" -X POST \
+    "${CENTRAL_KC_URL}/admin/realms/certchain/authentication/executions/${ORG_EXEC_ID}/config" \
+    -H "Authorization: Bearer ${ADMIN_TOKEN}" \
+    -H "Content-Type: application/json" \
+    -d '{
+      "alias": "org-identity-first-config",
+      "config": { "requiresUserMembership": "false" }
+    }')
+
+  if [ "${HTTP_CODE}" = "201" ]; then
+    echo "  Configured: requiresUserMembership=false."
+  elif [ "${HTTP_CODE}" = "409" ]; then
+    echo "  Config already exists."
+  else
+    echo "  WARNING: Unexpected response ${HTTP_CODE} setting org config"
+  fi
+}
+
 # --- Execute ---------------------------------------------------------------
 
 # Enable realm registration (required for org JIT provisioning in KC 26+)
@@ -321,10 +366,14 @@ create_organization "techpulse" "TechPulse Academy" "techpulse.demo" "techpulse"
 create_organization "dataforge" "DataForge Institute" "dataforge.demo" "dataforge"
 create_organization "neuralpath" "NeuralPath Labs" "neuralpath.demo" "neuralpath"
 
+# Allow JIT provisioning via Organization Identity-First Login
+configure_org_identity_first_login
+
 echo ""
 echo "==> Keycloak configuration complete!"
 echo "    - Realm registration enabled for JIT provisioning"
 echo "    - auto-idp-link flow: no profile review, no link confirmation"
+echo "    - Organization Identity-First Login: requiresUserMembership=false"
 echo "    - 3 OIDC Identity Brokers created in central KC"
 echo "    - 3 Organizations with email-domain routing configured"
 echo "    - Student login: email → org domain detected → org KC IDP → JIT account creation"
