@@ -1,6 +1,7 @@
 import React, { useState, useEffect } from 'react';
-import { FileText, Award, Calendar, Building2 } from 'lucide-react';
+import { FileText, Award, Calendar, Building2, QrCode } from 'lucide-react';
 import { getToken, getUserInfo } from '../services/keycloak';
+import { getQRCodeUrl } from '../services/api';
 
 export default function TranscriptPage() {
   const [certs, setCerts] = useState([]);
@@ -113,7 +114,20 @@ export default function TranscriptPage() {
                 </span>
                 {cert.expiryDate && <span>Expires: {cert.expiryDate}</span>}
               </div>
-              <div className="mt-2 text-xs text-gray-400 font-mono">{cert.certID}</div>
+              <div className="mt-2 flex items-center justify-between">
+                <span className="text-xs text-gray-400 font-mono">{cert.certID}</span>
+                {cert.status === 'ACTIVE' && (
+                  <a
+                    href={getQRCodeUrl(cert.certID)}
+                    target="_blank"
+                    rel="noopener noreferrer"
+                    className="inline-flex items-center gap-1 text-xs font-medium text-blue-600 hover:text-blue-700"
+                  >
+                    <QrCode className="w-3.5 h-3.5" />
+                    QR Code
+                  </a>
+                )}
+              </div>
             </div>
           ))}
         </div>

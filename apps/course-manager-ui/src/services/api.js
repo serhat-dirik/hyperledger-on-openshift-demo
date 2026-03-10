@@ -49,4 +49,14 @@ export function getCourses() {
   return authFetch('/courses');
 }
 
+/**
+ * Get the URL for a certificate's verification QR code (served by verify-api).
+ * Uses VERIFY_API_URL from runtime config (/config.json) injected at deploy time.
+ */
+export function getQRCodeUrl(certId) {
+  const verifyBase = window.__CONFIG__?.VERIFY_API_URL;
+  if (!verifyBase) return null;
+  return `${verifyBase}/${encodeURIComponent(certId)}/qr`;
+}
+
 export { API_BASE };

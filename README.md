@@ -603,9 +603,9 @@ This is a manual, step-by-step guide. Open the URLs in your browser and follow a
 
 | Role | Login URL | Username | Password |
 |---|---|---|---|
-| TechPulse Registrar | `https://course-manager-ui-techpulse.${DOMAIN}` | `admin@techpulse.demo` | `admin` |
-| DataForge Registrar | `https://course-manager-ui-dataforge.${DOMAIN}` | `admin@dataforge.demo` | `admin` |
-| NeuralPath Registrar | `https://course-manager-ui-neuralpath.${DOMAIN}` | `admin@neuralpath.demo` | `admin` |
+| TechPulse Registrar | `https://course-manager-ui-certchain-techpulse.${DOMAIN}` | `admin@techpulse.demo` | `admin` |
+| DataForge Registrar | `https://course-manager-ui-certchain-dataforge.${DOMAIN}` | `admin@dataforge.demo` | `admin` |
+| NeuralPath Registrar | `https://course-manager-ui-certchain-neuralpath.${DOMAIN}` | `admin@neuralpath.demo` | `admin` |
 | Student (TechPulse) | `https://cert-portal-certchain.${DOMAIN}` | `student01@techpulse.demo` | `student` |
 | Student (DataForge) | `https://cert-portal-certchain.${DOMAIN}` | `student03@dataforge.demo` | `student` |
 | Student (NeuralPath) | `https://cert-portal-certchain.${DOMAIN}` | `student05@neuralpath.demo` | `student` |
@@ -616,7 +616,7 @@ This is a manual, step-by-step guide. Open the URLs in your browser and follow a
 
 **Who:** You are a TechPulse Academy registrar.
 
-1. Open **TechPulse Course Manager**: `https://course-manager-ui-techpulse.${DOMAIN}`
+1. Open **TechPulse Course Manager**: `https://course-manager-ui-certchain-techpulse.${DOMAIN}`
 2. Log in with `admin@techpulse.demo` / `admin`
 3. You land on the **Dashboard** — it shows certificate statistics (total, active, revoked)
 
@@ -678,7 +678,7 @@ This is a manual, step-by-step guide. Open the URLs in your browser and follow a
 
 **Who:** You are the TechPulse registrar again.
 
-1. Go back to **TechPulse Course Manager**: `https://course-manager-ui-techpulse.${DOMAIN}`
+1. Go back to **TechPulse Course Manager**: `https://course-manager-ui-certchain-techpulse.${DOMAIN}`
 2. Navigate to **Certificate List**
 3. Find the certificate you issued in Step 1
 4. Click on it to view details
@@ -709,7 +709,7 @@ This is a manual, step-by-step guide. Open the URLs in your browser and follow a
 
 Repeat Steps 1–5 with **DataForge Institute** to see that each org is fully independent:
 
-- DataForge Course Manager: `https://course-manager-ui-dataforge.${DOMAIN}`
+- DataForge Course Manager: `https://course-manager-ui-certchain-dataforge.${DOMAIN}`
 - Login: `admin@dataforge.demo` / `admin`
 - Student: `student03@dataforge.demo` / `student`
 
@@ -744,8 +744,8 @@ This walkthrough demonstrates OpenShift and blockchain resilience. Run the scrip
 **What you show:** One org's failure doesn't affect other orgs.
 
 1. Kill TechPulse's cert-admin-api: `oc delete pod -l app=cert-admin-api -n certchain-techpulse --force`
-2. Immediately test DataForge: `curl -sk "https://cert-admin-api-dataforge.${DOMAIN}/q/health/ready"` → HTTP 200
-3. Also verify NeuralPath: `curl -sk "https://cert-admin-api-neuralpath.${DOMAIN}/q/health/ready"` → HTTP 200
+2. Immediately test DataForge: `curl -sk "https://cert-admin-api-certchain-dataforge.${DOMAIN}/q/health/ready"` → HTTP 200
+3. Also verify NeuralPath: `curl -sk "https://cert-admin-api-certchain-neuralpath.${DOMAIN}/q/health/ready"` → HTTP 200
 4. TechPulse recovers on its own within 30 seconds
 5. **Point to make:** Namespace isolation means one org's outage is invisible to others.
 
@@ -756,7 +756,7 @@ This walkthrough demonstrates OpenShift and blockchain resilience. Run the scrip
 1. Verify a cert via central: `curl -sk "https://verify-api-certchain.${DOMAIN}/api/v1/verify/TP-FSWD-001"` → VALID
 2. **Kill central services:** `oc -n certchain scale deployment orderer0 verify-api --replicas=0`
 3. Central verify-api is now unreachable (503)
-4. Verify the **same cert** via TechPulse's local verify-api: `curl -sk "https://verify-api-techpulse.${DOMAIN}/api/v1/verify/TP-FSWD-001"` → **Still VALID!**
+4. Verify the **same cert** via TechPulse's local verify-api: `curl -sk "https://verify-api-certchain-techpulse.${DOMAIN}/api/v1/verify/TP-FSWD-001"` → **Still VALID!**
 5. **Explain why:** Each peer holds a full copy of the ledger. Verification is a read-only query — it doesn't need the orderer. Only write operations (issue/revoke) require consensus.
 6. Restore: `oc -n certchain scale deployment orderer0 verify-api --replicas=1`
 
@@ -794,7 +794,7 @@ This walkthrough demonstrates the observability stack. Run the scripted version 
 
 1. Hit the cert-admin-api metrics endpoint (publicly accessible):
    ```bash
-   curl -sk "https://cert-admin-api-techpulse.${DOMAIN}/q/metrics" | grep certificate_
+   curl -sk "https://cert-admin-api-certchain-techpulse.${DOMAIN}/q/metrics" | grep certificate_
    ```
 2. You should see custom counters:
    - `certificate_issued_total` — number of certificates issued
@@ -803,7 +803,7 @@ This walkthrough demonstrates the observability stack. Run the scripted version 
 3. Issue a certificate and watch the counter increment:
    ```bash
    # Check counter before
-   curl -sk "https://cert-admin-api-techpulse.${DOMAIN}/q/metrics" | grep certificate_issued
+   curl -sk "https://cert-admin-api-certchain-techpulse.${DOMAIN}/q/metrics" | grep certificate_issued
    # Issue a cert (use the demo-walkthrough or seed script)
    # Check counter after — should have incremented
    ```
@@ -870,9 +870,9 @@ echo "CertChain Portal:       https://cert-portal-certchain.${DOMAIN}"
 echo "Verify API (Swagger):   https://verify-api-certchain.${DOMAIN}/q/swagger-ui"
 echo "Central Keycloak:       https://keycloak-certchain.${DOMAIN}"
 echo ""
-echo "TechPulse Course Mgr:   https://course-manager-ui-techpulse.${DOMAIN}"
-echo "TechPulse Admin API:    https://cert-admin-api-techpulse.${DOMAIN}/q/swagger-ui"
-echo "TechPulse Keycloak:     https://keycloak-techpulse.${DOMAIN}"
+echo "TechPulse Course Mgr:   https://course-manager-ui-certchain-techpulse.${DOMAIN}"
+echo "TechPulse Admin API:    https://cert-admin-api-certchain-techpulse.${DOMAIN}/q/swagger-ui"
+echo "TechPulse Keycloak:     https://keycloak-certchain-techpulse.${DOMAIN}"
 ```
 
 Open each URL in a browser. All should load without errors.
@@ -882,9 +882,9 @@ Open each URL in a browser. All should load without errors.
 | Instance | URL | Username | Password |
 |---|---|---|---|
 | Central | `https://keycloak-certchain.${DOMAIN}` | admin | admin |
-| TechPulse | `https://keycloak-techpulse.${DOMAIN}` | admin | admin |
-| DataForge | `https://keycloak-dataforge.${DOMAIN}` | admin | admin |
-| NeuralPath | `https://keycloak-neuralpath.${DOMAIN}` | admin | admin |
+| TechPulse | `https://keycloak-certchain-techpulse.${DOMAIN}` | admin | admin |
+| DataForge | `https://keycloak-certchain-dataforge.${DOMAIN}` | admin | admin |
+| NeuralPath | `https://keycloak-certchain-neuralpath.${DOMAIN}` | admin | admin |
 
 **What to check in each Keycloak:**
 1. Log into the admin console
@@ -901,7 +901,7 @@ Open each URL in a browser. All should load without errors.
 DOMAIN=$(oc get ingresses.config cluster -o jsonpath='{.spec.domain}')
 
 # Get TechPulse admin token
-TOKEN=$(curl -sk "https://keycloak-techpulse.${DOMAIN}/realms/techpulse/protocol/openid-connect/token" \
+TOKEN=$(curl -sk "https://keycloak-certchain-techpulse.${DOMAIN}/realms/techpulse/protocol/openid-connect/token" \
   -d "client_id=course-manager-ui" \
   -d "username=admin@techpulse.demo" \
   -d "password=admin" \
@@ -913,11 +913,11 @@ TOKEN=$(curl -sk "https://keycloak-techpulse.${DOMAIN}/realms/techpulse/protocol
 ```bash
 # View dashboard stats
 curl -sk -H "Authorization: Bearer $TOKEN" \
-  "https://cert-admin-api-techpulse.${DOMAIN}/api/v1/dashboard/stats" | python3 -m json.tool
+  "https://cert-admin-api-certchain-techpulse.${DOMAIN}/api/v1/dashboard/stats" | python3 -m json.tool
 
 # List certificates
 curl -sk -H "Authorization: Bearer $TOKEN" \
-  "https://cert-admin-api-techpulse.${DOMAIN}/api/v1/certificates" | python3 -m json.tool
+  "https://cert-admin-api-certchain-techpulse.${DOMAIN}/api/v1/certificates" | python3 -m json.tool
 ```
 
 **Test verify-api (public, no token needed):**
@@ -1016,7 +1016,7 @@ oc get pods -n certchain-techpulse -w
 oc delete pod -l app=cert-admin-api -n certchain-techpulse --grace-period=0 --force
 
 # DataForge should be completely unaffected
-curl -sk "https://cert-admin-api-dataforge.${DOMAIN}/q/health/ready"
+curl -sk "https://cert-admin-api-certchain-dataforge.${DOMAIN}/q/health/ready"
 # → HTTP 200 (DataForge still works while TechPulse recovers)
 ```
 
@@ -1034,7 +1034,7 @@ curl -sk "https://verify-api-certchain.${DOMAIN}/api/v1/verify/TP-FSWD-001"
 # → Connection refused / 503
 
 # But TechPulse's local verify-api STILL WORKS (reads from local peer)
-curl -sk "https://verify-api-techpulse.${DOMAIN}/api/v1/verify/TP-FSWD-001" | python3 -m json.tool
+curl -sk "https://verify-api-certchain-techpulse.${DOMAIN}/api/v1/verify/TP-FSWD-001" | python3 -m json.tool
 # → HTTP 200, "status": "VALID"
 
 # Restore central services
@@ -1051,7 +1051,7 @@ Key takeaways:
 
 Both APIs expose interactive Swagger UI for direct testing:
 
-- **cert-admin-api:** `https://cert-admin-api-techpulse.${DOMAIN}/q/swagger-ui` (requires Bearer token)
+- **cert-admin-api:** `https://cert-admin-api-certchain-techpulse.${DOMAIN}/q/swagger-ui` (requires Bearer token)
 - **verify-api:** `https://verify-api-certchain.${DOMAIN}/q/swagger-ui` (public endpoints, no auth)
 
 To use secured endpoints in Swagger UI: click **Authorize**, paste the Bearer token from the curl command above.

@@ -9,8 +9,9 @@ import {
   AlertCircle,
   ArrowLeft,
   Search,
+  Download,
 } from 'lucide-react';
-import { verifyCertificate } from '../services/api';
+import { verifyCertificate, getQRCodeUrl } from '../services/api';
 
 const STATUS_CONFIG = {
   VALID: {
@@ -204,6 +205,31 @@ export default function ResultPage() {
                 </div>
               )}
             </div>
+          </div>
+        )}
+
+        {/* QR code for sharing */}
+        {status !== 'NOT_FOUND' && (
+          <div className="bg-white rounded-xl shadow-sm border border-gray-200 p-5 text-center space-y-3">
+            <h3 className="text-sm font-semibold text-gray-900">
+              Verification QR Code
+            </h3>
+            <img
+              src={getQRCodeUrl(certId)}
+              alt={`QR code for certificate ${certId}`}
+              className="w-40 h-40 mx-auto"
+            />
+            <p className="text-xs text-gray-400">
+              Scan to verify this certificate
+            </p>
+            <a
+              href={getQRCodeUrl(certId)}
+              download={`${certId}-qr.png`}
+              className="inline-flex items-center gap-1.5 text-sm font-medium text-blue-600 hover:text-blue-700"
+            >
+              <Download className="w-4 h-4" />
+              Download QR Code
+            </a>
           </div>
         )}
 

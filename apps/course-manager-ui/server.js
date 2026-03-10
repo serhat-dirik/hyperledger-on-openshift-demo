@@ -16,6 +16,7 @@ const config = {
   ORG_NAME: process.env.ORG_NAME || 'CertChain',
   ORG_ID: process.env.ORG_ID || 'certchain',
   ORG_PRIMARY_COLOR: process.env.ORG_PRIMARY_COLOR || '#4f46e5',
+  VERIFY_API_URL: process.env.VERIFY_API_URL || '',
 };
 
 // Health endpoint

@@ -1,8 +1,8 @@
 import React, { useState } from 'react';
 import { useQuery } from '@tanstack/react-query';
 import { Link } from 'react-router-dom';
-import { FileText, Search, ExternalLink } from 'lucide-react';
-import { getCertificates } from '../services/api';
+import { FileText, Search, ExternalLink, QrCode } from 'lucide-react';
+import { getCertificates, getQRCodeUrl } from '../services/api';
 
 const statusBadge = {
   ACTIVE: 'bg-emerald-100 text-emerald-700',
@@ -95,13 +95,26 @@ export default function CertificateList() {
                   </td>
                   <td className="px-6 py-4 text-gray-500">{cert.issueDate}</td>
                   <td className="px-6 py-4">
-                    <Link
-                      to={`/certs/${cert.certID}`}
-                      className="text-indigo-600 hover:text-indigo-800 flex items-center gap-1"
-                    >
-                      <ExternalLink className="w-4 h-4" />
-                      View
-                    </Link>
+                    <div className="flex items-center gap-3">
+                      <Link
+                        to={`/certs/${cert.certID}`}
+                        className="text-indigo-600 hover:text-indigo-800 flex items-center gap-1"
+                      >
+                        <ExternalLink className="w-4 h-4" />
+                        View
+                      </Link>
+                      {getQRCodeUrl(cert.certID) && (
+                        <a
+                          href={getQRCodeUrl(cert.certID)}
+                          target="_blank"
+                          rel="noopener noreferrer"
+                          title="View QR code"
+                          className="text-gray-400 hover:text-indigo-600 transition-colors"
+                        >
+                          <QrCode className="w-4 h-4" />
+                        </a>
+                      )}
+                    </div>
                   </td>
                 </tr>
               ))}

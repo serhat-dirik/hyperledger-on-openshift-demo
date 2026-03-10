@@ -116,5 +116,4 @@ grafana:
   admin:
     user: admin
     password: certchain
-  # SA token injected by deploy script via --set
-  saToken: ""
+  # SA token is auto-provisioned via ServiceAccount + PostSync Job

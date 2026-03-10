@@ -11,6 +11,10 @@ set -euo pipefail
 SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
 source "${SCRIPT_DIR}/../env.sh"
 
+# Keycloak admin credentials (defaults match realm-import bootstrap)
+KEYCLOAK_ADMIN_USER="${KEYCLOAK_ADMIN_USER:-admin}"
+KEYCLOAK_ADMIN_PASSWORD="${KEYCLOAK_ADMIN_PASSWORD:-admin}"
+
 # --- Discover Route URLs ---------------------------------------------------
 echo "==> Discovering Keycloak Route URLs..."
 
@@ -215,12 +219,18 @@ EOF
     -H "Authorization: Bearer ${ADMIN_TOKEN}" | python3 -c "import sys,json; orgs=json.load(sys.stdin); print(orgs[0]['id'] if orgs else '')")
 
   if [ -n "${ORG_ID}" ]; then
-    curl -s -X POST \
+    # KC 26+ Organizations API expects a plain JSON string for the IDP alias
+    local LINK_HTTP
+    LINK_HTTP=$(curl -s -o /dev/null -w "%{http_code}" -X POST \
       "${CENTRAL_KC_URL}/admin/realms/certchain/organizations/${ORG_ID}/identity-providers" \
       -H "Authorization: Bearer ${ADMIN_TOKEN}" \
       -H "Content-Type: application/json" \
-      -d "{\"alias\": \"${IDP_ALIAS}\", \"redirectWhenEmailDomainMatches\": true}" 2>/dev/null || true
-    echo "  Linked IDP ${IDP_ALIAS} to Organization ${ORG_NAME} with email-domain redirect."
+      -d "\"${IDP_ALIAS}\"")
+    if [ "${LINK_HTTP}" = "204" ] || [ "${LINK_HTTP}" = "409" ]; then
+      echo "  Linked IDP ${IDP_ALIAS} to Organization ${ORG_NAME}."
+    else
+      echo "  WARNING: Unexpected response ${LINK_HTTP} linking IDP to org"
+    fi
   else
     echo "  WARNING: Could not find org ID for ${ORG_NAME}"
   fi

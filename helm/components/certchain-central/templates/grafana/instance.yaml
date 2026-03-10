@@ -1,5 +1,83 @@
 {{- if .Values.grafana.enabled }}
-# Grafana Instance + Datasource + Route
+# ── Wave 6: ServiceAccount, Token, RBAC ────────────────────────────────
+apiVersion: v1
+kind: ServiceAccount
+metadata:
+  name: grafana-sa
+  labels:
+    {{- include "certchain-central.labels" . | nindent 4 }}
+    app.kubernetes.io/component: monitoring
+  annotations:
+    argocd.argoproj.io/sync-wave: "6"
+---
+# Long-lived token for Grafana → Thanos authentication
+apiVersion: v1
+kind: Secret
+metadata:
+  name: grafana-sa-token
+  labels:
+    {{- include "certchain-central.labels" . | nindent 4 }}
+    app.kubernetes.io/component: monitoring
+  annotations:
+    kubernetes.io/service-account.name: grafana-sa
+    argocd.argoproj.io/sync-wave: "6"
+type: kubernetes.io/service-account-token
+---
+# Allow grafana-sa to read Prometheus metrics via Thanos
+apiVersion: rbac.authorization.k8s.io/v1
+kind: ClusterRoleBinding
+metadata:
+  name: grafana-cluster-monitoring-{{ .Release.Namespace }}
+  labels:
+    {{- include "certchain-central.labels" . | nindent 4 }}
+  annotations:
+    argocd.argoproj.io/sync-wave: "6"
+roleRef:
+  apiGroup: rbac.authorization.k8s.io
+  kind: ClusterRole
+  name: cluster-monitoring-view
+subjects:
+  - kind: ServiceAccount
+    name: grafana-sa
+    namespace: {{ .Release.Namespace }}
+---
+# Permissions for the token-injection Job to patch the datasource CR
+apiVersion: rbac.authorization.k8s.io/v1
+kind: Role
+metadata:
+  name: grafana-datasource-patcher
+  labels:
+    {{- include "certchain-central.labels" . | nindent 4 }}
+  annotations:
+    argocd.argoproj.io/sync-wave: "6"
+rules:
+  - apiGroups: [""]
+    resources: ["secrets"]
+    resourceNames: ["grafana-sa-token"]
+    verbs: ["get"]
+  - apiGroups: ["grafana.integreatly.org"]
+    resources: ["grafanadatasources"]
+    resourceNames: ["prometheus"]
+    verbs: ["get", "patch"]
+---
+apiVersion: rbac.authorization.k8s.io/v1
+kind: RoleBinding
+metadata:
+  name: grafana-datasource-patcher
+  labels:
+    {{- include "certchain-central.labels" . | nindent 4 }}
+  annotations:
+    argocd.argoproj.io/sync-wave: "6"
+roleRef:
+  apiGroup: rbac.authorization.k8s.io
+  kind: Role
+  name: grafana-datasource-patcher
+subjects:
+  - kind: ServiceAccount
+    name: grafana-sa
+    namespace: {{ .Release.Namespace }}
+---
+# ── Wave 7: Grafana Instance + Datasource ──────────────────────────────
 apiVersion: grafana.integreatly.org/v1beta1
 kind: Grafana
 metadata:
@@ -27,6 +105,7 @@ spec:
       admin_password: {{ .Values.grafana.admin.password }}
 ---
 # Datasource — OpenShift Thanos Querier
+# Token is injected by the PostSync Job below
 apiVersion: grafana.integreatly.org/v1beta1
 kind: GrafanaDatasource
 metadata:
@@ -50,5 +129,44 @@ spec:
       timeInterval: 30s
       tlsSkipVerify: true
     secureJsonData:
-      httpHeaderValue1: "Bearer {{ .Values.grafana.saToken }}"
+      httpHeaderValue1: "Bearer PLACEHOLDER"
+---
+# ── PostSync: Inject real SA token into datasource ─────────────────────
+apiVersion: batch/v1
+kind: Job
+metadata:
+  name: grafana-datasource-token
+  labels:
+    {{- include "certchain-central.labels" . | nindent 4 }}
+    app.kubernetes.io/component: monitoring
+  annotations:
+    argocd.argoproj.io/hook: PostSync
+    argocd.argoproj.io/hook-delete-policy: BeforeHookCreation
+spec:
+  backoffLimit: 3
+  template:
+    spec:
+      restartPolicy: Never
+      serviceAccountName: grafana-sa
+      containers:
+        - name: inject-token
+          image: registry.redhat.io/openshift4/ose-cli:latest
+          command:
+            - /bin/bash
+            - -c
+            - |
+              set -e
+              # Read the long-lived SA token from the Secret
+              TOKEN=$(oc get secret grafana-sa-token -n {{ .Release.Namespace }} -o jsonpath='{.data.token}' | base64 -d)
+              echo "Got SA token (${#TOKEN} chars), patching datasource..."
+              oc patch grafanadatasource prometheus -n {{ .Release.Namespace }} --type=merge -p "{
+                \"spec\": {
+                  \"datasource\": {
+                    \"secureJsonData\": {
+                      \"httpHeaderValue1\": \"Bearer ${TOKEN}\"
+                    }
+                  }
+                }
+              }"
+              echo "Grafana datasource patched with SA token."
 {{- end }}

@@ -46,6 +46,8 @@ spec:
               value: {{ .Values.org.name }}
             - name: ORG_PRIMARY_COLOR
               value: {{ .Values.org.primaryColor | quote }}
+            - name: VERIFY_API_URL
+              value: https://verify-api-{{ .Values.global.centralNamespace }}.{{ .Values.global.domain }}/api/v1/verify
           resources:
             requests:
               cpu: {{ .Values.courseManagerUi.resources.requests.cpu }}

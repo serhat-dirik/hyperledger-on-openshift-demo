@@ -8,8 +8,10 @@ import {
   XCircle,
   Clock,
   AlertTriangle,
+  QrCode,
+  Download,
 } from 'lucide-react';
-import { getCertificate, revokeCertificate } from '../services/api';
+import { getCertificate, revokeCertificate, getQRCodeUrl } from '../services/api';
 
 const statusConfig = {
   ACTIVE: {
@@ -128,6 +130,36 @@ export default function CertificateDetail() {
         <InfoRow label="Status" value={cert.status} />
         {cert.revokeReason && <InfoRow label="Revoke Reason" value={cert.revokeReason} />}
       </div>
+
+      {/* QR code for verification */}
+      {getQRCodeUrl(cert.certID) && (
+        <div className="bg-white rounded-lg shadow p-6 mb-6">
+          <div className="flex items-center gap-2 mb-4">
+            <QrCode className="w-5 h-5 text-indigo-600" />
+            <h2 className="text-lg font-semibold text-gray-900">Verification QR Code</h2>
+          </div>
+          <div className="flex items-center gap-6">
+            <img
+              src={getQRCodeUrl(cert.certID)}
+              alt={`QR code for ${cert.certID}`}
+              className="w-36 h-36 border border-gray-200 rounded-lg"
+            />
+            <div className="space-y-2">
+              <p className="text-sm text-gray-600">
+                Scan this QR code to verify the certificate on the blockchain.
+              </p>
+              <a
+                href={getQRCodeUrl(cert.certID)}
+                download={`${cert.certID}-qr.png`}
+                className="inline-flex items-center gap-1.5 text-sm font-medium text-indigo-600 hover:text-indigo-700"
+              >
+                <Download className="w-4 h-4" />
+                Download QR Code
+              </a>
+            </div>
+          </div>
+        </div>
+      )}
 
       {/* Revoke action */}
       {cert.status === 'ACTIVE' && (
