@@ -109,7 +109,7 @@ create_idp_broker() {
     "validateSignature": "true",
     "useJwksUrl": "true",
     "syncMode": "IMPORT",
-    "defaultScope": "openid profile email"
+    "defaultScope": ""
   }
 }
 EOF
