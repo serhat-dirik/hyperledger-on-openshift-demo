@@ -55,10 +55,20 @@ export async function initKeycloak() {
   return authenticated;
 }
 
-export function login() {
+export function login(options) {
   if (keycloak) {
-    keycloak.login();
+    keycloak.login(options);
   }
+}
+
+/**
+ * Extract the IDP alias from a student's email address.
+ * Domain pattern: user@<org>.demo → IDP alias is <org>
+ * Returns null if the domain doesn't match the demo pattern.
+ */
+export function getIdpFromEmail(email) {
+  const match = email?.match(/@([^.]+)\.demo$/i);
+  return match ? match[1].toLowerCase() : null;
 }
 
 export function logout() {

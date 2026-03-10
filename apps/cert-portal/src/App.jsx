@@ -1,45 +1,105 @@
 import React, { useState, useEffect } from 'react';
 import { BrowserRouter, Routes, Route, NavLink, useLocation } from 'react-router-dom';
 import { Search, QrCode, Info, ShieldCheck, FileText, LogIn, LogOut } from 'lucide-react';
-import { initKeycloak, isAuthenticated, login, logout, getUserInfo } from './services/keycloak';
+import { initKeycloak, isAuthenticated, login, logout, getUserInfo, getIdpFromEmail } from './services/keycloak';
 import VerifyPage from './pages/VerifyPage';
 import ScanPage from './pages/ScanPage';
 import ResultPage from './pages/ResultPage';
 import TranscriptPage from './pages/TranscriptPage';
 
+function LoginDialog({ onClose }) {
+  const [email, setEmail] = useState('');
+  const [error, setError] = useState('');
+
+  function handleSubmit(e) {
+    e.preventDefault();
+    const idp = getIdpFromEmail(email);
+    if (idp) {
+      login({ idpHint: idp });
+    } else {
+      setError('Please enter a valid organization email (e.g. you@techpulse.demo)');
+    }
+  }
+
+  return (
+    <div className="fixed inset-0 bg-black/40 flex items-center justify-center z-50" onClick={onClose}>
+      <div
+        className="bg-white rounded-xl shadow-xl p-6 w-full max-w-sm mx-4"
+        onClick={(e) => e.stopPropagation()}
+      >
+        <h2 className="text-lg font-bold text-gray-900 mb-1">Student Login</h2>
+        <p className="text-sm text-gray-500 mb-4">
+          Enter your organization email to sign in.
+        </p>
+        <form onSubmit={handleSubmit}>
+          <input
+            type="email"
+            value={email}
+            onChange={(e) => { setEmail(e.target.value); setError(''); }}
+            placeholder="student@techpulse.demo"
+            autoFocus
+            required
+            className="w-full rounded-lg border border-gray-300 px-3 py-2 text-sm text-gray-900 placeholder-gray-400 focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
+          />
+          {error && <p className="text-xs text-red-500 mt-1.5">{error}</p>}
+          <div className="flex gap-2 mt-4">
+            <button
+              type="submit"
+              className="flex-1 bg-blue-600 text-white text-sm font-medium py-2 rounded-lg hover:bg-blue-700 transition-colors cursor-pointer"
+            >
+              Continue
+            </button>
+            <button
+              type="button"
+              onClick={onClose}
+              className="px-4 py-2 text-sm text-gray-600 hover:text-gray-800 transition-colors cursor-pointer"
+            >
+              Cancel
+            </button>
+          </div>
+        </form>
+      </div>
+    </div>
+  );
+}
+
 function TopBar() {
   const authed = isAuthenticated();
   const userInfo = authed ? getUserInfo() : null;
+  const [showLogin, setShowLogin] = useState(false);
 
   return (
-    <header className="bg-blue-600 text-white px-4 py-3 flex items-center gap-2 shadow-md">
-      <ShieldCheck className="w-6 h-6" />
-      <h1 className="text-lg font-bold tracking-tight">CertChain</h1>
-      <span className="text-blue-200 text-sm ml-1">Portal</span>
-      <div className="flex-1" />
-      {authed ? (
-        <div className="flex items-center gap-3">
-          <span className="text-sm text-blue-100 hidden sm:inline">
-            {userInfo?.name}
-          </span>
+    <>
+      <header className="bg-blue-600 text-white px-4 py-3 flex items-center gap-2 shadow-md">
+        <ShieldCheck className="w-6 h-6" />
+        <h1 className="text-lg font-bold tracking-tight">CertChain</h1>
+        <span className="text-blue-200 text-sm ml-1">Portal</span>
+        <div className="flex-1" />
+        {authed ? (
+          <div className="flex items-center gap-3">
+            <span className="text-sm text-blue-100 hidden sm:inline">
+              {userInfo?.name}
+            </span>
+            <button
+              onClick={logout}
+              className="flex items-center gap-1 text-sm text-blue-200 hover:text-white transition-colors cursor-pointer"
+            >
+              <LogOut className="w-4 h-4" />
+              <span className="hidden sm:inline">Sign out</span>
+            </button>
+          </div>
+        ) : (
           <button
-            onClick={logout}
-            className="flex items-center gap-1 text-sm text-blue-200 hover:text-white transition-colors cursor-pointer"
+            onClick={() => setShowLogin(true)}
+            className="flex items-center gap-1 text-sm bg-blue-500 hover:bg-blue-400 px-3 py-1.5 rounded-lg transition-colors cursor-pointer"
           >
-            <LogOut className="w-4 h-4" />
-            <span className="hidden sm:inline">Sign out</span>
+            <LogIn className="w-4 h-4" />
+            Student Login
           </button>
-        </div>
-      ) : (
-        <button
-          onClick={login}
-          className="flex items-center gap-1 text-sm bg-blue-500 hover:bg-blue-400 px-3 py-1.5 rounded-lg transition-colors cursor-pointer"
-        >
-          <LogIn className="w-4 h-4" />
-          Student Login
-        </button>
-      )}
-    </header>
+        )}
+      </header>
+      {showLogin && <LoginDialog onClose={() => setShowLogin(false)} />}
+    </>
   );
 }
 
