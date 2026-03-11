@@ -298,15 +298,40 @@ for e in execs:
 "
 }
 
-# --- NOTE: IDP routing approach ------------------------------------------------
-# We use app-level kc_idp_hint instead of KC's Organization Identity-First Login.
-# The cert-portal captures the student's email, extracts the org domain, and
-# passes idpHint=<org> to keycloak.login().  This bypasses the browser flow's
-# Organization authenticator entirely — more reliable and avoids KC 26
-# Organization flow quirks with first-time users.
-#
-# Organizations + IDPs are still created above for admin visibility and
-# domain registration, but the actual routing is handled client-side.
+# --- Disable Organization flow (use app-level kc_idp_hint instead) -----------
+# KC 26's Organization Identity-First Login intercepts the browser flow and
+# blocks first-time users with "no account yet" before kc_idp_hint is processed.
+# We disable it and route at the app level: cert-portal captures the student's
+# email, extracts the org domain, and passes idpHint=<org> to keycloak.login().
+# Organizations + IDPs are still created above for admin visibility.
+disable_organization_flow() {
+  echo "==> Disabling Organization flow in browser authentication..."
+
+  local BROWSER_EXECS
+  BROWSER_EXECS=$(curl -s "${CENTRAL_KC_URL}/admin/realms/certchain/authentication/flows/browser/executions" \
+    -H "Authorization: Bearer ${ADMIN_TOKEN}")
+
+  local ORG_EXEC_ID
+  ORG_EXEC_ID=$(echo "${BROWSER_EXECS}" | python3 -c "
+import sys, json
+for e in json.load(sys.stdin):
+    if e.get('displayName') == 'Organization' and e.get('level', 99) == 0:
+        print(e['id'])
+        break
+" 2>/dev/null)
+
+  if [ -n "${ORG_EXEC_ID}" ]; then
+    local HTTP_CODE
+    HTTP_CODE=$(curl -s -o /dev/null -w "%{http_code}" -X PUT \
+      "${CENTRAL_KC_URL}/admin/realms/certchain/authentication/flows/browser/executions" \
+      -H "Authorization: Bearer ${ADMIN_TOKEN}" \
+      -H "Content-Type: application/json" \
+      -d "{\"id\": \"${ORG_EXEC_ID}\", \"requirement\": \"DISABLED\"}")
+    echo "  Organization flow: DISABLED (HTTP ${HTTP_CODE})"
+  else
+    echo "  Organization flow not found in browser flow (may already be disabled)"
+  fi
+}
 
 # --- Execute ---------------------------------------------------------------
 
@@ -331,10 +356,13 @@ create_organization "techpulse" "TechPulse Academy" "techpulse.demo" "techpulse"
 create_organization "dataforge" "DataForge Institute" "dataforge.demo" "dataforge"
 create_organization "neuralpath" "NeuralPath Labs" "neuralpath.demo" "neuralpath"
 
+# Disable Organization browser flow (app-level kc_idp_hint handles routing)
+disable_organization_flow
+
 echo ""
 echo "==> Keycloak configuration complete!"
 echo "    - Realm registration enabled for JIT provisioning"
 echo "    - auto-idp-link flow: no profile review, no link confirmation"
 echo "    - 3 OIDC Identity Brokers created in central KC (hideOnLogin)"
 echo "    - 3 Organizations with email-domain routing configured"
-echo "    - IDP routing: cert-portal uses kc_idp_hint from email domain"
+echo "    - Organization browser flow: DISABLED (app uses kc_idp_hint)"
