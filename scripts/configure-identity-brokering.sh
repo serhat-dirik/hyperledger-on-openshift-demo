@@ -96,7 +96,7 @@ create_idp_broker() {
   "storeToken": false,
   "addReadTokenRoleOnCreate": false,
   "firstBrokerLoginFlowAlias": "auto-idp-link",
-  "hideOnLogin": true,
+  "hideOnLoginPage": false,
   "config": {
     "clientId": "broker-client",
     "clientSecret": "${CLIENT_SECRET}",

@@ -5,9 +5,9 @@ import Keycloak from 'keycloak-js';
  * Uses check-sso: app loads for everyone, but authenticated students
  * get access to rich transcript details.
  *
- * Students click "Login" → central KC → enter email →
- * KC Organizations detects domain → auto-redirects to org KC →
- * authenticate → back to central KC with session + JIT user provisioning.
+ * Students click "Login" → central KC login page → click org IDP button →
+ * redirected to org KC → authenticate → auto-idp-link JIT provisions user →
+ * back to portal with session.
  */
 let keycloak;
 let configLoaded = false;
@@ -55,20 +55,10 @@ export async function initKeycloak() {
   return authenticated;
 }
 
-export function login(options) {
+export function login() {
   if (keycloak) {
-    keycloak.login(options);
+    keycloak.login();
   }
-}
-
-/**
- * Extract the IDP alias from a student's email address.
- * Domain pattern: user@<org>.demo → IDP alias is <org>
- * Returns null if the domain doesn't match the demo pattern.
- */
-export function getIdpFromEmail(email) {
-  const match = email?.match(/@([^.]+)\.demo$/i);
-  return match ? match[1].toLowerCase() : null;
 }
 
 export function logout() {
