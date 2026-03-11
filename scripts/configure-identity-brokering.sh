@@ -75,6 +75,95 @@ update_org_broker_redirect() {
     }"
 }
 
+# --- Helper: ensure email/profile client scopes exist on org KC ------------
+# KC realm import only creates scopes explicitly defined in the clientScopes
+# array. The standard OIDC scopes (email, profile) must be created manually
+# if missing, otherwise broker tokens won't include email claims and the
+# auto-idp-link flow will fail with "Email is null".
+ensure_org_client_scopes() {
+  local ORG_KC_URL=$1
+  local ORG_REALM=$2
+
+  echo "  Ensuring email/profile client scopes exist on ${ORG_REALM} KC..."
+  local ORG_ADMIN_TOKEN
+  ORG_ADMIN_TOKEN=$(curl -s -X POST "${ORG_KC_URL}/realms/master/protocol/openid-connect/token" \
+    -H "Content-Type: application/x-www-form-urlencoded" \
+    -d "username=${KEYCLOAK_ADMIN_USER}" \
+    -d "password=${KEYCLOAK_ADMIN_PASSWORD}" \
+    -d "grant_type=password" \
+    -d "client_id=admin-cli" | python3 -c "import sys,json; print(json.load(sys.stdin)['access_token'])")
+
+  local CLIENT_UUID
+  CLIENT_UUID=$(curl -s "${ORG_KC_URL}/admin/realms/${ORG_REALM}/clients?clientId=broker-client" \
+    -H "Authorization: Bearer ${ORG_ADMIN_TOKEN}" | python3 -c "import sys,json; print(json.load(sys.stdin)[0]['id'])")
+
+  # Check if 'email' scope already exists
+  local EXISTING_SCOPES
+  EXISTING_SCOPES=$(curl -s "${ORG_KC_URL}/admin/realms/${ORG_REALM}/client-scopes" \
+    -H "Authorization: Bearer ${ORG_ADMIN_TOKEN}")
+
+  local HAS_EMAIL HAS_PROFILE
+  HAS_EMAIL=$(echo "${EXISTING_SCOPES}" | python3 -c "import sys,json; print(any(s['name']=='email' for s in json.load(sys.stdin)))")
+  HAS_PROFILE=$(echo "${EXISTING_SCOPES}" | python3 -c "import sys,json; print(any(s['name']=='profile' for s in json.load(sys.stdin)))")
+
+  if [ "${HAS_EMAIL}" = "False" ]; then
+    echo "    Creating 'email' client scope with mappers..."
+    curl -s -o /dev/null -X POST "${ORG_KC_URL}/admin/realms/${ORG_REALM}/client-scopes" \
+      -H "Authorization: Bearer ${ORG_ADMIN_TOKEN}" \
+      -H "Content-Type: application/json" \
+      -d '{
+        "name":"email","description":"OpenID Connect built-in scope: email",
+        "protocol":"openid-connect",
+        "attributes":{"include.in.token.scope":"true","display.on.consent.screen":"true"},
+        "protocolMappers":[
+          {"name":"email","protocol":"openid-connect","protocolMapper":"oidc-usermodel-attribute-mapper",
+           "config":{"user.attribute":"email","claim.name":"email","jsonType.label":"String",
+                     "id.token.claim":"true","access.token.claim":"true","userinfo.token.claim":"true"}},
+          {"name":"email verified","protocol":"openid-connect","protocolMapper":"oidc-usermodel-attribute-mapper",
+           "config":{"user.attribute":"emailVerified","claim.name":"email_verified","jsonType.label":"boolean",
+                     "id.token.claim":"true","access.token.claim":"true","userinfo.token.claim":"true"}}
+        ]}'
+  fi
+
+  if [ "${HAS_PROFILE}" = "False" ]; then
+    echo "    Creating 'profile' client scope with mappers..."
+    curl -s -o /dev/null -X POST "${ORG_KC_URL}/admin/realms/${ORG_REALM}/client-scopes" \
+      -H "Authorization: Bearer ${ORG_ADMIN_TOKEN}" \
+      -H "Content-Type: application/json" \
+      -d '{
+        "name":"profile","description":"OpenID Connect built-in scope: profile",
+        "protocol":"openid-connect",
+        "attributes":{"include.in.token.scope":"true","display.on.consent.screen":"true"},
+        "protocolMappers":[
+          {"name":"username","protocol":"openid-connect","protocolMapper":"oidc-usermodel-attribute-mapper",
+           "config":{"user.attribute":"username","claim.name":"preferred_username","jsonType.label":"String",
+                     "id.token.claim":"true","access.token.claim":"true","userinfo.token.claim":"true"}},
+          {"name":"full name","protocol":"openid-connect","protocolMapper":"oidc-full-name-mapper",
+           "config":{"id.token.claim":"true","access.token.claim":"true","userinfo.token.claim":"true"}},
+          {"name":"given name","protocol":"openid-connect","protocolMapper":"oidc-usermodel-attribute-mapper",
+           "config":{"user.attribute":"firstName","claim.name":"given_name","jsonType.label":"String",
+                     "id.token.claim":"true","access.token.claim":"true","userinfo.token.claim":"true"}},
+          {"name":"family name","protocol":"openid-connect","protocolMapper":"oidc-usermodel-attribute-mapper",
+           "config":{"user.attribute":"lastName","claim.name":"family_name","jsonType.label":"String",
+                     "id.token.claim":"true","access.token.claim":"true","userinfo.token.claim":"true"}}
+        ]}'
+  fi
+
+  # Assign email + profile as default client scopes for broker-client
+  for SCOPE_NAME in email profile; do
+    local SCOPE_ID
+    SCOPE_ID=$(curl -s "${ORG_KC_URL}/admin/realms/${ORG_REALM}/client-scopes" \
+      -H "Authorization: Bearer ${ORG_ADMIN_TOKEN}" \
+      | python3 -c "import sys,json; scopes=[s for s in json.load(sys.stdin) if s['name']=='${SCOPE_NAME}']; print(scopes[0]['id'] if scopes else '')")
+    if [ -n "${SCOPE_ID}" ]; then
+      curl -s -o /dev/null -X PUT \
+        "${ORG_KC_URL}/admin/realms/${ORG_REALM}/clients/${CLIENT_UUID}/default-client-scopes/${SCOPE_ID}" \
+        -H "Authorization: Bearer ${ORG_ADMIN_TOKEN}"
+    fi
+  done
+  echo "    email/profile scopes assigned to broker-client."
+}
+
 # --- Create OIDC Identity Brokers in central KC ----------------------------
 create_idp_broker() {
   local ALIAS=$1
@@ -96,7 +185,7 @@ create_idp_broker() {
   "storeToken": false,
   "addReadTokenRoleOnCreate": false,
   "firstBrokerLoginFlowAlias": "auto-idp-link",
-  "hideOnLoginPage": false,
+  "hideOnLogin": false,
   "config": {
     "clientId": "broker-client",
     "clientSecret": "${CLIENT_SECRET}",
@@ -298,11 +387,12 @@ for e in execs:
 "
 }
 
-# --- Disable Organization flow (use app-level kc_idp_hint instead) -----------
+# --- Disable Organization flow -----------------------------------------------
 # KC 26's Organization Identity-First Login intercepts the browser flow and
-# blocks first-time users with "no account yet" before kc_idp_hint is processed.
-# We disable it and route at the app level: cert-portal captures the student's
-# email, extracts the org domain, and passes idpHint=<org> to keycloak.login().
+# blocks first-time users with "no account yet" before IDP buttons are shown.
+# We disable the Organization flow; students click Login → see IDP buttons on
+# central KC login page → click their org → authenticate on org KC → JIT
+# provisioned in central KC via auto-idp-link flow.
 # Organizations + IDPs are still created above for admin visibility.
 disable_organization_flow() {
   echo "==> Disabling Organization flow in browser authentication..."
@@ -341,10 +431,13 @@ enable_realm_registration
 # Create auto-idp-link flow (before creating IDPs that reference it)
 create_auto_idp_link_flow
 
-# Update broker-client redirect URIs on each org KC
+# Update broker-client redirect URIs + ensure OIDC scopes on each org KC
 update_org_broker_redirect "${TP_KC_URL}" "techpulse" "broker-secret-techpulse"
+ensure_org_client_scopes "${TP_KC_URL}" "techpulse"
 update_org_broker_redirect "${DF_KC_URL}" "dataforge" "broker-secret-dataforge"
+ensure_org_client_scopes "${DF_KC_URL}" "dataforge"
 update_org_broker_redirect "${NP_KC_URL}" "neuralpath" "broker-secret-neuralpath"
+ensure_org_client_scopes "${NP_KC_URL}" "neuralpath"
 
 # Create IDP brokers in central KC
 create_idp_broker "techpulse" "TechPulse Academy" "${TP_KC_URL}" "techpulse" "broker-secret-techpulse"
@@ -363,6 +456,7 @@ echo ""
 echo "==> Keycloak configuration complete!"
 echo "    - Realm registration enabled for JIT provisioning"
 echo "    - auto-idp-link flow: no profile review, no link confirmation"
-echo "    - 3 OIDC Identity Brokers created in central KC (hideOnLogin)"
+echo "    - 3 OIDC Identity Brokers visible on central KC login page"
 echo "    - 3 Organizations with email-domain routing configured"
-echo "    - Organization browser flow: DISABLED (app uses kc_idp_hint)"
+echo "    - Organization browser flow: DISABLED (IDP buttons used instead)"
+echo "    - email/profile client scopes ensured on org KCs"
