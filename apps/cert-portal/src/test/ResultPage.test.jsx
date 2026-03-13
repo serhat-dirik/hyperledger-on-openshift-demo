@@ -6,9 +6,18 @@ import ResultPage from '../pages/ResultPage';
 // Mock the api module
 vi.mock('../services/api', () => ({
   verifyCertificate: vi.fn(),
+  fetchCertificateDetail: vi.fn(),
+  getQRCodeUrl: vi.fn((id) => `/api/v1/verify/${id}/qr`),
 }));
 
-import { verifyCertificate } from '../services/api';
+// Mock keycloak module
+vi.mock('../services/keycloak', () => ({
+  isAuthenticated: vi.fn(() => false),
+  getToken: vi.fn(() => Promise.resolve(null)),
+}));
+
+import { verifyCertificate, fetchCertificateDetail } from '../services/api';
+import { isAuthenticated, getToken } from '../services/keycloak';
 
 function renderResultPage(certId = 'TEST-CERT-001') {
   return render(
@@ -112,5 +121,57 @@ describe('ResultPage', () => {
 
     expect(screen.getByText('Network error')).toBeInTheDocument();
     expect(screen.getByText('Try Again')).toBeInTheDocument();
+  });
+
+  it('shows grade and degree for authenticated students', async () => {
+    isAuthenticated.mockReturnValue(true);
+    getToken.mockResolvedValue('mock-jwt-token');
+    fetchCertificateDetail.mockResolvedValue({
+      status: 'VALID',
+      certId: 'TEST-CERT-001',
+      studentName: 'Alice Johnson',
+      courseName: 'Full-Stack Web Dev',
+      orgName: 'TechPulse Academy',
+      issueDate: '2026-01-15',
+      expiryDate: '2028-01-15',
+      grade: 'A',
+      degree: 'Professional Certificate',
+    });
+
+    renderResultPage();
+
+    await waitFor(() => {
+      expect(screen.getByText('Valid')).toBeInTheDocument();
+    });
+
+    // Private fields (grade, degree) shown in verification result
+    expect(screen.getByText('Professional Certificate')).toBeInTheDocument();
+    expect(screen.getByText(/Grade: A/)).toBeInTheDocument();
+    expect(screen.getByText('Alice Johnson')).toBeInTheDocument();
+  });
+
+  it('falls back to public verify when authenticated fetch fails', async () => {
+    isAuthenticated.mockReturnValue(true);
+    getToken.mockResolvedValue('mock-jwt-token');
+    fetchCertificateDetail.mockRejectedValue(new Error('403'));
+    verifyCertificate.mockResolvedValue({
+      status: 'VALID',
+      certId: 'TEST-CERT-001',
+      studentName: 'Alice Johnson',
+      courseName: 'Full-Stack Web Dev',
+      orgName: 'TechPulse Academy',
+      issueDate: '2026-01-15',
+      expiryDate: '2028-01-15',
+    });
+
+    renderResultPage();
+
+    await waitFor(() => {
+      expect(screen.getByText('Valid')).toBeInTheDocument();
+    });
+
+    // Public result — no grade/degree
+    expect(screen.getByText('Alice Johnson')).toBeInTheDocument();
+    expect(screen.queryByText(/Grade:/)).not.toBeInTheDocument();
   });
 });

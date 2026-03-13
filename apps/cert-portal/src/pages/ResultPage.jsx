@@ -10,8 +10,10 @@ import {
   ArrowLeft,
   Search,
   Download,
+  GraduationCap,
 } from 'lucide-react';
-import { verifyCertificate, getQRCodeUrl } from '../services/api';
+import { verifyCertificate, fetchCertificateDetail, getQRCodeUrl } from '../services/api';
+import { isAuthenticated, getToken } from '../services/keycloak';
 
 const STATUS_CONFIG = {
   VALID: {
@@ -94,7 +96,21 @@ export default function ResultPage() {
       setLoading(true);
       setError(null);
       try {
-        const data = await verifyCertificate(certId);
+        let data;
+        // Authenticated students get enriched results (grade, degree)
+        if (isAuthenticated()) {
+          try {
+            const token = await getToken();
+            if (token) {
+              data = await fetchCertificateDetail(certId, token);
+            }
+          } catch {
+            // Fall through to public endpoint
+          }
+        }
+        if (!data) {
+          data = await verifyCertificate(certId);
+        }
         if (!cancelled) setResult(data);
       } catch (err) {
         if (!cancelled) setError(err.message || 'Verification request failed.');
@@ -194,6 +210,25 @@ export default function ResultPage() {
                 label="Expiry Date"
                 value={formatDate(result?.expiryDate)}
               />
+              {(result?.grade || result?.degree) && (
+                <div className="py-2 border-b border-gray-100">
+                  <div className="flex items-center gap-2">
+                    <GraduationCap className="w-4 h-4 text-indigo-500 shrink-0" />
+                    <div className="flex items-center gap-3">
+                      {result.degree && (
+                        <span className="text-sm font-medium text-gray-900">
+                          {result.degree}
+                        </span>
+                      )}
+                      {result.grade && (
+                        <span className="bg-indigo-50 text-indigo-700 text-xs font-medium px-2 py-0.5 rounded">
+                          Grade: {result.grade}
+                        </span>
+                      )}
+                    </div>
+                  </div>
+                </div>
+              )}
               {status === 'REVOKED' && (result?.revokeReason || result?.revocationReason) && (
                 <div className="py-2">
                   <span className="text-sm text-gray-500">

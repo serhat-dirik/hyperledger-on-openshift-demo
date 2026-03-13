@@ -164,6 +164,86 @@ ensure_org_client_scopes() {
   echo "    email/profile scopes assigned to broker-client."
 }
 
+# --- Helper: ensure email/profile client scopes on CENTRAL KC -------------
+# Same issue as org KCs: realm import only creates scopes in the clientScopes
+# array. Without email/profile scopes, JWT tokens for cert-portal won't
+# include name/email claims (header shows "Student" instead of the user's name).
+ensure_central_client_scopes() {
+  echo "==> Ensuring email/profile client scopes on central KC..."
+
+  local EXISTING_SCOPES
+  EXISTING_SCOPES=$(curl -s "${CENTRAL_KC_URL}/admin/realms/certchain/client-scopes" \
+    -H "Authorization: Bearer ${ADMIN_TOKEN}")
+
+  local HAS_EMAIL HAS_PROFILE
+  HAS_EMAIL=$(echo "${EXISTING_SCOPES}" | python3 -c "import sys,json; print(any(s['name']=='email' for s in json.load(sys.stdin)))")
+  HAS_PROFILE=$(echo "${EXISTING_SCOPES}" | python3 -c "import sys,json; print(any(s['name']=='profile' for s in json.load(sys.stdin)))")
+
+  if [ "${HAS_EMAIL}" = "False" ]; then
+    echo "  Creating 'email' client scope..."
+    curl -s -o /dev/null -X POST "${CENTRAL_KC_URL}/admin/realms/certchain/client-scopes" \
+      -H "Authorization: Bearer ${ADMIN_TOKEN}" \
+      -H "Content-Type: application/json" \
+      -d '{
+        "name":"email","description":"OpenID Connect built-in scope: email",
+        "protocol":"openid-connect",
+        "attributes":{"include.in.token.scope":"true","display.on.consent.screen":"true"},
+        "protocolMappers":[
+          {"name":"email","protocol":"openid-connect","protocolMapper":"oidc-usermodel-attribute-mapper",
+           "config":{"user.attribute":"email","claim.name":"email","jsonType.label":"String",
+                     "id.token.claim":"true","access.token.claim":"true","userinfo.token.claim":"true"}},
+          {"name":"email verified","protocol":"openid-connect","protocolMapper":"oidc-usermodel-attribute-mapper",
+           "config":{"user.attribute":"emailVerified","claim.name":"email_verified","jsonType.label":"boolean",
+                     "id.token.claim":"true","access.token.claim":"true","userinfo.token.claim":"true"}}
+        ]}'
+  fi
+
+  if [ "${HAS_PROFILE}" = "False" ]; then
+    echo "  Creating 'profile' client scope..."
+    curl -s -o /dev/null -X POST "${CENTRAL_KC_URL}/admin/realms/certchain/client-scopes" \
+      -H "Authorization: Bearer ${ADMIN_TOKEN}" \
+      -H "Content-Type: application/json" \
+      -d '{
+        "name":"profile","description":"OpenID Connect built-in scope: profile",
+        "protocol":"openid-connect",
+        "attributes":{"include.in.token.scope":"true","display.on.consent.screen":"true"},
+        "protocolMappers":[
+          {"name":"username","protocol":"openid-connect","protocolMapper":"oidc-usermodel-attribute-mapper",
+           "config":{"user.attribute":"username","claim.name":"preferred_username","jsonType.label":"String",
+                     "id.token.claim":"true","access.token.claim":"true","userinfo.token.claim":"true"}},
+          {"name":"full name","protocol":"openid-connect","protocolMapper":"oidc-full-name-mapper",
+           "config":{"id.token.claim":"true","access.token.claim":"true","userinfo.token.claim":"true"}},
+          {"name":"given name","protocol":"openid-connect","protocolMapper":"oidc-usermodel-attribute-mapper",
+           "config":{"user.attribute":"firstName","claim.name":"given_name","jsonType.label":"String",
+                     "id.token.claim":"true","access.token.claim":"true","userinfo.token.claim":"true"}},
+          {"name":"family name","protocol":"openid-connect","protocolMapper":"oidc-usermodel-attribute-mapper",
+           "config":{"user.attribute":"lastName","claim.name":"family_name","jsonType.label":"String",
+                     "id.token.claim":"true","access.token.claim":"true","userinfo.token.claim":"true"}}
+        ]}'
+  fi
+
+  # Assign email + profile to cert-portal and verify-api clients
+  for CLIENT_NAME in cert-portal verify-api; do
+    local CL_UUID
+    CL_UUID=$(curl -s "${CENTRAL_KC_URL}/admin/realms/certchain/clients?clientId=${CLIENT_NAME}" \
+      -H "Authorization: Bearer ${ADMIN_TOKEN}" | python3 -c "import sys,json; cl=json.load(sys.stdin); print(cl[0]['id'] if cl else '')")
+    if [ -z "${CL_UUID}" ]; then continue; fi
+
+    for SCOPE_NAME in email profile; do
+      local SCOPE_ID
+      SCOPE_ID=$(curl -s "${CENTRAL_KC_URL}/admin/realms/certchain/client-scopes" \
+        -H "Authorization: Bearer ${ADMIN_TOKEN}" \
+        | python3 -c "import sys,json; scopes=[s for s in json.load(sys.stdin) if s['name']=='${SCOPE_NAME}']; print(scopes[0]['id'] if scopes else '')")
+      if [ -n "${SCOPE_ID}" ]; then
+        curl -s -o /dev/null -X PUT \
+          "${CENTRAL_KC_URL}/admin/realms/certchain/clients/${CL_UUID}/default-client-scopes/${SCOPE_ID}" \
+          -H "Authorization: Bearer ${ADMIN_TOKEN}"
+      fi
+    done
+  done
+  echo "  email/profile scopes assigned to cert-portal and verify-api."
+}
+
 # --- Create OIDC Identity Brokers in central KC ----------------------------
 create_idp_broker() {
   local ALIAS=$1
@@ -431,6 +511,9 @@ enable_realm_registration
 # Create auto-idp-link flow (before creating IDPs that reference it)
 create_auto_idp_link_flow
 
+# Ensure email/profile scopes on central KC (for cert-portal JWT name claims)
+ensure_central_client_scopes
+
 # Update broker-client redirect URIs + ensure OIDC scopes on each org KC
 update_org_broker_redirect "${TP_KC_URL}" "techpulse" "broker-secret-techpulse"
 ensure_org_client_scopes "${TP_KC_URL}" "techpulse"
@@ -459,4 +542,4 @@ echo "    - auto-idp-link flow: no profile review, no link confirmation"
 echo "    - 3 OIDC Identity Brokers visible on central KC login page"
 echo "    - 3 Organizations with email-domain routing configured"
 echo "    - Organization browser flow: DISABLED (IDP buttons used instead)"
-echo "    - email/profile client scopes ensured on org KCs"
+echo "    - email/profile client scopes ensured on all KCs (org + central)"
