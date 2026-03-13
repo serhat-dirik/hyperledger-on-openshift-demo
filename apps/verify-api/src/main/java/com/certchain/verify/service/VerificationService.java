@@ -187,6 +187,45 @@ public class VerificationService {
      * @return list of verification results (one per ID, including NOT_FOUND entries)
      */
     /**
+     * Verify a certificate for a specific student.
+     * Returns private fields (grade, degree) only if the certificate belongs to
+     * the authenticated student. Otherwise returns public data only.
+     */
+    public VerificationResult verifyForStudent(String certId, String studentEmail) {
+        try {
+            byte[] response = fabricClient.evaluateTransaction("VerifyCertificate", certId);
+            JsonNode cert = MAPPER.readTree(response);
+
+            String ledgerStatus = cert.path("status").asText("");
+            String mappedStatus = mapStatus(ledgerStatus);
+            String verifiedAt = Instant.now().toString();
+
+            String certStudentID = cert.path("studentID").asText("");
+            boolean isOwner = isStudentMatch(studentEmail, certStudentID);
+
+            return new VerificationResult(
+                    cert.path("certID").asText(certId),
+                    mappedStatus,
+                    cert.path("studentName").asText(""),
+                    cert.path("courseName").asText(""),
+                    cert.path("orgName").asText(""),
+                    cert.path("issueDate").asText(""),
+                    cert.path("expiryDate").asText(""),
+                    isOwner ? cert.path("grade").asText(null) : null,
+                    isOwner ? cert.path("degree").asText(null) : null,
+                    cert.path("revokeReason").asText(null),
+                    verifiedAt
+            );
+        } catch (Exception e) {
+            String message = e.getMessage() != null ? e.getMessage() : "";
+            if (message.contains("not found") || message.contains("does not exist")) {
+                throw new CertificateNotFoundException(certId);
+            }
+            throw new VerificationException("Failed to verify certificate: " + certId, e);
+        }
+    }
+
+    /**
      * Verify a certificate and include private fields (grade, degree).
      * Used by the authenticated transcript detail endpoint.
      */
@@ -244,6 +283,28 @@ public class VerificationService {
             case "EXPIRED" -> "EXPIRED";
             default -> "UNKNOWN";
         };
+    }
+
+    /**
+     * Check if the authenticated user's email matches the certificate's studentID.
+     * Handles both formats: full email ("student01@techpulse.demo") and
+     * username-only ("student01") stored on older ledger entries.
+     */
+    private boolean isStudentMatch(String jwtEmail, String certStudentID) {
+        if (jwtEmail == null || jwtEmail.isBlank() || certStudentID == null || certStudentID.isBlank()) {
+            return false;
+        }
+        // Exact match (full email stored on ledger)
+        if (jwtEmail.equalsIgnoreCase(certStudentID)) {
+            return true;
+        }
+        // Prefix match: extract username from email and compare with short-form studentID
+        int atIdx = jwtEmail.indexOf('@');
+        if (atIdx > 0) {
+            String usernamePrefix = jwtEmail.substring(0, atIdx);
+            return usernamePrefix.equalsIgnoreCase(certStudentID);
+        }
+        return false;
     }
 
     /**

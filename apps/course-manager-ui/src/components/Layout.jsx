@@ -20,7 +20,7 @@ export default function Layout() {
   const runtimeConfig = window.__CONFIG__ || {};
   const orgName = runtimeConfig.ORG_NAME || tokenParsed.org_name || tokenParsed.org_id || 'CertChain';
   const primaryColor = runtimeConfig.ORG_PRIMARY_COLOR || '#4f46e5';
-  const userName = tokenParsed.preferred_username || tokenParsed.name || 'Admin';
+  const userName = tokenParsed.name || tokenParsed.preferred_username || tokenParsed.email || 'Admin';
 
   return (
     <div className="min-h-screen flex bg-gray-50">

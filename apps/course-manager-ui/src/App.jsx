@@ -1,7 +1,7 @@
 import React, { useState, useEffect } from 'react';
 import { BrowserRouter, Routes, Route } from 'react-router-dom';
 import { QueryClient, QueryClientProvider } from '@tanstack/react-query';
-import { initKeycloak } from './services/keycloak';
+import { initKeycloak, getKeycloak } from './services/keycloak';
 import Layout from './components/Layout';
 import Dashboard from './pages/Dashboard';
 import IssueCertificate from './pages/IssueCertificate';
@@ -16,12 +16,19 @@ const queryClient = new QueryClient({
 
 export default function App() {
   const [authenticated, setAuthenticated] = useState(false);
+  const [accessDenied, setAccessDenied] = useState(false);
   const [error, setError] = useState(null);
 
   useEffect(() => {
     initKeycloak()
       .then((auth) => {
         if (auth) {
+          const kc = getKeycloak();
+          const roles = kc.tokenParsed?.realm_access?.roles || [];
+          if (!roles.includes('org-admin')) {
+            setAccessDenied(true);
+            return;
+          }
           setAuthenticated(true);
         } else {
           setError('Authentication failed. Please try again.');
@@ -59,6 +66,31 @@ export default function App() {
             className="mt-4 px-4 py-2 bg-indigo-600 text-white rounded hover:bg-indigo-700 transition-colors cursor-pointer"
           >
             Retry
+          </button>
+        </div>
+      </div>
+    );
+  }
+
+  if (accessDenied) {
+    const kc = getKeycloak();
+    return (
+      <div className="min-h-screen flex items-center justify-center bg-gray-50">
+        <div className="bg-white rounded-lg shadow p-8 max-w-md text-center">
+          <h1 className="text-xl font-semibold text-red-600 mb-2">
+            Access Denied
+          </h1>
+          <p className="text-gray-600 mb-1">
+            This application is restricted to organization administrators.
+          </p>
+          <p className="text-sm text-gray-400 mb-4">
+            Signed in as {kc.tokenParsed?.preferred_username || kc.tokenParsed?.email || 'unknown'}
+          </p>
+          <button
+            onClick={() => kc.logout()}
+            className="px-4 py-2 bg-indigo-600 text-white rounded hover:bg-indigo-700 transition-colors cursor-pointer"
+          >
+            Sign out
           </button>
         </div>
       </div>

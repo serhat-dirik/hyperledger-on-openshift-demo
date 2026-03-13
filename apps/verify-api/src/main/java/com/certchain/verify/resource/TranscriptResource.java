@@ -76,7 +76,8 @@ public class TranscriptResource {
     @APIResponse(responseCode = "404", description = "Certificate not found")
     public Response getCertificateDetail(@Parameter(description = "Certificate ID", required = true) @PathParam("certId") String certId) {
         try {
-            VerificationResult result = verificationService.verifyFull(certId);
+            String studentEmail = identity.getPrincipal().getName();
+            VerificationResult result = verificationService.verifyForStudent(certId, studentEmail);
             return Response.ok(result).build();
         } catch (CertificateNotFoundException e) {
             return Response.status(Response.Status.NOT_FOUND)

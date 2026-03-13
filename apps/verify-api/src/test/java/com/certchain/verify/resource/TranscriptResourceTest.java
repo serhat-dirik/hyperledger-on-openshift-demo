@@ -54,6 +54,7 @@ class TranscriptResourceTest {
     private static final String SINGLE_CERT_JSON = """
             {
                 "certID": "TP-2026-001",
+                "studentID": "student@techpulse.io",
                 "status": "ACTIVE",
                 "studentName": "Jane Doe",
                 "courseName": "Full-Stack Web Dev",
@@ -62,6 +63,22 @@ class TranscriptResourceTest {
                 "expiryDate": "2028-12-31",
                 "grade": "A",
                 "degree": "Professional Certificate",
+                "revokeReason": null
+            }
+            """;
+
+    private static final String OTHER_STUDENT_CERT_JSON = """
+            {
+                "certID": "DF-2026-010",
+                "studentID": "other@dataforge.io",
+                "status": "ACTIVE",
+                "studentName": "Bob Smith",
+                "courseName": "PostgreSQL Administration",
+                "orgName": "DataForge Institute",
+                "issueDate": "2026-02-20",
+                "expiryDate": "2029-02-20",
+                "grade": "B+",
+                "degree": "Associate Certificate",
                 "revokeReason": null
             }
             """;
@@ -123,6 +140,25 @@ class TranscriptResourceTest {
                 // Transcript detail includes private fields
                 .body("grade", equalTo("A"))
                 .body("degree", equalTo("Professional Certificate"));
+    }
+
+    @Test
+    @TestSecurity(user = "student@techpulse.io", roles = "user")
+    void testGetTranscriptDetailNonOwnerHidesPrivateFields() throws Exception {
+        when(fabricClient.evaluateTransaction(eq("VerifyCertificate"), eq("DF-2026-010")))
+                .thenReturn(OTHER_STUDENT_CERT_JSON.getBytes(StandardCharsets.UTF_8));
+
+        given()
+            .when()
+                .get("/api/v1/transcript/DF-2026-010")
+            .then()
+                .statusCode(200)
+                .body("certID", equalTo("DF-2026-010"))
+                .body("status", equalTo("VALID"))
+                .body("studentName", equalTo("Bob Smith"))
+                // Non-owner should NOT see private fields
+                .body("grade", nullValue())
+                .body("degree", nullValue());
     }
 
     @Test

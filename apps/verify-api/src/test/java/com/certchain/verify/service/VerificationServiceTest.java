@@ -232,6 +232,93 @@ class VerificationServiceTest {
     }
 
     @Test
+    void testVerifyForStudentOwnerIncludesPrivateFields() throws Exception {
+        String json = """
+                {
+                    "certID": "TP-2026-001",
+                    "studentID": "jane@example.com",
+                    "status": "ACTIVE",
+                    "studentName": "Jane Doe",
+                    "courseName": "Full-Stack Web Dev",
+                    "orgName": "TechPulse Academy",
+                    "issueDate": "2026-01-15",
+                    "expiryDate": "2028-12-31",
+                    "grade": "A",
+                    "degree": "Professional Certificate"
+                }
+                """;
+        when(fabricClient.evaluateTransaction(eq("VerifyCertificate"), eq("TP-2026-001")))
+                .thenReturn(json.getBytes(StandardCharsets.UTF_8));
+
+        VerificationResult result = verificationService.verifyForStudent("TP-2026-001", "jane@example.com");
+
+        assertEquals("TP-2026-001", result.certID());
+        assertEquals("VALID", result.status());
+        // Owner sees private fields
+        assertEquals("A", result.grade());
+        assertEquals("Professional Certificate", result.degree());
+    }
+
+    @Test
+    void testVerifyForStudentNonOwnerHidesPrivateFields() throws Exception {
+        String json = """
+                {
+                    "certID": "TP-2026-001",
+                    "studentID": "jane@example.com",
+                    "status": "ACTIVE",
+                    "studentName": "Jane Doe",
+                    "courseName": "Full-Stack Web Dev",
+                    "orgName": "TechPulse Academy",
+                    "issueDate": "2026-01-15",
+                    "expiryDate": "2028-12-31",
+                    "grade": "A",
+                    "degree": "Professional Certificate"
+                }
+                """;
+        when(fabricClient.evaluateTransaction(eq("VerifyCertificate"), eq("TP-2026-001")))
+                .thenReturn(json.getBytes(StandardCharsets.UTF_8));
+
+        VerificationResult result = verificationService.verifyForStudent("TP-2026-001", "other@example.com");
+
+        assertEquals("TP-2026-001", result.certID());
+        assertEquals("VALID", result.status());
+        assertEquals("Jane Doe", result.studentName());
+        // Non-owner does NOT see private fields
+        assertNull(result.grade());
+        assertNull(result.degree());
+    }
+
+    @Test
+    void testVerifyForStudentPrefixMatchIncludesPrivateFields() throws Exception {
+        // Tests backward compatibility: ledger has short-form studentID ("jane")
+        // but JWT provides full email ("jane@example.com")
+        String json = """
+                {
+                    "certID": "TP-2026-001",
+                    "studentID": "jane",
+                    "status": "ACTIVE",
+                    "studentName": "Jane Doe",
+                    "courseName": "Full-Stack Web Dev",
+                    "orgName": "TechPulse Academy",
+                    "issueDate": "2026-01-15",
+                    "expiryDate": "2028-12-31",
+                    "grade": "A",
+                    "degree": "Professional Certificate"
+                }
+                """;
+        when(fabricClient.evaluateTransaction(eq("VerifyCertificate"), eq("TP-2026-001")))
+                .thenReturn(json.getBytes(StandardCharsets.UTF_8));
+
+        VerificationResult result = verificationService.verifyForStudent("TP-2026-001", "jane@example.com");
+
+        assertEquals("TP-2026-001", result.certID());
+        assertEquals("VALID", result.status());
+        // Prefix match: "jane" == username part of "jane@example.com"
+        assertEquals("A", result.grade());
+        assertEquals("Professional Certificate", result.degree());
+    }
+
+    @Test
     void testUnknownStatusMapsToUnknown() throws Exception {
         String json = """
                 {

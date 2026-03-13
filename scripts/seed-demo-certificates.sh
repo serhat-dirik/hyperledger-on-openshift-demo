@@ -94,11 +94,11 @@ EXPIRY_DATE=$(date -v+2y +%Y-%m-%d 2>/dev/null || date -d "+2 years" +%Y-%m-%d 2
 
 TP_TOKEN=$(get_org_token "$KC_TECHPULSE" "techpulse" "admin@techpulse.demo" 2>/dev/null || echo "")
 if [ -n "$TP_TOKEN" ]; then
-    issue_cert "$API_TECHPULSE" "$TP_TOKEN" "TP-FSWD-001" "student01" "Alice Chen" "FSWD-101" "Full-Stack Web Dev" "$ISSUE_DATE" "$EXPIRY_DATE" "A" "Professional Certificate"
-    issue_cert "$API_TECHPULSE" "$TP_TOKEN" "TP-FSWD-002" "student02" "Bob Martinez" "FSWD-101" "Full-Stack Web Dev" "$ISSUE_DATE" "$EXPIRY_DATE" "B+" "Professional Certificate"
-    issue_cert "$API_TECHPULSE" "$TP_TOKEN" "TP-CNM-001" "student01" "Alice Chen" "CNM-201" "Cloud-Native Microservices" "$ISSUE_DATE" "$EXPIRY_DATE" "A+" "Advanced Certificate"
-    issue_cert "$API_TECHPULSE" "$TP_TOKEN" "TP-DSO-001" "student02" "Bob Martinez" "DSO-301" "DevSecOps Fundamentals" "$ISSUE_DATE" "$EXPIRY_DATE" "A-" "Professional Certificate"
-    issue_cert "$API_TECHPULSE" "$TP_TOKEN" "TP-CNM-002" "student01" "Alice Chen" "CNM-201" "Cloud-Native Microservices" "$ISSUE_DATE" "$EXPIRY_DATE" "A" "Advanced Certificate"
+    issue_cert "$API_TECHPULSE" "$TP_TOKEN" "TP-FSWD-001" "student01@techpulse.demo" "Alice Chen" "FSWD-101" "Full-Stack Web Dev" "$ISSUE_DATE" "$EXPIRY_DATE" "A" "Professional Certificate"
+    issue_cert "$API_TECHPULSE" "$TP_TOKEN" "TP-FSWD-002" "student02@techpulse.demo" "Bob Martinez" "FSWD-101" "Full-Stack Web Dev" "$ISSUE_DATE" "$EXPIRY_DATE" "B+" "Professional Certificate"
+    issue_cert "$API_TECHPULSE" "$TP_TOKEN" "TP-CNM-001" "student01@techpulse.demo" "Alice Chen" "CNM-201" "Cloud-Native Microservices" "$ISSUE_DATE" "$EXPIRY_DATE" "A+" "Advanced Certificate"
+    issue_cert "$API_TECHPULSE" "$TP_TOKEN" "TP-DSO-001" "student02@techpulse.demo" "Bob Martinez" "DSO-301" "DevSecOps Fundamentals" "$ISSUE_DATE" "$EXPIRY_DATE" "A-" "Professional Certificate"
+    issue_cert "$API_TECHPULSE" "$TP_TOKEN" "TP-CNM-002" "student01@techpulse.demo" "Alice Chen" "CNM-201" "Cloud-Native Microservices" "$ISSUE_DATE" "$EXPIRY_DATE" "A" "Advanced Certificate"
     echo "    5 certs issued for TechPulse."
 else
     echo "    WARNING: Could not get TechPulse admin token from $KC_TECHPULSE"
@@ -108,11 +108,11 @@ fi
 echo "[2/4] Issuing DataForge Institute certificates..."
 DF_TOKEN=$(get_org_token "$KC_DATAFORGE" "dataforge" "admin@dataforge.demo" 2>/dev/null || echo "")
 if [ -n "$DF_TOKEN" ]; then
-    issue_cert "$API_DATAFORGE" "$DF_TOKEN" "DF-PGA-001" "student03" "Carol Wang" "PGA-101" "PostgreSQL Administration" "$ISSUE_DATE" "$EXPIRY_DATE" "A" "Associate Certificate"
-    issue_cert "$API_DATAFORGE" "$DF_TOKEN" "DF-DPE-001" "student04" "David Kim" "DPE-201" "Data Pipeline Engineering" "$ISSUE_DATE" "$EXPIRY_DATE" "B" "Professional Certificate"
-    issue_cert "$API_DATAFORGE" "$DF_TOKEN" "DF-PGA-002" "student03" "Carol Wang" "PGA-101" "PostgreSQL Administration" "$ISSUE_DATE" "$EXPIRY_DATE" "A-" "Associate Certificate"
-    issue_cert "$API_DATAFORGE" "$DF_TOKEN" "DF-GDB-001" "student04" "David Kim" "GDB-301" "Graph Databases Masterclass" "$ISSUE_DATE" "$EXPIRY_DATE" "A+" "Advanced Certificate"
-    issue_cert "$API_DATAFORGE" "$DF_TOKEN" "DF-DPE-002" "student03" "Carol Wang" "DPE-201" "Data Pipeline Engineering" "$ISSUE_DATE" "$EXPIRY_DATE" "B+" "Professional Certificate"
+    issue_cert "$API_DATAFORGE" "$DF_TOKEN" "DF-PGA-001" "student03@dataforge.demo" "Carol Wang" "PGA-101" "PostgreSQL Administration" "$ISSUE_DATE" "$EXPIRY_DATE" "A" "Associate Certificate"
+    issue_cert "$API_DATAFORGE" "$DF_TOKEN" "DF-DPE-001" "student04@dataforge.demo" "David Kim" "DPE-201" "Data Pipeline Engineering" "$ISSUE_DATE" "$EXPIRY_DATE" "B" "Professional Certificate"
+    issue_cert "$API_DATAFORGE" "$DF_TOKEN" "DF-PGA-002" "student03@dataforge.demo" "Carol Wang" "PGA-101" "PostgreSQL Administration" "$ISSUE_DATE" "$EXPIRY_DATE" "A-" "Associate Certificate"
+    issue_cert "$API_DATAFORGE" "$DF_TOKEN" "DF-GDB-001" "student04@dataforge.demo" "David Kim" "GDB-301" "Graph Databases Masterclass" "$ISSUE_DATE" "$EXPIRY_DATE" "A+" "Advanced Certificate"
+    issue_cert "$API_DATAFORGE" "$DF_TOKEN" "DF-DPE-002" "student03@dataforge.demo" "Carol Wang" "DPE-201" "Data Pipeline Engineering" "$ISSUE_DATE" "$EXPIRY_DATE" "B+" "Professional Certificate"
     echo "    5 certs issued for DataForge."
 else
     echo "    WARNING: Could not get DataForge admin token from $KC_DATAFORGE"
@@ -122,11 +122,11 @@ fi
 echo "[3/4] Issuing NeuralPath Labs certificates..."
 NP_TOKEN=$(get_org_token "$KC_NEURALPATH" "neuralpath" "admin@neuralpath.demo" 2>/dev/null || echo "")
 if [ -n "$NP_TOKEN" ]; then
-    issue_cert "$API_NEURALPATH" "$NP_TOKEN" "NP-AML-001" "student05" "Eva Patel" "AML-101" "Applied Machine Learning" "$ISSUE_DATE" "$EXPIRY_DATE" "A" "Master Certificate"
-    issue_cert "$API_NEURALPATH" "$NP_TOKEN" "NP-LFT-001" "student06" "Frank Liu" "LFT-201" "LLM Fine-Tuning Workshop" "$ISSUE_DATE" "$EXPIRY_DATE" "A+" "Advanced Certificate"
-    issue_cert "$API_NEURALPATH" "$NP_TOKEN" "NP-CVP-001" "student05" "Eva Patel" "CVP-301" "Computer Vision Practicum" "$ISSUE_DATE" "$EXPIRY_DATE" "B+" "Master Certificate"
-    issue_cert "$API_NEURALPATH" "$NP_TOKEN" "NP-AML-002" "student06" "Frank Liu" "AML-101" "Applied Machine Learning" "$ISSUE_DATE" "$EXPIRY_DATE" "A-" "Master Certificate"
-    issue_cert "$API_NEURALPATH" "$NP_TOKEN" "NP-LFT-002" "student05" "Eva Patel" "LFT-201" "LLM Fine-Tuning Workshop" "$ISSUE_DATE" "$EXPIRY_DATE" "A" "Advanced Certificate"
+    issue_cert "$API_NEURALPATH" "$NP_TOKEN" "NP-AML-001" "student05@neuralpath.demo" "Eva Patel" "AML-101" "Applied Machine Learning" "$ISSUE_DATE" "$EXPIRY_DATE" "A" "Master Certificate"
+    issue_cert "$API_NEURALPATH" "$NP_TOKEN" "NP-LFT-001" "student06@neuralpath.demo" "Frank Liu" "LFT-201" "LLM Fine-Tuning Workshop" "$ISSUE_DATE" "$EXPIRY_DATE" "A+" "Advanced Certificate"
+    issue_cert "$API_NEURALPATH" "$NP_TOKEN" "NP-CVP-001" "student05@neuralpath.demo" "Eva Patel" "CVP-301" "Computer Vision Practicum" "$ISSUE_DATE" "$EXPIRY_DATE" "B+" "Master Certificate"
+    issue_cert "$API_NEURALPATH" "$NP_TOKEN" "NP-AML-002" "student06@neuralpath.demo" "Frank Liu" "AML-101" "Applied Machine Learning" "$ISSUE_DATE" "$EXPIRY_DATE" "A-" "Master Certificate"
+    issue_cert "$API_NEURALPATH" "$NP_TOKEN" "NP-LFT-002" "student05@neuralpath.demo" "Eva Patel" "LFT-201" "LLM Fine-Tuning Workshop" "$ISSUE_DATE" "$EXPIRY_DATE" "A" "Advanced Certificate"
     echo "    5 certs issued for NeuralPath."
 else
     echo "    WARNING: Could not get NeuralPath admin token from $KC_NEURALPATH"
