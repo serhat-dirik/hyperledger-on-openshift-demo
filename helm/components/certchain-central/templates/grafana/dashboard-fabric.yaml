@@ -22,59 +22,183 @@ spec:
       "links": [],
       "panels": [
         {
-          "title": "Peer — Proposals Received",
+          "title": "Ledger Height",
+          "description": "Current blockchain height per peer — peers in sync show the same value",
+          "type": "stat",
+          "gridPos": { "h": 4, "w": 6, "x": 0, "y": 0 },
+          "targets": [
+            {
+              "datasource": { "type": "prometheus", "uid": "prometheus" },
+              "expr": "ledger_blockchain_height{job=~\".*peer.*\"}",
+              "legendFormat": "{{`{{namespace}}`}}"
+            }
+          ],
+          "fieldConfig": {
+            "defaults": {
+              "unit": "short",
+              "color": { "mode": "fixed", "fixedColor": "blue" }
+            }
+          },
+          "options": { "graphMode": "none", "textMode": "value_and_name" }
+        },
+        {
+          "title": "BFT Leader",
+          "description": "SmartBFT leader node ID (rotates on view changes)",
+          "type": "stat",
+          "gridPos": { "h": 4, "w": 6, "x": 6, "y": 0 },
+          "targets": [
+            {
+              "datasource": { "type": "prometheus", "uid": "prometheus" },
+              "expr": "consensus_smartbft_view_leader_id{job=~\".*orderer.*\"}",
+              "legendFormat": "{{`{{pod}}`}}"
+            }
+          ],
+          "fieldConfig": {
+            "defaults": {
+              "unit": "short",
+              "color": { "mode": "fixed", "fixedColor": "purple" }
+            }
+          },
+          "options": { "graphMode": "none", "textMode": "value_and_name" }
+        },
+        {
+          "title": "Transactions Processed",
+          "description": "Total endorsed transactions across all peers",
+          "type": "stat",
+          "gridPos": { "h": 4, "w": 6, "x": 12, "y": 0 },
+          "targets": [
+            {
+              "datasource": { "type": "prometheus", "uid": "prometheus" },
+              "expr": "sum(endorser_proposals_received{job=~\".*peer.*\"})",
+              "legendFormat": "Total"
+            }
+          ],
+          "fieldConfig": {
+            "defaults": {
+              "unit": "short",
+              "color": { "mode": "fixed", "fixedColor": "green" }
+            }
+          },
+          "options": { "graphMode": "area" }
+        },
+        {
+          "title": "Gossip Known Peers",
+          "description": "Number of peers discovered via gossip protocol",
+          "type": "stat",
+          "gridPos": { "h": 4, "w": 6, "x": 18, "y": 0 },
+          "targets": [
+            {
+              "datasource": { "type": "prometheus", "uid": "prometheus" },
+              "expr": "gossip_membership_total_peers_known{job=~\".*peer.*\"}",
+              "legendFormat": "{{`{{namespace}}`}}"
+            }
+          ],
+          "fieldConfig": {
+            "defaults": {
+              "unit": "short",
+              "thresholds": {
+                "mode": "absolute",
+                "steps": [
+                  { "color": "red", "value": null },
+                  { "color": "yellow", "value": 1 },
+                  { "color": "green", "value": 2 }
+                ]
+              }
+            }
+          },
+          "options": { "graphMode": "none", "textMode": "value_and_name" }
+        },
+
+        {
+          "title": "Endorsement",
+          "type": "row",
+          "gridPos": { "h": 1, "w": 24, "x": 0, "y": 4 },
+          "collapsed": false
+        },
+        {
+          "title": "Proposals Received Rate",
+          "description": "Rate of incoming transaction proposals per peer",
           "type": "timeseries",
-          "gridPos": { "h": 8, "w": 12, "x": 0, "y": 0 },
+          "gridPos": { "h": 8, "w": 8, "x": 0, "y": 5 },
           "targets": [
             {
               "datasource": { "type": "prometheus", "uid": "prometheus" },
               "expr": "rate(endorser_proposals_received{job=~\".*peer.*\"}[5m])",
-              "legendFormat": "{{`{{namespace}}`}}/{{`{{pod}}`}}"
-            }
-          ],
-          "fieldConfig": {
-            "defaults": {
-              "unit": "ops",
-              "custom": { "drawStyle": "line", "fillOpacity": 10 }
-            }
-          }
-        },
-        {
-          "title": "Peer — Endorsement Failures",
-          "type": "timeseries",
-          "gridPos": { "h": 8, "w": 12, "x": 12, "y": 0 },
-          "targets": [
-            {
-              "datasource": { "type": "prometheus", "uid": "prometheus" },
-              "expr": "rate(endorser_proposal_failures{job=~\".*peer.*\"}[5m])",
-              "legendFormat": "{{`{{namespace}}`}}/{{`{{pod}}`}}"
-            }
-          ],
-          "fieldConfig": {
-            "defaults": {
-              "unit": "ops",
-              "custom": { "drawStyle": "line", "fillOpacity": 10 },
-              "color": { "mode": "fixed", "fixedColor": "red" }
-            }
-          }
-        },
-        {
-          "title": "Peer — Blocks Committed",
-          "type": "stat",
-          "gridPos": { "h": 4, "w": 6, "x": 0, "y": 8 },
-          "targets": [
-            {
-              "datasource": { "type": "prometheus", "uid": "prometheus" },
-              "expr": "ledger_blockstorage_commit_time_count{job=~\".*peer.*\"}",
               "legendFormat": "{{`{{namespace}}`}}"
             }
           ],
-          "fieldConfig": { "defaults": { "unit": "short" } }
+          "fieldConfig": {
+            "defaults": {
+              "unit": "ops",
+              "custom": { "drawStyle": "line", "fillOpacity": 10, "lineWidth": 2 }
+            }
+          }
         },
         {
-          "title": "Peer — Block Commit Latency (p99)",
+          "title": "Endorsement Duration (p99)",
+          "description": "99th percentile time to process and endorse a proposal",
           "type": "timeseries",
-          "gridPos": { "h": 8, "w": 12, "x": 0, "y": 12 },
+          "gridPos": { "h": 8, "w": 8, "x": 8, "y": 5 },
+          "targets": [
+            {
+              "datasource": { "type": "prometheus", "uid": "prometheus" },
+              "expr": "histogram_quantile(0.99, rate(endorser_proposal_duration_bucket{job=~\".*peer.*\"}[5m]))",
+              "legendFormat": "{{`{{namespace}}`}}"
+            }
+          ],
+          "fieldConfig": {
+            "defaults": {
+              "unit": "s",
+              "custom": { "drawStyle": "line", "fillOpacity": 10, "lineWidth": 2 }
+            }
+          }
+        },
+        {
+          "title": "Endorsement & ACL Failures",
+          "description": "Endorsement failures (red) and access control rejections (orange)",
+          "type": "timeseries",
+          "gridPos": { "h": 8, "w": 8, "x": 16, "y": 5 },
+          "targets": [
+            {
+              "datasource": { "type": "prometheus", "uid": "prometheus" },
+              "expr": "rate(endorser_endorsement_failures{job=~\".*peer.*\"}[5m])",
+              "legendFormat": "failures ({{`{{namespace}}`}})"
+            },
+            {
+              "datasource": { "type": "prometheus", "uid": "prometheus" },
+              "expr": "rate(endorser_proposal_acl_failures{job=~\".*peer.*\"}[5m])",
+              "legendFormat": "ACL ({{`{{namespace}}`}})"
+            }
+          ],
+          "fieldConfig": {
+            "defaults": {
+              "unit": "ops",
+              "custom": { "drawStyle": "line", "fillOpacity": 10, "lineWidth": 2 }
+            },
+            "overrides": [
+              {
+                "matcher": { "id": "byRegexp", "options": "failures.*" },
+                "properties": [{ "id": "color", "value": { "mode": "fixed", "fixedColor": "red" } }]
+              },
+              {
+                "matcher": { "id": "byRegexp", "options": "ACL.*" },
+                "properties": [{ "id": "color", "value": { "mode": "fixed", "fixedColor": "orange" } }]
+              }
+            ]
+          }
+        },
+
+        {
+          "title": "Ledger & State Database",
+          "type": "row",
+          "gridPos": { "h": 1, "w": 24, "x": 0, "y": 13 },
+          "collapsed": false
+        },
+        {
+          "title": "Block Commit Latency (p99)",
+          "description": "Time to persist a block to the ledger file system",
+          "type": "timeseries",
+          "gridPos": { "h": 8, "w": 8, "x": 0, "y": 14 },
           "targets": [
             {
               "datasource": { "type": "prometheus", "uid": "prometheus" },
@@ -85,63 +209,251 @@ spec:
           "fieldConfig": {
             "defaults": {
               "unit": "s",
-              "custom": { "drawStyle": "line", "fillOpacity": 10 }
+              "custom": { "drawStyle": "line", "fillOpacity": 10, "lineWidth": 2 }
             }
           }
         },
         {
-          "title": "Orderer — Blocks Cut",
+          "title": "State DB Commit Latency (p99)",
+          "description": "Time to update the CouchDB world state after a block commit",
           "type": "timeseries",
-          "gridPos": { "h": 8, "w": 12, "x": 12, "y": 12 },
+          "gridPos": { "h": 8, "w": 8, "x": 8, "y": 14 },
           "targets": [
             {
               "datasource": { "type": "prometheus", "uid": "prometheus" },
-              "expr": "rate(consensus_BFT_committed_block_number{job=~\".*orderer.*\"}[5m])",
-              "legendFormat": "{{`{{namespace}}`}}/{{`{{pod}}`}}"
-            }
-          ],
-          "fieldConfig": {
-            "defaults": {
-              "unit": "ops",
-              "custom": { "drawStyle": "line", "fillOpacity": 10 }
-            }
-          }
-        },
-        {
-          "title": "Orderer — Consensus Latency (p99)",
-          "type": "timeseries",
-          "gridPos": { "h": 8, "w": 12, "x": 0, "y": 20 },
-          "targets": [
-            {
-              "datasource": { "type": "prometheus", "uid": "prometheus" },
-              "expr": "histogram_quantile(0.99, rate(broadcast_enqueue_duration_bucket{job=~\".*orderer.*\"}[5m]))",
-              "legendFormat": "{{`{{namespace}}`}}/{{`{{pod}}`}}"
+              "expr": "histogram_quantile(0.99, rate(ledger_statedb_commit_time_bucket{job=~\".*peer.*\"}[5m]))",
+              "legendFormat": "{{`{{namespace}}`}}"
             }
           ],
           "fieldConfig": {
             "defaults": {
               "unit": "s",
-              "custom": { "drawStyle": "line", "fillOpacity": 10 }
+              "custom": { "drawStyle": "line", "fillOpacity": 10, "lineWidth": 2 }
             }
           }
         },
         {
-          "title": "Gossip — Known Peers",
-          "type": "stat",
-          "gridPos": { "h": 4, "w": 6, "x": 6, "y": 8 },
+          "title": "CouchDB Query Latency (p99)",
+          "description": "Time for CouchDB requests — impacts endorsement and verification speed",
+          "type": "timeseries",
+          "gridPos": { "h": 8, "w": 8, "x": 16, "y": 14 },
           "targets": [
             {
               "datasource": { "type": "prometheus", "uid": "prometheus" },
-              "expr": "gossip_membership_total_peers_known{job=~\".*peer.*\"}",
+              "expr": "histogram_quantile(0.99, rate(couchdb_processing_time_bucket{job=~\".*peer.*\"}[5m]))",
               "legendFormat": "{{`{{namespace}}`}}"
             }
           ],
-          "fieldConfig": { "defaults": { "unit": "short" } }
+          "fieldConfig": {
+            "defaults": {
+              "unit": "s",
+              "custom": { "drawStyle": "line", "fillOpacity": 10, "lineWidth": 2 }
+            }
+          }
+        },
+
+        {
+          "title": "SmartBFT Consensus (Orderers)",
+          "type": "row",
+          "gridPos": { "h": 1, "w": 24, "x": 0, "y": 22 },
+          "collapsed": false
         },
         {
-          "title": "gRPC Requests Received",
+          "title": "BFT Committed Block Number",
+          "description": "Latest committed block per orderer — orderers in sync show the same value",
           "type": "timeseries",
-          "gridPos": { "h": 8, "w": 12, "x": 12, "y": 20 },
+          "gridPos": { "h": 8, "w": 8, "x": 0, "y": 23 },
+          "targets": [
+            {
+              "datasource": { "type": "prometheus", "uid": "prometheus" },
+              "expr": "ledger_blockchain_height{job=~\".*orderer.*\"}",
+              "legendFormat": "{{`{{namespace}}`}}/{{`{{pod}}`}}"
+            }
+          ],
+          "fieldConfig": {
+            "defaults": {
+              "unit": "short",
+              "custom": { "drawStyle": "line", "fillOpacity": 5, "lineWidth": 2, "showPoints": "always", "pointSize": 5 }
+            }
+          }
+        },
+        {
+          "title": "SmartBFT Batch Processing Latency",
+          "description": "Time to process a batch of transactions through BFT consensus",
+          "type": "timeseries",
+          "gridPos": { "h": 8, "w": 8, "x": 8, "y": 23 },
+          "targets": [
+            {
+              "datasource": { "type": "prometheus", "uid": "prometheus" },
+              "expr": "histogram_quantile(0.99, rate(consensus_smartbft_view_latency_batch_processing_bucket{job=~\".*orderer.*\"}[5m]))",
+              "legendFormat": "p99 ({{`{{pod}}`}})"
+            },
+            {
+              "datasource": { "type": "prometheus", "uid": "prometheus" },
+              "expr": "histogram_quantile(0.5, rate(consensus_smartbft_view_latency_batch_processing_bucket{job=~\".*orderer.*\"}[5m]))",
+              "legendFormat": "p50 ({{`{{pod}}`}})"
+            }
+          ],
+          "fieldConfig": {
+            "defaults": {
+              "unit": "s",
+              "custom": { "drawStyle": "line", "fillOpacity": 10, "lineWidth": 2 }
+            }
+          }
+        },
+        {
+          "title": "SmartBFT Transactions per Batch",
+          "description": "Number of transactions per consensus batch — indicates throughput capacity",
+          "type": "timeseries",
+          "gridPos": { "h": 8, "w": 8, "x": 16, "y": 23 },
+          "targets": [
+            {
+              "datasource": { "type": "prometheus", "uid": "prometheus" },
+              "expr": "consensus_smartbft_view_count_txs_in_batch{job=~\".*orderer.*\"}",
+              "legendFormat": "{{`{{pod}}`}}"
+            }
+          ],
+          "fieldConfig": {
+            "defaults": {
+              "unit": "short",
+              "custom": { "drawStyle": "bars", "fillOpacity": 50, "lineWidth": 1 }
+            }
+          }
+        },
+        {
+          "title": "BFT View Decisions",
+          "description": "Number of consensus decisions per view — resets on view change",
+          "type": "stat",
+          "gridPos": { "h": 4, "w": 6, "x": 0, "y": 31 },
+          "targets": [
+            {
+              "datasource": { "type": "prometheus", "uid": "prometheus" },
+              "expr": "consensus_smartbft_view_decisions{job=~\".*orderer.*\"}",
+              "legendFormat": "{{`{{pod}}`}}"
+            }
+          ],
+          "fieldConfig": {
+            "defaults": {
+              "unit": "short",
+              "color": { "mode": "fixed", "fixedColor": "green" }
+            }
+          },
+          "options": { "graphMode": "area", "textMode": "value_and_name" }
+        },
+        {
+          "title": "BFT View Number",
+          "description": "Current consensus view — increments on leader changes",
+          "type": "stat",
+          "gridPos": { "h": 4, "w": 6, "x": 6, "y": 31 },
+          "targets": [
+            {
+              "datasource": { "type": "prometheus", "uid": "prometheus" },
+              "expr": "consensus_smartbft_view_number{job=~\".*orderer.*\"}",
+              "legendFormat": "{{`{{pod}}`}}"
+            }
+          ],
+          "fieldConfig": {
+            "defaults": {
+              "unit": "short",
+              "color": { "mode": "fixed", "fixedColor": "blue" }
+            }
+          },
+          "options": { "graphMode": "none", "textMode": "value_and_name" }
+        },
+        {
+          "title": "Request Pool Size",
+          "description": "Pending requests in the SmartBFT pool waiting for consensus",
+          "type": "timeseries",
+          "gridPos": { "h": 4, "w": 6, "x": 12, "y": 31 },
+          "targets": [
+            {
+              "datasource": { "type": "prometheus", "uid": "prometheus" },
+              "expr": "consensus_smartbft_pool_count_of_elements{job=~\".*orderer.*\"}",
+              "legendFormat": "{{`{{pod}}`}}"
+            }
+          ],
+          "fieldConfig": {
+            "defaults": {
+              "unit": "short",
+              "custom": { "drawStyle": "line", "fillOpacity": 20, "lineWidth": 1 }
+            }
+          }
+        },
+        {
+          "title": "Broadcast Enqueue Duration (p99)",
+          "description": "Time for transactions to enter the ordering queue",
+          "type": "timeseries",
+          "gridPos": { "h": 4, "w": 6, "x": 18, "y": 31 },
+          "targets": [
+            {
+              "datasource": { "type": "prometheus", "uid": "prometheus" },
+              "expr": "histogram_quantile(0.99, rate(broadcast_enqueue_duration_bucket{job=~\".*orderer.*\"}[5m]))",
+              "legendFormat": "{{`{{pod}}`}}"
+            }
+          ],
+          "fieldConfig": {
+            "defaults": {
+              "unit": "s",
+              "custom": { "drawStyle": "line", "fillOpacity": 10, "lineWidth": 1 }
+            }
+          }
+        },
+
+        {
+          "title": "Chaincode & gRPC",
+          "type": "row",
+          "gridPos": { "h": 1, "w": 24, "x": 0, "y": 35 },
+          "collapsed": false
+        },
+        {
+          "title": "Chaincode Shim Request Duration (p99)",
+          "description": "Time for chaincode shim requests — the smart contract execution layer",
+          "type": "timeseries",
+          "gridPos": { "h": 7, "w": 8, "x": 0, "y": 36 },
+          "targets": [
+            {
+              "datasource": { "type": "prometheus", "uid": "prometheus" },
+              "expr": "histogram_quantile(0.99, rate(chaincode_shim_request_duration_bucket{job=~\".*peer.*\"}[5m]))",
+              "legendFormat": "{{`{{namespace}}`}}"
+            }
+          ],
+          "fieldConfig": {
+            "defaults": {
+              "unit": "s",
+              "custom": { "drawStyle": "line", "fillOpacity": 10, "lineWidth": 2 }
+            }
+          }
+        },
+        {
+          "title": "Chaincode Launch Failures & Timeouts",
+          "description": "Chaincode initialization failures and execution timeouts",
+          "type": "timeseries",
+          "gridPos": { "h": 7, "w": 8, "x": 8, "y": 36 },
+          "targets": [
+            {
+              "datasource": { "type": "prometheus", "uid": "prometheus" },
+              "expr": "rate(chaincode_launch_failures{job=~\".*peer.*\"}[5m])",
+              "legendFormat": "launch fail ({{`{{namespace}}`}})"
+            },
+            {
+              "datasource": { "type": "prometheus", "uid": "prometheus" },
+              "expr": "rate(chaincode_execute_timeouts{job=~\".*peer.*\"}[5m])",
+              "legendFormat": "timeout ({{`{{namespace}}`}})"
+            }
+          ],
+          "fieldConfig": {
+            "defaults": {
+              "unit": "ops",
+              "custom": { "drawStyle": "line", "fillOpacity": 10, "lineWidth": 2 },
+              "color": { "mode": "fixed", "fixedColor": "red" }
+            }
+          }
+        },
+        {
+          "title": "gRPC Stream Requests",
+          "description": "gRPC streaming request rates across peers and orderers",
+          "type": "timeseries",
+          "gridPos": { "h": 7, "w": 8, "x": 16, "y": 36 },
           "targets": [
             {
               "datasource": { "type": "prometheus", "uid": "prometheus" },
@@ -152,13 +464,13 @@ spec:
           "fieldConfig": {
             "defaults": {
               "unit": "ops",
-              "custom": { "drawStyle": "line", "fillOpacity": 10 }
+              "custom": { "drawStyle": "line", "fillOpacity": 10, "lineWidth": 2 }
             }
           }
         }
       ],
       "schemaVersion": 39,
-      "tags": ["certchain", "fabric", "blockchain"],
+      "tags": ["certchain", "fabric", "blockchain", "smartbft"],
       "templating": { "list": [] },
       "time": { "from": "now-1h", "to": "now" },
       "timepicker": {},

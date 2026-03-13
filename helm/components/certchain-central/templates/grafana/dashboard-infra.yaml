@@ -22,71 +22,234 @@ spec:
       "links": [],
       "panels": [
         {
-          "title": "Pod CPU Usage",
-          "type": "timeseries",
-          "gridPos": { "h": 8, "w": 12, "x": 0, "y": 0 },
+          "title": "Total Pods",
+          "type": "stat",
+          "gridPos": { "h": 4, "w": 6, "x": 0, "y": 0 },
           "targets": [
             {
               "datasource": { "type": "prometheus", "uid": "prometheus" },
-              "expr": "sum by (namespace, pod) (rate(container_cpu_usage_seconds_total{namespace=~\"certchain.*\", container!=\"POD\", container!=\"\"}[5m]))",
+              "expr": "count(kube_pod_status_ready{namespace=~\"certchain.*\", condition=\"true\"} == 1)",
+              "legendFormat": "Ready"
+            }
+          ],
+          "fieldConfig": {
+            "defaults": {
+              "unit": "short",
+              "color": { "mode": "fixed", "fixedColor": "green" }
+            }
+          },
+          "options": { "graphMode": "none" }
+        },
+        {
+          "title": "Pods Not Ready",
+          "type": "stat",
+          "gridPos": { "h": 4, "w": 6, "x": 6, "y": 0 },
+          "targets": [
+            {
+              "datasource": { "type": "prometheus", "uid": "prometheus" },
+              "expr": "count(kube_pod_status_ready{namespace=~\"certchain.*\", condition=\"true\"} == 0) or vector(0)",
+              "legendFormat": "Not Ready"
+            }
+          ],
+          "fieldConfig": {
+            "defaults": {
+              "unit": "short",
+              "thresholds": {
+                "mode": "absolute",
+                "steps": [
+                  { "color": "green", "value": null },
+                  { "color": "red", "value": 1 }
+                ]
+              }
+            }
+          },
+          "options": { "graphMode": "none" }
+        },
+        {
+          "title": "Total Restarts",
+          "type": "stat",
+          "gridPos": { "h": 4, "w": 6, "x": 12, "y": 0 },
+          "targets": [
+            {
+              "datasource": { "type": "prometheus", "uid": "prometheus" },
+              "expr": "sum(kube_pod_container_status_restarts_total{namespace=~\"certchain.*\"}) or vector(0)",
+              "legendFormat": "Restarts"
+            }
+          ],
+          "fieldConfig": {
+            "defaults": {
+              "unit": "short",
+              "thresholds": {
+                "mode": "absolute",
+                "steps": [
+                  { "color": "green", "value": null },
+                  { "color": "yellow", "value": 1 },
+                  { "color": "red", "value": 10 }
+                ]
+              }
+            }
+          },
+          "options": { "graphMode": "area" }
+        },
+        {
+          "title": "Namespaces",
+          "type": "stat",
+          "gridPos": { "h": 4, "w": 6, "x": 18, "y": 0 },
+          "targets": [
+            {
+              "datasource": { "type": "prometheus", "uid": "prometheus" },
+              "expr": "count(count by (namespace) (kube_pod_info{namespace=~\"certchain.*\"}))",
+              "legendFormat": "Active"
+            }
+          ],
+          "fieldConfig": {
+            "defaults": {
+              "unit": "short",
+              "color": { "mode": "fixed", "fixedColor": "blue" }
+            }
+          },
+          "options": { "graphMode": "none" }
+        },
+
+        {
+          "title": "CPU & Memory — Blockchain Components",
+          "type": "row",
+          "gridPos": { "h": 1, "w": 24, "x": 0, "y": 4 },
+          "collapsed": false
+        },
+        {
+          "title": "CPU — Peers & Orderers",
+          "description": "CPU usage for Fabric peers and orderers — the blockchain backbone",
+          "type": "timeseries",
+          "gridPos": { "h": 8, "w": 12, "x": 0, "y": 5 },
+          "targets": [
+            {
+              "datasource": { "type": "prometheus", "uid": "prometheus" },
+              "expr": "sum by (namespace, pod) (rate(container_cpu_usage_seconds_total{namespace=~\"certchain.*\", pod=~\"peer.*|orderer.*\", container!=\"POD\", container!=\"\"}[5m]))",
               "legendFormat": "{{`{{namespace}}`}}/{{`{{pod}}`}}"
             }
           ],
           "fieldConfig": {
             "defaults": {
               "unit": "short",
-              "custom": { "drawStyle": "line", "fillOpacity": 10 }
+              "custom": { "drawStyle": "line", "fillOpacity": 15, "lineWidth": 2 }
             }
           }
         },
         {
-          "title": "Pod Memory Usage",
+          "title": "Memory — Peers & Orderers",
+          "description": "Working set memory for Fabric components",
           "type": "timeseries",
-          "gridPos": { "h": 8, "w": 12, "x": 12, "y": 0 },
+          "gridPos": { "h": 8, "w": 12, "x": 12, "y": 5 },
           "targets": [
             {
               "datasource": { "type": "prometheus", "uid": "prometheus" },
-              "expr": "sum by (namespace, pod) (container_memory_working_set_bytes{namespace=~\"certchain.*\", container!=\"POD\", container!=\"\"})",
+              "expr": "sum by (namespace, pod) (container_memory_working_set_bytes{namespace=~\"certchain.*\", pod=~\"peer.*|orderer.*\", container!=\"POD\", container!=\"\"})",
               "legendFormat": "{{`{{namespace}}`}}/{{`{{pod}}`}}"
             }
           ],
           "fieldConfig": {
             "defaults": {
               "unit": "bytes",
-              "custom": { "drawStyle": "line", "fillOpacity": 10 }
+              "custom": { "drawStyle": "line", "fillOpacity": 15, "lineWidth": 2 }
             }
           }
         },
+
         {
-          "title": "Pod Restart Count",
-          "type": "stat",
-          "gridPos": { "h": 4, "w": 24, "x": 0, "y": 8 },
+          "title": "CPU & Memory — Applications & Databases",
+          "type": "row",
+          "gridPos": { "h": 1, "w": 24, "x": 0, "y": 13 },
+          "collapsed": false
+        },
+        {
+          "title": "CPU — APIs & UIs",
+          "description": "CPU usage for Quarkus APIs, React UIs, and Keycloak",
+          "type": "timeseries",
+          "gridPos": { "h": 8, "w": 12, "x": 0, "y": 14 },
           "targets": [
             {
               "datasource": { "type": "prometheus", "uid": "prometheus" },
-              "expr": "sum by (namespace, pod) (kube_pod_container_status_restarts_total{namespace=~\"certchain.*\"}) > 0",
+              "expr": "sum by (namespace, pod) (rate(container_cpu_usage_seconds_total{namespace=~\"certchain.*\", pod=~\"cert-admin.*|verify.*|course-manager.*|cert-portal.*|keycloak.*\", container!=\"POD\", container!=\"\"}[5m]))",
               "legendFormat": "{{`{{namespace}}`}}/{{`{{pod}}`}}"
             }
           ],
           "fieldConfig": {
             "defaults": {
               "unit": "short",
-              "color": { "mode": "fixed", "fixedColor": "red" },
-              "thresholds": {
-                "mode": "absolute",
-                "steps": [
-                  { "color": "green", "value": null },
-                  { "color": "yellow", "value": 1 },
-                  { "color": "red", "value": 5 }
-                ]
-              }
+              "custom": { "drawStyle": "line", "fillOpacity": 15, "lineWidth": 2 }
             }
           }
         },
         {
+          "title": "Memory — APIs & UIs",
+          "description": "Working set memory for application components",
+          "type": "timeseries",
+          "gridPos": { "h": 8, "w": 12, "x": 12, "y": 14 },
+          "targets": [
+            {
+              "datasource": { "type": "prometheus", "uid": "prometheus" },
+              "expr": "sum by (namespace, pod) (container_memory_working_set_bytes{namespace=~\"certchain.*\", pod=~\"cert-admin.*|verify.*|course-manager.*|cert-portal.*|keycloak.*\", container!=\"POD\", container!=\"\"})",
+              "legendFormat": "{{`{{namespace}}`}}/{{`{{pod}}`}}"
+            }
+          ],
+          "fieldConfig": {
+            "defaults": {
+              "unit": "bytes",
+              "custom": { "drawStyle": "line", "fillOpacity": 15, "lineWidth": 2 }
+            }
+          }
+        },
+        {
+          "title": "CPU — Databases (CouchDB, Postgres)",
+          "description": "CPU usage for CouchDB state databases and PostgreSQL instances",
+          "type": "timeseries",
+          "gridPos": { "h": 8, "w": 12, "x": 0, "y": 22 },
+          "targets": [
+            {
+              "datasource": { "type": "prometheus", "uid": "prometheus" },
+              "expr": "sum by (namespace, pod) (rate(container_cpu_usage_seconds_total{namespace=~\"certchain.*\", pod=~\"couchdb.*|postgres.*\", container!=\"POD\", container!=\"\"}[5m]))",
+              "legendFormat": "{{`{{namespace}}`}}/{{`{{pod}}`}}"
+            }
+          ],
+          "fieldConfig": {
+            "defaults": {
+              "unit": "short",
+              "custom": { "drawStyle": "line", "fillOpacity": 15, "lineWidth": 2 }
+            }
+          }
+        },
+        {
+          "title": "Memory — Databases (CouchDB, Postgres)",
+          "description": "Working set memory for database components",
+          "type": "timeseries",
+          "gridPos": { "h": 8, "w": 12, "x": 12, "y": 22 },
+          "targets": [
+            {
+              "datasource": { "type": "prometheus", "uid": "prometheus" },
+              "expr": "sum by (namespace, pod) (container_memory_working_set_bytes{namespace=~\"certchain.*\", pod=~\"couchdb.*|postgres.*\", container!=\"POD\", container!=\"\"})",
+              "legendFormat": "{{`{{namespace}}`}}/{{`{{pod}}`}}"
+            }
+          ],
+          "fieldConfig": {
+            "defaults": {
+              "unit": "bytes",
+              "custom": { "drawStyle": "line", "fillOpacity": 15, "lineWidth": 2 }
+            }
+          }
+        },
+
+        {
+          "title": "Storage",
+          "type": "row",
+          "gridPos": { "h": 1, "w": 24, "x": 0, "y": 30 },
+          "collapsed": false
+        },
+        {
           "title": "PVC Usage (% full)",
+          "description": "Persistent volume usage — CouchDB and Postgres data volumes",
           "type": "gauge",
-          "gridPos": { "h": 6, "w": 12, "x": 0, "y": 12 },
+          "gridPos": { "h": 6, "w": 12, "x": 0, "y": 31 },
           "targets": [
             {
               "datasource": { "type": "prometheus", "uid": "prometheus" },
@@ -111,9 +274,73 @@ spec:
           }
         },
         {
-          "title": "Pods Not Ready",
+          "title": "PVC Used vs Capacity",
+          "description": "Absolute storage consumption per PVC",
+          "type": "bargauge",
+          "gridPos": { "h": 6, "w": 12, "x": 12, "y": 31 },
+          "targets": [
+            {
+              "datasource": { "type": "prometheus", "uid": "prometheus" },
+              "expr": "kubelet_volume_stats_used_bytes{namespace=~\"certchain.*\"}",
+              "legendFormat": "{{`{{namespace}}`}}/{{`{{persistentvolumeclaim}}`}}",
+              "instant": true
+            }
+          ],
+          "fieldConfig": {
+            "defaults": {
+              "unit": "bytes",
+              "thresholds": {
+                "mode": "absolute",
+                "steps": [
+                  { "color": "green", "value": null },
+                  { "color": "yellow", "value": 536870912 },
+                  { "color": "red", "value": 858993459 }
+                ]
+              }
+            }
+          },
+          "options": { "orientation": "horizontal", "displayMode": "gradient" }
+        },
+
+        {
+          "title": "Pod Health & Restarts",
+          "type": "row",
+          "gridPos": { "h": 1, "w": 24, "x": 0, "y": 37 },
+          "collapsed": false
+        },
+        {
+          "title": "Pod Restart Count (non-zero)",
+          "description": "Only shows pods that have restarted at least once — empty is good",
           "type": "table",
-          "gridPos": { "h": 6, "w": 12, "x": 12, "y": 12 },
+          "gridPos": { "h": 6, "w": 12, "x": 0, "y": 38 },
+          "targets": [
+            {
+              "datasource": { "type": "prometheus", "uid": "prometheus" },
+              "expr": "sum by (namespace, pod) (kube_pod_container_status_restarts_total{namespace=~\"certchain.*\"}) > 0",
+              "legendFormat": "",
+              "format": "table",
+              "instant": true
+            }
+          ],
+          "fieldConfig": {
+            "defaults": {
+              "unit": "short",
+              "thresholds": {
+                "mode": "absolute",
+                "steps": [
+                  { "color": "green", "value": null },
+                  { "color": "yellow", "value": 1 },
+                  { "color": "red", "value": 5 }
+                ]
+              }
+            }
+          }
+        },
+        {
+          "title": "Pods Not Ready",
+          "description": "Pods that are not in Ready state — should be empty during normal operation",
+          "type": "table",
+          "gridPos": { "h": 6, "w": 12, "x": 12, "y": 38 },
           "targets": [
             {
               "datasource": { "type": "prometheus", "uid": "prometheus" },
@@ -125,39 +352,48 @@ spec:
           ],
           "fieldConfig": { "defaults": { "unit": "short" } }
         },
+
         {
-          "title": "Network I/O — Receive",
+          "title": "Network",
+          "type": "row",
+          "gridPos": { "h": 1, "w": 24, "x": 0, "y": 44 },
+          "collapsed": false
+        },
+        {
+          "title": "Network Receive Rate",
+          "description": "Inbound network traffic per namespace — shows cross-namespace communication patterns",
           "type": "timeseries",
-          "gridPos": { "h": 8, "w": 12, "x": 0, "y": 18 },
+          "gridPos": { "h": 7, "w": 12, "x": 0, "y": 45 },
           "targets": [
             {
               "datasource": { "type": "prometheus", "uid": "prometheus" },
-              "expr": "sum by (namespace, pod) (rate(container_network_receive_bytes_total{namespace=~\"certchain.*\"}[5m]))",
-              "legendFormat": "{{`{{namespace}}`}}/{{`{{pod}}`}}"
+              "expr": "sum by (namespace) (rate(container_network_receive_bytes_total{namespace=~\"certchain.*\"}[5m]))",
+              "legendFormat": "{{`{{namespace}}`}}"
             }
           ],
           "fieldConfig": {
             "defaults": {
               "unit": "Bps",
-              "custom": { "drawStyle": "line", "fillOpacity": 10 }
+              "custom": { "drawStyle": "line", "fillOpacity": 20, "lineWidth": 2, "stacking": { "mode": "normal" } }
             }
           }
         },
         {
-          "title": "Network I/O — Transmit",
+          "title": "Network Transmit Rate",
+          "description": "Outbound network traffic per namespace",
           "type": "timeseries",
-          "gridPos": { "h": 8, "w": 12, "x": 12, "y": 18 },
+          "gridPos": { "h": 7, "w": 12, "x": 12, "y": 45 },
           "targets": [
             {
               "datasource": { "type": "prometheus", "uid": "prometheus" },
-              "expr": "sum by (namespace, pod) (rate(container_network_transmit_bytes_total{namespace=~\"certchain.*\"}[5m]))",
-              "legendFormat": "{{`{{namespace}}`}}/{{`{{pod}}`}}"
+              "expr": "sum by (namespace) (rate(container_network_transmit_bytes_total{namespace=~\"certchain.*\"}[5m]))",
+              "legendFormat": "{{`{{namespace}}`}}"
             }
           ],
           "fieldConfig": {
             "defaults": {
               "unit": "Bps",
-              "custom": { "drawStyle": "line", "fillOpacity": 10 }
+              "custom": { "drawStyle": "line", "fillOpacity": 20, "lineWidth": 2, "stacking": { "mode": "normal" } }
             }
           }
         }
