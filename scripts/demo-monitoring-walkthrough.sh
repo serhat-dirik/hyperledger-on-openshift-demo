@@ -151,7 +151,7 @@ echo ""
 
 # Use the seed script or direct API call
 CERT_ID="demo-mon-$(date +%s)"
-PAYLOAD="{\"certID\":\"${CERT_ID}\",\"studentID\":\"student-demo\",\"studentName\":\"Demo Student\",\"courseID\":\"DEMO-101\",\"courseName\":\"Monitoring Demo Course\",\"orgID\":\"TechPulseMSP\",\"orgName\":\"TechPulse Academy\",\"issueDate\":\"2026-01-01\",\"expiryDate\":\"2027-01-01\"}"
+PAYLOAD="{\"certID\":\"${CERT_ID}\",\"studentID\":\"demo-student@techpulse.demo\",\"studentName\":\"Demo Student\",\"courseID\":\"DEMO-101\",\"courseName\":\"Monitoring Demo Course\",\"issueDate\":\"2026-01-01\",\"expiryDate\":\"2027-01-01\"}"
 
 # Get a token from Keycloak for cert-admin-api
 KC_ROUTE="https://keycloak-certchain-techpulse.${DOMAIN_SUFFIX}"
@@ -162,7 +162,7 @@ TOKEN=$(curl -sk "${KC_ROUTE}/realms/techpulse/protocol/openid-connect/token" \
 if [ -n "$TOKEN" ] && [ "$TOKEN" != "" ]; then
     echo "  Issuing certificate: $CERT_ID"
     HTTP_CODE=$(curl -sk -o /dev/null -w "%{http_code}" \
-        -X POST "${ADMIN_ROUTE}/api/certificates" \
+        -X POST "${ADMIN_ROUTE}/api/v1/certificates" \
         -H "Authorization: Bearer $TOKEN" \
         -H "Content-Type: application/json" \
         -d "$PAYLOAD" 2>/dev/null) || HTTP_CODE="error"

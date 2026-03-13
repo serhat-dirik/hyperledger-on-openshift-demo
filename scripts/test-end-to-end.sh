@@ -202,7 +202,7 @@ for i in 0 1 2; do
         -H "Content-Type: application/json" \
         -d "{
             \"certID\": \"$CERT_ID\",
-            \"studentID\": \"e2e-student-$i\",
+            \"studentID\": \"e2e-student-$i@${org}.demo\",
             \"studentName\": \"E2E Student $org\",
             \"courseID\": \"$COURSE_ID\",
             \"courseName\": \"$COURSE_NAME\",
@@ -342,20 +342,92 @@ else
     fail "QR code endpoint returned HTTP $HTTP"
 fi
 
-# Transcript endpoint without auth should fail (401/403) or not exist yet (404)
+# Transcript endpoint without auth should fail (401/403)
 HTTP=$(curl -sS -k $CURL_OPTS -o /dev/null -w "%{http_code}" "$VERIFY_API/api/v1/transcript" 2>/dev/null)
 if [ "$HTTP" = "401" ] || [ "$HTTP" = "403" ]; then
     pass "Transcript endpoint requires authentication (HTTP $HTTP)"
-elif [ "$HTTP" = "404" ]; then
-    pass "Transcript endpoint not yet deployed (HTTP 404 — Phase 6b)"
 else
     fail "Transcript endpoint accessible without auth (HTTP $HTTP)"
 fi
 
 # ============================================================================
-# Test 8: Central KC identity brokering (discovery only)
+# Test 8: Admin role enforcement (students blocked from course-manager-ui API)
 # ============================================================================
-section "8. Central KC Identity Brokering"
+section "8. Admin Role Enforcement"
+
+# Authenticate as a student
+STUDENT_TOKENS=()
+for i in 0 1 2; do
+    org="${ORG_KEYS[$i]}"
+    kc_url="${ORG_KC_URLS[$i]}"
+    realm="${ORG_KC_REALMS[$i]}"
+    student_users=("student01@techpulse.demo" "student03@dataforge.demo" "student05@neuralpath.demo")
+    STOK=$(get_org_token "$kc_url" "$realm" "course-manager-ui" "${student_users[$i]}" "student")
+    STUDENT_TOKENS+=("$STOK")
+    if [ -n "$STOK" ]; then
+        # Student should NOT be able to access cert-admin-api endpoints
+        api_url="${ORG_API_URLS[$i]}"
+        HTTP=$(curl -sS -k $CURL_OPTS -o /dev/null -w "%{http_code}" \
+            -H "Authorization: Bearer $STOK" \
+            "$api_url/api/v1/dashboard/stats" 2>/dev/null)
+        if [ "$HTTP" = "401" ] || [ "$HTTP" = "403" ]; then
+            pass "$org — student blocked from cert-admin-api (HTTP $HTTP)"
+        else
+            fail "$org — student accessed cert-admin-api (HTTP $HTTP) — role enforcement missing!"
+        fi
+    else
+        info "$org — could not get student token (student user may not exist)"
+    fi
+done
+
+# ============================================================================
+# Test 9: Certificate ownership privacy (grade/degree visibility)
+# ============================================================================
+section "9. Certificate Ownership Privacy"
+
+# Get a student token from central KC for transcript access
+CENTRAL_STUDENT_TOKEN=$(curl -sS -k $CURL_OPTS \
+    "$KC_CENTRAL/realms/certchain/protocol/openid-connect/token" \
+    -d "client_id=cert-portal" \
+    -d "username=student01@techpulse.demo" \
+    -d "password=student" \
+    -d "grant_type=password" 2>/dev/null | \
+    python3 -c "import sys,json; print(json.load(sys.stdin).get('access_token',''))" 2>/dev/null || echo "")
+
+if [ -n "$CENTRAL_STUDENT_TOKEN" ] && [ "$CENTRAL_STUDENT_TOKEN" != "" ]; then
+    pass "Central KC student authentication (student01@techpulse.demo)"
+
+    # Student's own cert — should include grade/degree
+    OWN_CERT=$(curl -sS -k $CURL_OPTS \
+        -H "Authorization: Bearer $CENTRAL_STUDENT_TOKEN" \
+        "$VERIFY_API/api/v1/transcript/TP-FSWD-001" 2>/dev/null)
+    OWN_GRADE=$(echo "$OWN_CERT" | python3 -c "import sys,json; d=json.load(sys.stdin); print(d.get('grade','') or '')" 2>/dev/null || echo "")
+
+    if [ -n "$OWN_GRADE" ]; then
+        pass "Owner sees private fields on own cert (grade: $OWN_GRADE)"
+    else
+        fail "Owner cannot see private fields on own cert (grade missing)"
+    fi
+
+    # Another student's cert — should NOT include grade/degree
+    OTHER_CERT=$(curl -sS -k $CURL_OPTS \
+        -H "Authorization: Bearer $CENTRAL_STUDENT_TOKEN" \
+        "$VERIFY_API/api/v1/transcript/DF-PGA-001" 2>/dev/null)
+    OTHER_GRADE=$(echo "$OTHER_CERT" | python3 -c "import sys,json; d=json.load(sys.stdin); print(d.get('grade','') or '')" 2>/dev/null || echo "")
+
+    if [ -z "$OTHER_GRADE" ]; then
+        pass "Non-owner cannot see private fields on other's cert"
+    else
+        fail "Non-owner sees private fields on other's cert (grade: $OTHER_GRADE) — privacy breach!"
+    fi
+else
+    info "Central KC student auth failed — skipping privacy tests (identity brokering may not be configured)"
+fi
+
+# ============================================================================
+# Test 10: Central KC identity brokering (discovery only)
+# ============================================================================
+section "10. Central KC Identity Brokering"
 
 # Verify central KC has identity providers configured
 IDP_JSON=$(curl -sS -k $CURL_OPTS "$KC_CENTRAL/realms/certchain/.well-known/openid-configuration" 2>/dev/null)

@@ -76,12 +76,14 @@ echo "      → Issues a certificate via TechPulse course-manager-ui"
 echo ""
 echo "    ${BOLD}Persona 2: Employer (Anonymous)${NC}"
 echo "      → Visits CertChain Portal (no login)"
-echo "      → Verifies cert — sees basic info (valid/revoked, name, course)"
+echo "      → Verifies cert — sees public info only (status, name, course, org)"
+echo "      → Does NOT see private fields (grade, degree)"
 echo ""
 echo "    ${BOLD}Persona 3: Student (Authenticated via Identity Brokering)${NC}"
 echo "      → Logs into CertChain Portal → enters email"
 echo "      → Central KC routes to TechPulse KC (email domain matching)"
-echo "      → Sees full transcript with all certs and course details"
+echo "      → Sees full transcript with grades and degree info"
+echo "      → Private fields visible ONLY on their own certificates"
 echo ""
 echo -e "  ${BOLD}URLs:${NC}"
 echo "    TechPulse Course Manager:  $ADMINUI_TECHPULSE"
@@ -170,12 +172,14 @@ HTTP=$(curl -sS -k -X POST "$API_TECHPULSE/api/v1/certificates" \
     -H "Content-Type: application/json" \
     -d "{
         \"certID\": \"$CERT_ID\",
-        \"studentID\": \"student01\",
+        \"studentID\": \"student01@techpulse.demo\",
         \"studentName\": \"Jane Doe\",
         \"courseID\": \"FSWD-101\",
         \"courseName\": \"Full-Stack Web Dev\",
         \"issueDate\": \"$ISSUE_DATE\",
-        \"expiryDate\": \"2028-12-31\"
+        \"expiryDate\": \"2028-12-31\",
+        \"grade\": \"A\",
+        \"degree\": \"Professional Certificate\"
     }" -o /tmp/certchain-demo-issue.json -w "%{http_code}" 2>/dev/null)
 
 if [ "$HTTP" = "201" ] || [ "$HTTP" = "200" ]; then
@@ -205,9 +209,12 @@ echo ""
 echo "  Portal: $CERT_PORTAL/result/$CERT_ID"
 echo "  API:    GET $VERIFY_API/api/v1/verify/$CERT_ID"
 echo ""
-echo "  The employer sees basic info only:"
+echo "  The employer sees PUBLIC info only:"
 echo "    • Valid/Revoked status"
 echo "    • Student name, course name, issuing org, dates"
+echo ""
+echo "  The employer does NOT see PRIVATE fields:"
+echo "    • Grade, degree type — only visible to the certificate owner"
 echo ""
 
 sleep 2
@@ -244,9 +251,13 @@ echo "    7. Redirect back → Central KC JIT-creates user under TechPulse Org"
 echo "    8. Student is now logged in with a central KC token"
 echo ""
 echo "  After login, the student sees a 'My Transcript' tab with:"
-echo "    • All certificates across all orgs"
-echo "    • Detailed course info, grades, graduation details"
-echo "    • Downloadable/shareable transcript"
+echo "    • All certificates issued to them across all orgs"
+echo "    • Private fields visible: grade, degree (only on THEIR OWN certs)"
+echo ""
+echo "  ${BOLD}Privacy enforcement:${NC}"
+echo "    • Verifying someone else's cert → public data only (no grade/degree)"
+echo "    • Verifying your own cert → full data including grade and degree"
+echo "    • Admin (course-manager-ui) → full data for all org certificates"
 echo ""
 echo "  ${BOLD}Try it:${NC} $CERT_PORTAL → Login → student01@techpulse.demo / student"
 pause
@@ -321,6 +332,8 @@ echo "    • Certificates are anchored to Hyperledger Fabric (immutable)"
 echo "    • CertChain Portal serves both anonymous and authenticated users"
 echo "    • Identity brokering routes students to their org's KC automatically"
 echo "    • Revocation is permanent and auditable across all orgs"
+echo "    • Privacy: grade/degree visible only to certificate owner (not public)"
+echo "    • Admin apps enforce org-admin role (students see 'Access Denied')"
 echo ""
 echo "  Try the UIs:"
 echo "    TechPulse Course Manager:  $ADMINUI_TECHPULSE"

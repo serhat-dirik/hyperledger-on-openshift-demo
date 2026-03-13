@@ -316,7 +316,7 @@ if [ -n "$TOKEN" ] && [ "$TOKEN" != "" ]; then
         -H "Content-Type: application/json" \
         -d "{
             \"certID\": \"$E2E_CERT_ID\",
-            \"studentID\": \"e2e-student\",
+            \"studentID\": \"e2e-student@techpulse.demo\",
             \"studentName\": \"E2E Test Student\",
             \"courseID\": \"E2E-101\",
             \"courseName\": \"E2E Validation Course\",
@@ -380,6 +380,27 @@ if [ -n "$TOKEN" ] && [ "$TOKEN" != "" ]; then
         record_skip "Cross-org verification (seeded certs not found — seed script may not have run)"
     else
         record_fail "Cross-org verification (status: $CROSS_STATUS, expected ACTIVE)"
+    fi
+
+    # Transcript endpoint requires auth
+    echo "  Testing transcript endpoint auth..."
+    TRANSCRIPT_HTTP=$(curl -sS -k -o /dev/null -w "%{http_code}" --connect-timeout 10 \
+        "https://verify-api-certchain.${DOMAIN_SUFFIX}/api/v1/transcript" 2>/dev/null || echo "000")
+    if [ "$TRANSCRIPT_HTTP" = "401" ] || [ "$TRANSCRIPT_HTTP" = "403" ]; then
+        record_pass "Transcript endpoint requires authentication (HTTP $TRANSCRIPT_HTTP)"
+    else
+        record_fail "Transcript endpoint accessible without auth (HTTP $TRANSCRIPT_HTTP)"
+    fi
+
+    # Public verification hides private fields (grade/degree)
+    echo "  Testing public verification privacy..."
+    PUB_GRADE=$(echo "$CROSS_RESULT" | python3 -c "import sys,json; d=json.load(sys.stdin); print(d.get('grade','') or '')" 2>/dev/null || echo "")
+    if [ -z "$PUB_GRADE" ]; then
+        record_pass "Public verification hides private fields (grade not exposed)"
+    elif [ "$CROSS_STATUS" = "NOT_FOUND" ] || [ "$CROSS_STATUS" = "UNKNOWN" ]; then
+        record_skip "Public privacy check (seeded certs not found)"
+    else
+        record_fail "Public verification exposes private fields (grade: $PUB_GRADE)"
     fi
 fi
 

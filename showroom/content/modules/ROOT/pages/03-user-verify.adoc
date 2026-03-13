@@ -13,12 +13,14 @@ This is the public-facing verification interface. Anyone (employers, universitie
 . Paste the *Certificate ID* you copied in the previous section into the search field.
 . Click *Verify*.
 . The portal queries the `verify-api`, which reads directly from the blockchain ledger.
-. You should see the certificate details:
+. You should see the *public* certificate details:
 ** Student name
 ** Course name
 ** Issuing organization
-** Issue date
-** Blockchain transaction ID
+** Issue and expiry dates
+** Status (VALID / REVOKED / EXPIRED)
+
+NOTE: As an anonymous user, you will *not* see the grade or degree fields. These private fields are only visible to the certificate owner when logged in.
 
 == Step 3: Try an Invalid ID
 
@@ -39,3 +41,29 @@ The verification flow:
 ====
 Verification is a read-only operation — it does not create a new blockchain transaction. This makes it fast and free of ordering/consensus overhead.
 ====
+
+== Step 4: Student Login — View Full Transcript
+
+As a student, you can log in to see your full transcript including private fields like grade and degree.
+
+. On the Cert Portal, click *Login* (top-right).
+. You are redirected to the *Central Keycloak* login page.
+. Enter the student email: `student01@techpulse.demo`
+. Keycloak detects the `@techpulse.demo` domain and auto-redirects to *TechPulse Keycloak* (no manual IDP selection).
+. Enter password: `student`
+. After login, click *My Transcript*.
+. You now see all your certificates — including *grade* and *degree* fields on your own certificates.
+
+=== Privacy Enforcement
+
+[cols="1,2"]
+|===
+| Scenario | What you see
+
+| Anonymous verification | Public info only (status, name, course, org, dates)
+| Logged in — your own cert | Full details including grade and degree
+| Logged in — someone else's cert | Public info only (grade/degree hidden)
+| Admin (Course Manager) | Full details for all org certificates
+|===
+
+This privacy enforcement is applied server-side by the `verify-api`. The JWT email claim is matched against the certificate's `studentID` to determine ownership.

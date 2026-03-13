@@ -24,8 +24,8 @@ if [ -z "${DOMAIN_SUFFIX:-}" ]; then
 fi
 
 VERIFY_API="https://verify-api-certchain.${DOMAIN_SUFFIX}"
-VERIFY_API_TP="https://verify-api-techpulse.${DOMAIN_SUFFIX}"
-CERT_PORTAL_TP="https://cert-portal-techpulse.${DOMAIN_SUFFIX}"
+VERIFY_API_TP="https://verify-api-certchain-techpulse.${DOMAIN_SUFFIX}"
+CERT_PORTAL_TP="https://cert-portal-certchain-techpulse.${DOMAIN_SUFFIX}"
 
 GREEN='\033[0;32m'
 RED='\033[0;31m'

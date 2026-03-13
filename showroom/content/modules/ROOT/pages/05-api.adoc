@@ -9,11 +9,11 @@ First, obtain a Keycloak token for the TechPulse organization:
 [source,bash,subs="attributes"]
 ----
 TOKEN=$(curl -sk -X POST \
-  "{techpulse_keycloak_url}/realms/certchain/protocol/openid-connect/token" \
+  "{techpulse_keycloak_url}/realms/techpulse/protocol/openid-connect/token" \
   -d "grant_type=password" \
-  -d "client_id=cert-admin" \
-  -d "username=admin" \
-  -d "password=admin" | jq -r '.access_token')
+  -d "client_id=course-manager-ui" \
+  -d "username=admin@techpulse.demo" \
+  -d "password=admin" | python3 -c "import sys,json; print(json.load(sys.stdin)['access_token'])")
 echo "Token: ${TOKEN:0:20}..."
 ----
 
@@ -23,48 +23,115 @@ Submit a certificate issuance request to the cert-admin-api:
 
 [source,bash,subs="attributes"]
 ----
-CERT_ID=$(curl -sk -X POST \
-  "{techpulse_course_manager_url}/api/certificates" \
+curl -sk -X POST \
+  "{techpulse_cert_admin_api_url}/api/v1/certificates" \
   -H "Authorization: Bearer $TOKEN" \
   -H "Content-Type: application/json" \
   -d '{
-    "studentName": "API Test Student",
-    "courseName": "Kubernetes Fundamentals",
-    "issueDate": "2026-03-09"
-  }' | jq -r '.certificateId')
-echo "Certificate ID: $CERT_ID"
+    "certID": "API-TEST-001",
+    "studentID": "student01@techpulse.demo",
+    "studentName": "Jane Doe",
+    "courseID": "FSWD-101",
+    "courseName": "Full-Stack Web Dev",
+    "issueDate": "2026-03-01",
+    "expiryDate": "2028-12-31",
+    "grade": "A",
+    "degree": "Professional Certificate"
+  }' | python3 -m json.tool
 ----
 
-== Verify a Certificate
+== Verify a Certificate (Public)
 
-Query the public verify-api (no authentication needed):
+Query the public verify-api — no authentication needed:
 
 [source,bash,subs="attributes"]
 ----
-curl -sk "{cert_portal_url}/api/verify/$CERT_ID" | jq .
+curl -sk "{verify_api_url}/api/v1/verify/API-TEST-001" | python3 -m json.tool
 ----
 
-Expected output includes the student name, course name, issuing organization, and blockchain transaction ID.
+NOTE: The public response includes status, student name, course, org, and dates — but *not* grade or degree. Private fields are only visible to the certificate owner.
 
-== List Certificates
+== View Student Transcript (Authenticated)
+
+Get a student token from the central Keycloak and query the transcript endpoint:
+
+[source,bash,subs="attributes"]
+----
+STUDENT_TOKEN=$(curl -sk -X POST \
+  "{central_keycloak_url}/realms/certchain/protocol/openid-connect/token" \
+  -d "grant_type=password" \
+  -d "client_id=cert-portal" \
+  -d "username=student01@techpulse.demo" \
+  -d "password=student" | python3 -c "import sys,json; print(json.load(sys.stdin)['access_token'])")
+
+# View all certificates for this student (includes grade/degree on owned certs)
+curl -sk -H "Authorization: Bearer $STUDENT_TOKEN" \
+  "{verify_api_url}/api/v1/transcript" | python3 -m json.tool
+
+# View a single certificate (grade/degree visible only if you own it)
+curl -sk -H "Authorization: Bearer $STUDENT_TOKEN" \
+  "{verify_api_url}/api/v1/transcript/API-TEST-001" | python3 -m json.tool
+----
+
+== List Certificates (Admin)
 
 List all certificates issued by TechPulse:
 
 [source,bash,subs="attributes"]
 ----
 curl -sk \
-  "{techpulse_course_manager_url}/api/certificates" \
-  -H "Authorization: Bearer $TOKEN" | jq .
+  "{techpulse_cert_admin_api_url}/api/v1/certificates" \
+  -H "Authorization: Bearer $TOKEN" | python3 -m json.tool
+----
+
+== Update a Certificate
+
+Update mutable fields on an existing certificate:
+
+[source,bash,subs="attributes"]
+----
+curl -sk -X PUT \
+  "{techpulse_cert_admin_api_url}/api/v1/certificates/API-TEST-001" \
+  -H "Authorization: Bearer $TOKEN" \
+  -H "Content-Type: application/json" \
+  -d '{
+    "grade": "A+",
+    "expiryDate": "2029-12-31"
+  }' | python3 -m json.tool
+----
+
+== Revoke a Certificate
+
+[source,bash,subs="attributes"]
+----
+curl -sk -X PUT \
+  "{techpulse_cert_admin_api_url}/api/v1/certificates/API-TEST-001/revoke" \
+  -H "Authorization: Bearer $TOKEN" \
+  -H "Content-Type: application/json" \
+  -d '{"reason": "Demo revocation test"}' | python3 -m json.tool
 ----
 
 == Verify a Non-Existent Certificate
 
 [source,bash,subs="attributes"]
 ----
-curl -sk "{cert_portal_url}/api/verify/does-not-exist" | jq .
+curl -sk "{verify_api_url}/api/v1/verify/does-not-exist" | python3 -m json.tool
 ----
 
 This should return a 404 response indicating the certificate was not found on the blockchain.
+
+== Admin Role Enforcement
+
+Try accessing the cert-admin-api with a student token — it should be rejected:
+
+[source,bash,subs="attributes"]
+----
+curl -sk -o /dev/null -w "HTTP %{http_code}" \
+  "{techpulse_cert_admin_api_url}/api/v1/certificates" \
+  -H "Authorization: Bearer $STUDENT_TOKEN"
+----
+
+Expected: HTTP 401 or 403 — students cannot access admin endpoints.
 
 == Next Steps
 

@@ -12,6 +12,8 @@ This project demonstrates how to deploy and operate a [Hyperledger Fabric](https
 - **Hyperledger Fabric 3.1** multi-org network with 4 BFT orderers, 3 peers, and CouchDB state databases
 - **Per-org namespace isolation** — each organization gets its own Keycloak, APIs, UI, and blockchain peer
 - **Identity brokering** — students log in once and are auto-routed to their institute's identity provider
+- **Certificate ownership privacy** — grade and degree visible only to the certificate owner; public verification shows status and basic info only
+- **Role-based access control** — admin dashboards enforce `org-admin` role; students see "Access Denied"
 - **GitOps deployment** — Helm App-of-Apps pattern deployed via ArgoCD (RHDP-ready)
 - **Observability** — Prometheus metrics from Fabric and Quarkus, Grafana dashboards
 - **Resilience** — pod self-healing, multi-org isolation, blockchain decentralization
@@ -30,9 +32,9 @@ Three types of users interact with the system:
 
 | Who | What they do | Login required? |
 |---|---|---|
-| **Registrar** (org staff) | Issues and revokes certificates via a branded dashboard | Yes — org-specific login |
-| **Employer** | Verifies a certificate by entering its ID or scanning a QR code | No — fully anonymous |
-| **Student** | Views their full transcript across all institutes | Yes — auto-routed to their institute's login |
+| **Registrar** (org staff) | Issues and revokes certificates via a branded dashboard (requires `org-admin` role) | Yes — org-specific login |
+| **Employer** | Verifies a certificate by entering its ID or scanning a QR code (sees public info only — no grade/degree) | No — fully anonymous |
+| **Student** | Views their full transcript across all institutes (sees grade/degree only on their own certificates) | Yes — auto-routed to their institute's login |
 
 ### The Flow
 
@@ -282,7 +284,7 @@ Running 3 organizations with 20+ microservices requires container orchestration.
 
 ### ArgoCD (GitOps)
 
-With 40+ Kubernetes resources across 4 namespaces, manual `oc apply` is error-prone. ArgoCD watches the Git repository and automatically keeps the cluster in sync with the declared Helm charts. The GitOps layout uses the **App-of-Apps** pattern: a root Helm chart (`helm/`) generates 4 ArgoCD Application CRs — one for central services and one per organization. Each Application points to a component sub-chart under `helm/components/`. The RHDP (Red Hat Demo Platform) injects the cluster domain and API URL at order time, and a `UserInfo` ConfigMap passes service URLs back to the platform.
+With 40+ Kubernetes resources across 5 namespaces, manual `oc apply` is error-prone. ArgoCD watches the Git repository and automatically keeps the cluster in sync with the declared Helm charts. The GitOps layout uses the **App-of-Apps** pattern: a root Helm chart (`helm/`) generates 5 ArgoCD Application CRs — one for central services, one per organization, and one for the Showroom lab guide. Each Application points to a component sub-chart under `helm/components/`. The RHDP (Red Hat Demo Platform) injects the cluster domain and API URL at order time, and a `UserInfo` ConfigMap passes service URLs back to the platform.
 
 ### API Gateway (Production Advisory)
 
@@ -299,22 +301,27 @@ helm/                              ← Root App-of-Apps chart (ArgoCD entry poin
 ├── Chart.yaml
 ├── values.yaml                    ← All config: deployer, gitops, org identities
 ├── templates/
-│   ├── applications.yaml          ← Generates 4 ArgoCD Application CRs
+│   ├── applications.yaml          ← Generates 5 ArgoCD Application CRs
 │   └── userinfo.yaml              ← RHDP UserInfo ConfigMap
 └── components/
     ├── certchain-central/         ← Central services Helm chart
     │   ├── templates/             ← Fabric CA, orderer0, Keycloak, verify-api, cert-portal, Grafana
     │   └── values.yaml
-    └── certchain-org/             ← Per-org services Helm chart (deployed 3x)
-        ├── templates/             ← peer, orderer, CouchDB, Keycloak, cert-admin-api, course-manager-ui
-        ├── values.yaml
-        └── values-{org}.yaml      ← Org-specific overrides (identity, branding)
+    ├── certchain-org/             ← Per-org services Helm chart (deployed 3x)
+    │   ├── templates/             ← peer, orderer, CouchDB, Keycloak, cert-admin-api, course-manager-ui
+    │   ├── values.yaml
+    │   └── values-{org}.yaml      ← Org-specific overrides (identity, branding)
+    └── certchain-showroom/        ← Antora lab guide Helm chart
 
 apps/                              ← Application source code
 ├── cert-admin-api/                ← Quarkus API (per-org certificate CRUD)
 ├── verify-api/                    ← Quarkus API (central verification)
 ├── course-manager-ui/             ← React + Express (registrar dashboard)
 └── cert-portal/                   ← React + Express (verification portal)
+
+showroom/                          ← Antora lab guide (AsciiDoc)
+├── site.yml                       ← Antora playbook
+└── content/modules/ROOT/pages/    ← Lab guide pages
 
 fabric/                            ← Fabric blockchain configuration
 ├── chaincode/certcontract/        ← Go smart contract (CcaaS)
@@ -641,14 +648,14 @@ This is a manual, step-by-step guide. Open the URLs in your browser and follow a
 2. You do **not** need to log in — verification is anonymous
 3. Enter the certificate ID from Step 1 (or use a seeded one: `TP-FSWD-001`)
 4. Click **Verify**
-5. **What you see:**
+5. **What you see** (public info only):
    - ✅ **ACTIVE** status (green)
    - Student name, course name, issuing organization
    - Issue and expiry dates
 
    <!-- ![Certificate Verification — VALID](media/screenshots/cert-portal-valid.png) -->
 
-6. **What you don't see:** Full course details, grades, or transcript — that requires student login.
+6. **What you don't see:** Grade and degree — these private fields are only visible to the certificate owner when logged in. This privacy enforcement is server-side (verify-api strips private fields from anonymous responses).
 
 > **Alternative:** If the cert-portal has QR scanning enabled, you can also scan a QR code instead of typing the ID.
 
@@ -668,7 +675,10 @@ This is a manual, step-by-step guide. Open the URLs in your browser and follow a
 6. Enter password: `student`
 7. You are redirected back to the CertChain Portal, now authenticated
 8. Click **"My Transcript"**
-9. **What you see:** All certificates issued to you across all institutes, with full course details
+9. **What you see:** All certificates issued to you across all institutes
+   - **Your own certificates:** Full details including grade and degree (private fields)
+   - **Other students' certificates:** Only public info (grade/degree hidden)
+   - This ownership-based privacy is enforced server-side by matching the JWT email claim against the certificate's studentID
 
    <!-- ![Student Transcript](media/screenshots/cert-portal-transcript.png) -->
 
@@ -923,11 +933,26 @@ curl -sk -H "Authorization: Bearer $TOKEN" \
 **Test verify-api (public, no token needed):**
 
 ```bash
-# Verify a seeded certificate
+# Verify a seeded certificate (public — no grade/degree in response)
 curl -sk "https://verify-api-certchain.${DOMAIN}/api/v1/verify/TP-FSWD-001" | python3 -m json.tool
 ```
 
-Expected: `"status": "ACTIVE"` with student, course, and org details.
+Expected: `"status": "ACTIVE"` with student, course, and org details (grade and degree omitted for anonymous requests).
+
+**Test student transcript (requires central Keycloak token):**
+
+```bash
+# Get a student token via central Keycloak (identity brokering)
+STUDENT_TOKEN=$(curl -sk "https://keycloak-certchain.${DOMAIN}/realms/certchain/protocol/openid-connect/token" \
+  -d "client_id=cert-portal" \
+  -d "username=student01@techpulse.demo" \
+  -d "password=student" \
+  -d "grant_type=password" | python3 -c "import sys,json; print(json.load(sys.stdin)['access_token'])")
+
+# View transcript — shows grade/degree only on the student's own certificates
+curl -sk -H "Authorization: Bearer $STUDENT_TOKEN" \
+  "https://verify-api-certchain.${DOMAIN}/api/v1/transcript" | python3 -m json.tool
+```
 
 ### Monitoring & Observability
 
@@ -1083,9 +1108,10 @@ This deletes all 4 namespaces and their resources.
 | `scripts/setup-enable-user-workload-monitoring.sh` | Enable OpenShift user workload monitoring |
 | `scripts/setup-grafana-datasource.sh` | Configure Grafana's Prometheus datasource |
 | `scripts/demo-monitoring-walkthrough.sh` | Interactive monitoring demo (7 steps) |
-| `scripts/demo-walkthrough.sh` | Interactive end-to-end demo |
+| `scripts/demo-walkthrough.sh` | Interactive end-to-end demo (7 steps: issue, verify, privacy, revoke) |
 | `scripts/resilience-demo.sh` | Pod self-healing and failover demo |
-| `scripts/e2e-full-validation.sh` | Automated E2E validation (25 checks across 4 phases) |
+| `scripts/test-end-to-end.sh` | Multi-org E2E tests (10 tests: auth, CRUD, cross-org, admin role, ownership privacy) |
+| `scripts/e2e-full-validation.sh` | Automated E2E validation (25+ checks across 4 phases) |
 | `scripts/teardown-all.sh` | Remove everything from the cluster |
 
 ---

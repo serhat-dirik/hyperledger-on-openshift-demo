@@ -2,6 +2,11 @@
 
 In this section you will act as a training administrator — creating a course, enrolling a student, and issuing a blockchain certificate.
 
+[NOTE]
+====
+The Course Manager requires the `org-admin` role. If you log in as a student (e.g., `student01@techpulse.demo`), you will see an "Access Denied" page — this is the admin role enforcement in action.
+====
+
 == Step 1: Log in to a Course Manager
 
 . Open the *TechPulse Course Manager*: {techpulse_course_manager_url}
@@ -9,7 +14,7 @@ In this section you will act as a training administrator — creating a course, 
 +
 [cols="1,1"]
 |===
-| Username | `admin`
+| Username | `admin@techpulse.demo`
 | Password | `admin`
 |===
 
