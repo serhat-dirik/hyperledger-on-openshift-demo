@@ -73,7 +73,18 @@ issue_cert() {
         -H "Authorization: Bearer $token" \
         -H "Content-Type: application/json" \
         -d "$json" -o /dev/null -w "%{http_code}")
-    echo "$HTTP"
+
+    # If cert already exists (409) and grade/degree are provided, update it
+    if [ "$HTTP" = "409" ] && { [ -n "$grade" ] || [ -n "$degree" ]; }; then
+        local update_json="{\"grade\": \"${grade:-}\", \"degree\": \"${degree:-}\"}"
+        HTTP=$(curl -sS -k -X PUT "$api_url/api/v1/certificates/$certid" \
+            -H "Authorization: Bearer $token" \
+            -H "Content-Type: application/json" \
+            -d "$update_json" -o /dev/null -w "%{http_code}")
+        echo "${HTTP}(updated)"
+    else
+        echo "$HTTP"
+    fi
 }
 
 # --- Step 1: Issue TechPulse certificates ---

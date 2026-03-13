@@ -5,6 +5,7 @@ import java.util.List;
 import com.certchain.admin.model.CertificateDTO;
 import com.certchain.admin.model.IssueCertificateRequest;
 import com.certchain.admin.model.RevokeRequest;
+import com.certchain.admin.model.UpdateCertificateRequest;
 import com.certchain.admin.service.CertificateService;
 
 import jakarta.annotation.security.RolesAllowed;
@@ -178,6 +179,45 @@ public class CertificateResource {
             }
             return Response.status(Response.Status.INTERNAL_SERVER_ERROR)
                     .entity(errorJson("Failed to get certificate: " + e.getMessage()))
+                    .build();
+        }
+    }
+
+    @PUT
+    @Path("/{certId}")
+    @Operation(summary = "Update a certificate", description = "Updates mutable fields (grade, degree) on an existing certificate.")
+    @APIResponse(responseCode = "200", description = "Certificate updated, updated record returned")
+    @APIResponse(responseCode = "404", description = "Certificate not found")
+    @APIResponse(responseCode = "403", description = "Certificate belongs to a different organization")
+    public Response updateCertificate(@Parameter(description = "Certificate ID", required = true) @PathParam("certId") String certId, UpdateCertificateRequest request) {
+        String orgId = getOrgId();
+
+        try {
+            CertificateDTO cert = certificateService.get(certId);
+            if (cert == null) {
+                return Response.status(Response.Status.NOT_FOUND)
+                        .entity(errorJson("Certificate not found: " + certId))
+                        .build();
+            }
+            if (!orgId.equals(cert.orgID())) {
+                return Response.status(Response.Status.FORBIDDEN)
+                        .entity(errorJson("Certificate does not belong to your organization"))
+                        .build();
+            }
+
+            CertificateDTO updated = certificateService.update(certId,
+                    request != null ? request.grade() : null,
+                    request != null ? request.degree() : null);
+            return Response.ok(updated).build();
+        } catch (Exception e) {
+            LOG.errorf(e, "Failed to update certificate: %s", certId);
+            if (e.getMessage() != null && e.getMessage().contains("not found")) {
+                return Response.status(Response.Status.NOT_FOUND)
+                        .entity(errorJson("Certificate not found: " + certId))
+                        .build();
+            }
+            return Response.status(Response.Status.INTERNAL_SERVER_ERROR)
+                    .entity(errorJson("Failed to update certificate: " + e.getMessage()))
                     .build();
         }
     }

@@ -33,8 +33,8 @@ app.use(createProxyMiddleware({
 // Serve static files
 app.use(express.static(join(__dirname, 'dist')));
 
-// SPA fallback — all other routes serve index.html (Express 5 syntax)
-app.get('/{0,}', (_req, res) => {
+// SPA fallback — all other routes serve index.html
+app.get('/{*path}', (_req, res) => {
   res.sendFile(join(__dirname, 'dist', 'index.html'));
 });
 

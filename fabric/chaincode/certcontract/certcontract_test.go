@@ -271,6 +271,28 @@ func TestRevokeCertificate_NotFound(t *testing.T) {
 	assert.Contains(t, err.Error(), "not found")
 }
 
+func TestUpdateCertificate_HappyPath(t *testing.T) {
+	cc, ctx, _ := newTestContext()
+	issueSampleCert(t, cc, ctx)
+
+	err := cc.UpdateCertificate(ctx, "TP-FSWD-001", "A+", "Master Certificate")
+	assert.NoError(t, err)
+
+	cert, err := cc.GetCertificate(ctx, "TP-FSWD-001")
+	assert.NoError(t, err)
+	assert.Equal(t, "A+", cert.Grade)
+	assert.Equal(t, "Master Certificate", cert.Degree)
+	assert.Equal(t, "ACTIVE", cert.Status) // status unchanged
+}
+
+func TestUpdateCertificate_NotFound(t *testing.T) {
+	cc, ctx, _ := newTestContext()
+
+	err := cc.UpdateCertificate(ctx, "NONEXISTENT", "A", "Cert")
+	assert.Error(t, err)
+	assert.Contains(t, err.Error(), "not found")
+}
+
 func TestGetCertificatesByStudent(t *testing.T) {
 	cc, ctx, stub := newTestContext()
 	issueSampleCert(t, cc, ctx)

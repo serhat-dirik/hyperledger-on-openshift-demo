@@ -167,6 +167,39 @@ func (cc *CertContract) RevokeCertificate(ctx contractapi.TransactionContextInte
 	return ctx.GetStub().PutState(certID, certJSON)
 }
 
+// UpdateCertificate updates mutable fields (grade, degree) on an existing certificate.
+func (cc *CertContract) UpdateCertificate(ctx contractapi.TransactionContextInterface,
+	certID, grade, degree string) error {
+
+	if certID == "" {
+		return fmt.Errorf("certID is required")
+	}
+
+	cert, err := cc.GetCertificate(ctx, certID)
+	if err != nil {
+		return err
+	}
+
+	cert.Grade = grade
+	cert.Degree = degree
+	cert.Timestamp = time.Now().UTC().Format(time.RFC3339)
+
+	certJSON, err := json.Marshal(cert)
+	if err != nil {
+		return fmt.Errorf("failed to marshal certificate: %w", err)
+	}
+
+	compositeKey, err := ctx.GetStub().CreateCompositeKey(compositeKeyPrefix, []string{cert.OrgID, certID})
+	if err != nil {
+		return fmt.Errorf("failed to create composite key: %w", err)
+	}
+	if err := ctx.GetStub().PutState(compositeKey, certJSON); err != nil {
+		return fmt.Errorf("failed to put composite key state: %w", err)
+	}
+
+	return ctx.GetStub().PutState(certID, certJSON)
+}
+
 func (cc *CertContract) GetCertificatesByStudent(ctx contractapi.TransactionContextInterface, studentID string) ([]*Certificate, error) {
 	if studentID == "" {
 		return nil, fmt.Errorf("studentID is required")

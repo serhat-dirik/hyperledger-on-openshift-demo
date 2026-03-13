@@ -108,6 +108,20 @@ public class CertificateService {
     }
 
     /**
+     * Update mutable fields (grade, degree) on an existing certificate.
+     */
+    public CertificateDTO update(String certId, String grade, String degree) throws Exception {
+        LOG.infof("Updating certificate: certID=%s, grade=%s, degree=%s", certId, grade, degree);
+
+        fabricClient.submitTransaction("UpdateCertificate",
+                certId,
+                grade != null ? grade : "",
+                degree != null ? degree : "");
+
+        return get(certId);
+    }
+
+    /**
      * Revoke a certificate with a reason.
      */
     public void revoke(String certId, String reason) throws Exception {
