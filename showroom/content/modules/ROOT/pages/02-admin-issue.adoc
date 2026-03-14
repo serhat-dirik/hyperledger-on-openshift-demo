@@ -21,6 +21,8 @@ The Course Manager requires the `org-admin` role. If you try logging in as a stu
 
 == Step 2: View the Dashboard
 
+image::02-cm-dashboard.png[Course Manager Dashboard,width=100%]
+
 The dashboard shows:
 
 * *Total Certificates* — All certificates issued by this organization
@@ -30,6 +32,8 @@ The dashboard shows:
 * *Recent Issuances* — The latest certificates with their status
 
 == Step 3: Issue a Certificate
+
+image::02-cm-issue-form.png[Issue Certificate Form,width=100%]
 
 . Click *Issue Certificate* in the left sidebar.
 . The form auto-generates a unique *Certificate ID* (e.g., `CERT-MMQ8YQ49-AXP2`). Click *Regenerate* for a new one.
@@ -69,6 +73,8 @@ Copy the *Certificate ID* — you will need it in the next section to verify the
 ====
 
 == Step 4: View Certificate List
+
+image::02-cm-cert-list.png[Certificate List,width=100%]
 
 . Click *Certificates* in the left sidebar.
 . You see a table of all certificates issued by TechPulse, with columns for Cert ID, Student, Course, Status, Issue Date, and Actions.

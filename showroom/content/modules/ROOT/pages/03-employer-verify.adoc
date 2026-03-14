@@ -16,6 +16,8 @@ No account is needed — verification is *public by design*.
 
 Navigate to the *Cert Portal*: {cert_portal_url}[Open^]
 
+image::03-portal-verify.png[Cert Portal Verify Page,width=50%,align=center]
+
 The portal shows a clean verification interface with a search field and a QR code scanning option.
 
 == Step 2: Verify a Certificate
@@ -23,6 +25,8 @@ The portal shows a clean verification interface with a search field and a QR cod
 . Enter the *Certificate ID* you copied from the admin section (or use one from the demo data, e.g., `CERT-MMOIEBEW-CJJI`).
 . Click *Verify Certificate*.
 . You should see a green *Valid* badge with the certificate details:
++
+image::03-portal-valid.png[Valid Certificate Result,width=50%,align=center]
 ** Student Name
 ** Course
 ** Issuing Organization
@@ -39,6 +43,8 @@ Notice what's *missing*: Grade and Degree are not shown. As an anonymous verifie
 . Enter a fake ID like `FAKE-CERT-123`.
 . Click *Verify Certificate*.
 . You should see a *Not Found* result — confirming that only legitimate certificates exist on the blockchain.
++
+image::03-portal-notfound.png[Certificate Not Found,width=50%,align=center]
 
 == Step 4: Verify a Revoked Certificate
 

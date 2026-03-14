@@ -28,6 +28,8 @@ The redirect from Central Keycloak to TechPulse Keycloak happens through *identi
 
 == Step 3: View Your Transcript
 
+image::04-portal-transcript.png[Student Transcript,width=50%,align=center]
+
 After login, click *My Transcript* (or navigate to the transcript section).
 
 You now see all certificates issued to your email address across the entire network. For each certificate you own, you can see:
