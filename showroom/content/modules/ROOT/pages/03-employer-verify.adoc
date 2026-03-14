@@ -14,7 +14,7 @@ No account is needed — verification is *public by design*.
 
 == Step 1: Open the Cert Portal
 
-Navigate to the *Cert Portal*: {cert_portal_url}[Open window=_blank]
+Navigate to the *Cert Portal*: {cert_portal_url}[Open^]
 
 The portal shows a clean verification interface with a search field and a QR code scanning option.
 

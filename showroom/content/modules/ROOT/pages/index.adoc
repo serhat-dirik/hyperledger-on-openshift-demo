@@ -58,22 +58,22 @@ This lab guide walks you through a complete blockchain credentialing scenario â€
 | Component | URL
 
 | Cert Portal (public verification)
-| {cert_portal_url}[Open window=_blank]
+| {cert_portal_url}[Open^]
 
 | TechPulse Course Manager
-| {techpulse_course_manager_url}[Open window=_blank]
+| {techpulse_course_manager_url}[Open^]
 
 | DataForge Course Manager
-| {dataforge_course_manager_url}[Open window=_blank]
+| {dataforge_course_manager_url}[Open^]
 
 | NeuralPath Course Manager
-| {neuralpath_course_manager_url}[Open window=_blank]
+| {neuralpath_course_manager_url}[Open^]
 
 | ArgoCD Dashboard
-| {argocd_url}[Open window=_blank]
+| {argocd_url}[Open^]
 
 | Grafana Dashboards
-| {grafana_url}[Open window=_blank]
+| {grafana_url}[Open^]
 |===
 
 == Suggested Demo Paths

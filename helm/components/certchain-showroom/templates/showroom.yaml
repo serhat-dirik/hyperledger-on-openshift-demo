@@ -178,7 +178,7 @@ spec:
           image: "quay.io/rhpds/antora:v1.0.1"
           env:
             - name: FILES_DIR
-              value: /showroom/repo
+              value: /showroom/repo/showroom
             - name: OUTPUT_DIR
               value: /showroom/www
             - name: ANTORA_SITE_FILE

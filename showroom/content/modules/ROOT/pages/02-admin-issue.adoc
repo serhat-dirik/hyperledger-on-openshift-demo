@@ -4,7 +4,7 @@ In this section you act as a *Registrar* — the training administrator who issu
 
 == Step 1: Log in to TechPulse Course Manager
 
-. Open the *TechPulse Course Manager*: {techpulse_course_manager_url}[Open window=_blank]
+. Open the *TechPulse Course Manager*: {techpulse_course_manager_url}[Open^]
 . You will be redirected to Keycloak. Log in with:
 +
 [cols="1,2"]
@@ -93,7 +93,7 @@ As an admin, you see *all fields* including Grade and Degree. When an employer v
 
 Repeat the same flow with *DataForge* to see how each org operates independently:
 
-. Open *DataForge Course Manager*: {dataforge_course_manager_url}[Open window=_blank]
+. Open *DataForge Course Manager*: {dataforge_course_manager_url}[Open^]
 . Log in as `admin@dataforge.demo` / `admin`
 . Issue a certificate for a DataForge student
 

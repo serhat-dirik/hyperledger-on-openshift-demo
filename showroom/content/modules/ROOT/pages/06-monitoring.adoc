@@ -8,7 +8,7 @@ CertChain is deployed via ArgoCD using the *App-of-Apps* pattern. A single root 
 
 === Access ArgoCD
 
-Navigate to ArgoCD: {argocd_url}[Open window=_blank]
+Navigate to ArgoCD: {argocd_url}[Open^]
 
 Login with `admin` / `admin`, or click *Log in via OpenShift*.
 
@@ -43,7 +43,7 @@ Click any Application to explore its *resource tree*, *sync status*, and *sync-w
 
 == Grafana — Metrics Dashboards
 
-Navigate to Grafana: {grafana_url}[Open window=_blank]
+Navigate to Grafana: {grafana_url}[Open^]
 
 Grafana is configured with *anonymous access* — no login required.
 

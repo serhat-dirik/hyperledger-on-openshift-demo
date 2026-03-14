@@ -8,7 +8,7 @@ A student wants to review all their certificates, including private details like
 
 == Step 1: Open the Cert Portal
 
-Navigate to the *Cert Portal*: {cert_portal_url}[Open window=_blank]
+Navigate to the *Cert Portal*: {cert_portal_url}[Open^]
 
 Notice the *Student Login* button in the top-right corner.
 

@@ -38,7 +38,7 @@ The Central Keycloak uses *Organizations* and *Identity Providers (OIDC)* to rou
 
 You can explore this configuration:
 
-. Open Central Keycloak: {central_keycloak_url}[Open window=_blank]
+. Open Central Keycloak: {central_keycloak_url}[Open^]
 . Log in with `admin` / `admin`
 . Navigate to *Organizations* — you'll see TechPulse, DataForge, NeuralPath
 . Navigate to *Identity Providers* — you'll see the OIDC providers for each org
@@ -52,7 +52,7 @@ Each org Keycloak defines two roles:
 
 === Demo: Admin Role Enforcement
 
-. Open the TechPulse Course Manager: {techpulse_course_manager_url}[Open window=_blank]
+. Open the TechPulse Course Manager: {techpulse_course_manager_url}[Open^]
 . Log in as `student01@techpulse.demo` / `student`
 . You should see an *Access Denied* page — students cannot access admin functions
 
