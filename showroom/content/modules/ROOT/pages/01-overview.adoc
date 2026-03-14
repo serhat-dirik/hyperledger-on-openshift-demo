@@ -1,10 +1,33 @@
 = Business Context
 
-== The Problem
+== Why Hyperledger Fabric?
 
-Academic certificates are easy to forge. A PDF, a stamp, and a signature — and suddenly someone has a degree they never earned. Verification is manual, slow, and unreliable. Employers call universities, wait for responses, and often just trust the paper.
+Hyperledger Fabric is a permissioned blockchain platform designed for enterprise use cases where multiple independent organizations need to share data with *trust but without a central authority*. Unlike public blockchains, Fabric offers fine-grained access control, private data collections, and pluggable consensus — making it applicable to a wide range of business scenarios:
 
-Every year, credential fraud costs organizations billions in bad hires, compliance failures, and reputational damage.
+* *Supply chain* — track provenance and authenticity across manufacturers, distributors, and retailers
+* *Financial services* — settle transactions, manage trade finance, and share KYC data across institutions
+* *Healthcare* — share patient records and clinical trial data across providers while preserving privacy
+* *Credentialing* — issue tamper-proof certificates that anyone can verify instantly
+
+This demo uses *course credentialing* as a concrete, relatable scenario — but the architecture patterns apply broadly.
+
+== Why OpenShift?
+
+Running a multi-org blockchain network in production demands enterprise-grade infrastructure: container orchestration, network isolation, secrets management, monitoring, and automated deployment. *Red Hat OpenShift* provides all of this out of the box:
+
+* *Namespace isolation* maps naturally to Fabric organizations — each org runs in its own namespace with its own RBAC
+* *Helm + ArgoCD* enables GitOps-driven deployment of the entire network
+* *OpenShift Routes* expose blockchain services with TLS termination
+* *Prometheus + Grafana* provide built-in monitoring for all Fabric components
+* *BuildConfigs* build chaincode and application images directly on the cluster
+
+The result: a complete Hyperledger Fabric network deployed and operational in minutes, not days.
+
+== The Problem: Credential Fraud
+
+Professional training certificates are easy to forge. A PDF, a stamp, and a logo — and someone has a credential they never earned. Verification is manual and unreliable: employers call training providers, wait for responses, and often just trust the document.
+
+This is a real-world problem for *private course organizations* — professional training academies, coding bootcamps, certification bodies — that issue thousands of credentials annually. Unlike universities with established registrar offices, these organizations often lack infrastructure for reliable third-party verification.
 
 == The Solution: Blockchain-Backed Credentials
 
@@ -24,7 +47,7 @@ CertChain replaces paper certificates with blockchain-anchored credentials on *H
 | Sensitive fields (grade, degree) are visible only to the certificate owner. Public verification shows status and metadata only.
 
 | *Decentralized trust*
-| No single organization controls the ledger. Three independent academies jointly maintain the blockchain through BFT consensus.
+| No single organization controls the ledger. Three independent organizations jointly maintain the blockchain through BFT consensus.
 
 | *Auditable*
 | Every issuance and revocation is permanently recorded with timestamps and organization identity.
@@ -32,7 +55,7 @@ CertChain replaces paper certificates with blockchain-anchored credentials on *H
 
 == The Demo Scenario
 
-CertChain simulates a consortium of three training academies that jointly operate a blockchain credentialing network:
+CertChain demonstrates a consortium of three *private training organizations* that jointly operate a blockchain credentialing network:
 
 [cols="1,1,2"]
 |===
@@ -52,6 +75,8 @@ CertChain simulates a consortium of three training academies that jointly operat
 |===
 
 Central infrastructure (Fabric CA, verification portal, shared orderer, Grafana) runs in the `{central_namespace}` namespace.
+
+NOTE: In this demo, all three organizations run on a *single OpenShift cluster* in separate namespaces. In a real-world deployment, each organization would typically run on its *own cluster* (or even its own cloud provider), communicating over the network. The architecture is the same — OpenShift namespace isolation simulates the multi-cluster boundary.
 
 == Three Roles
 
