@@ -40,6 +40,8 @@ curl -sk -X POST \
   }' | python3 -m json.tool
 ----
 
+Expected: HTTP 200 with the full certificate JSON including `status: "ACTIVE"`.
+
 == Verify a Certificate (Public)
 
 Query the public verify-api — no authentication needed:
@@ -49,11 +51,23 @@ Query the public verify-api — no authentication needed:
 curl -sk "{verify_api_url}/api/v1/verify/API-TEST-001" | python3 -m json.tool
 ----
 
-NOTE: The public response includes status, student name, course, org, and dates — but *not* grade or degree. Private fields are only visible to the certificate owner.
+The response includes status, student name, course, organization, and dates — but *not* grade or degree.
+
+== Batch Verify Multiple Certificates
+
+Verify several certificates in a single request:
+
+[source,bash,subs="attributes"]
+----
+curl -sk "{verify_api_url}/api/v1/verify/batch?ids=API-TEST-001,FAKE-CERT-123" \
+  | python3 -m json.tool
+----
+
+Each certificate returns its own status — VALID, REVOKED, or NOT_FOUND.
 
 == View Student Transcript (Authenticated)
 
-Get a student token from the central Keycloak and query the transcript endpoint:
+Get a student token and query the transcript endpoint:
 
 [source,bash,subs="attributes"]
 ----
@@ -67,22 +81,43 @@ STUDENT_TOKEN=$(curl -sk -X POST \
 # View all certificates for this student (includes grade/degree on owned certs)
 curl -sk -H "Authorization: Bearer $STUDENT_TOKEN" \
   "{verify_api_url}/api/v1/transcript" | python3 -m json.tool
+----
 
-# View a single certificate (grade/degree visible only if you own it)
+The transcript response includes *all certificates issued to this student's email* — with grade and degree visible on the student's own certificates.
+
+== View a Single Certificate as Student
+
+[source,bash,subs="attributes"]
+----
 curl -sk -H "Authorization: Bearer $STUDENT_TOKEN" \
   "{verify_api_url}/api/v1/transcript/API-TEST-001" | python3 -m json.tool
 ----
 
+Compare this response to the anonymous verification — grade and degree are now visible.
+
 == List Certificates (Admin)
 
-List all certificates issued by TechPulse:
+List all certificates issued by TechPulse with pagination:
 
 [source,bash,subs="attributes"]
 ----
 curl -sk \
-  "{techpulse_cert_admin_api_url}/api/v1/certificates" \
+  "{techpulse_cert_admin_api_url}/api/v1/certificates?page=0&size=10" \
   -H "Authorization: Bearer $TOKEN" | python3 -m json.tool
 ----
+
+== Dashboard Stats (Admin)
+
+Get aggregate certificate statistics:
+
+[source,bash,subs="attributes"]
+----
+curl -sk \
+  "{techpulse_cert_admin_api_url}/api/v1/dashboard/stats" \
+  -H "Authorization: Bearer $TOKEN" | python3 -m json.tool
+----
+
+Returns: `totalCertificates`, `activeCertificates`, `revokedCertificates`, `expiredCertificates`.
 
 == Update a Certificate
 
@@ -111,14 +146,14 @@ curl -sk -X PUT \
   -d '{"reason": "Demo revocation test"}' | python3 -m json.tool
 ----
 
-== Verify a Non-Existent Certificate
+After revocation, re-verify to confirm the status changed:
 
 [source,bash,subs="attributes"]
 ----
-curl -sk "{verify_api_url}/api/v1/verify/does-not-exist" | python3 -m json.tool
+curl -sk "{verify_api_url}/api/v1/verify/API-TEST-001" | python3 -m json.tool
 ----
 
-This should return a 404 response indicating the certificate was not found on the blockchain.
+Expected: `status: "REVOKED"` with `revokedDate` and `revokedReason` fields.
 
 == Admin Role Enforcement
 
@@ -133,8 +168,41 @@ curl -sk -o /dev/null -w "HTTP %{http_code}" \
 
 Expected: HTTP 401 or 403 — students cannot access admin endpoints.
 
-== Next Steps
+== Verify a Non-Existent Certificate
 
-* Try issuing certificates from *DataForge* or *NeuralPath* using their respective Keycloak endpoints
-* Monitor the traffic in the xref:04-explore.adoc[Grafana dashboards]
-* Explore the blockchain state in the OpenShift Console by checking CouchDB pod logs
+[source,bash,subs="attributes"]
+----
+curl -sk "{verify_api_url}/api/v1/verify/does-not-exist" | python3 -m json.tool
+----
+
+Returns HTTP 404 with `status: "NOT_FOUND"`.
+
+== API Reference
+
+=== cert-admin-api (per-org, requires `org-admin` role)
+
+[cols="1,1,2"]
+|===
+| Method | Path | Description
+
+| POST | `/api/v1/certificates` | Issue a new certificate
+| GET | `/api/v1/certificates?page=0&size=20` | List org certificates (paginated)
+| GET | `/api/v1/certificates/{certId}` | Get single certificate
+| PUT | `/api/v1/certificates/{certId}` | Update mutable fields
+| PUT | `/api/v1/certificates/{certId}/revoke` | Revoke (irreversible)
+| GET | `/api/v1/courses` | List course catalog
+| GET | `/api/v1/dashboard/stats` | Certificate stats
+|===
+
+=== verify-api (central, public + JWT)
+
+[cols="1,1,1,2"]
+|===
+| Method | Path | Auth | Description
+
+| GET | `/api/v1/verify/{certId}` | Public | Verify certificate status
+| GET | `/api/v1/verify/{certId}/qr` | Public | Generate QR code (PNG)
+| GET | `/api/v1/verify/batch?ids=X,Y` | Public | Batch verify
+| GET | `/api/v1/transcript` | JWT | Student's certificates
+| GET | `/api/v1/transcript/{certId}` | JWT | Single certificate
+|===

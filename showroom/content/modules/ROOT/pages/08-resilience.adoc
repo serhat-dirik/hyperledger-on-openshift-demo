@@ -1,0 +1,178 @@
+= Resilience & Fault Tolerance
+
+CertChain uses *SmartBFT (Byzantine Fault Tolerant)* consensus, which provides stronger guarantees than traditional Raft — tolerating not just crash failures but also *malicious* nodes.
+
+== BFT Consensus Theory
+
+=== The Formula: 3f + 1
+
+BFT consensus requires *3f + 1* total nodes to tolerate *f* Byzantine faults:
+
+[cols="1,1,1"]
+|===
+| Total Orderers | Faults Tolerated | Fault Type
+
+| 4 (this demo)
+| 1
+| Byzantine (crash or malicious)
+
+| 7
+| 2
+| Byzantine
+
+| 10
+| 3
+| Byzantine
+|===
+
+With 4 orderers, the network can tolerate *1 orderer* being offline, unresponsive, or actively sending incorrect data — and still reach consensus.
+
+=== Why BFT Over Raft?
+
+Raft (used in Fabric 2.x) tolerates *crash faults* only. If a Raft node starts sending corrupted data, the network has no protection. BFT handles both:
+
+* *Crash faults* — Node stops responding (same as Raft)
+* *Byzantine faults* — Node sends incorrect data, delays messages, or acts maliciously
+
+In a multi-organization consortium where trust is limited, BFT is the appropriate consensus model.
+
+== Demo: Kill an Orderer
+
+This demo proves the network continues operating with one orderer down.
+
+=== Step 1: Verify Normal Operation
+
+First, confirm transactions work:
+
+[source,bash,subs="attributes"]
+----
+# Get a token
+TOKEN=$(curl -sk -X POST \
+  "{techpulse_keycloak_url}/realms/techpulse/protocol/openid-connect/token" \
+  -d "grant_type=password" \
+  -d "client_id=course-manager-ui" \
+  -d "username=admin@techpulse.demo" \
+  -d "password=admin" | python3 -c "import sys,json; print(json.load(sys.stdin)['access_token'])")
+
+# Issue a certificate
+curl -sk -X POST \
+  "{techpulse_cert_admin_api_url}/api/v1/certificates" \
+  -H "Authorization: Bearer $TOKEN" \
+  -H "Content-Type: application/json" \
+  -d '{
+    "certID": "RESIL-TEST-001",
+    "studentID": "student01@techpulse.demo",
+    "studentName": "Resilience Test",
+    "courseID": "TEST-101",
+    "courseName": "BFT Testing",
+    "issueDate": "2026-03-14",
+    "expiryDate": "2027-03-14"
+  }' | python3 -m json.tool
+----
+
+=== Step 2: Scale Down an Orderer
+
+Scale down one orderer (e.g., orderer2 in DataForge):
+
+[source,bash]
+----
+oc scale deployment orderer-deployment -n {central_namespace}-dataforge --replicas=0
+----
+
+=== Step 3: Verify Transactions Still Work
+
+[source,bash,subs="attributes"]
+----
+curl -sk -X POST \
+  "{techpulse_cert_admin_api_url}/api/v1/certificates" \
+  -H "Authorization: Bearer $TOKEN" \
+  -H "Content-Type: application/json" \
+  -d '{
+    "certID": "RESIL-TEST-002",
+    "studentID": "student01@techpulse.demo",
+    "studentName": "Resilience Test 2",
+    "courseID": "TEST-101",
+    "courseName": "BFT Testing",
+    "issueDate": "2026-03-14",
+    "expiryDate": "2027-03-14"
+  }' | python3 -m json.tool
+----
+
+The transaction should *succeed* — 3 out of 4 orderers is sufficient for BFT consensus.
+
+=== Step 4: Restore the Orderer
+
+[source,bash]
+----
+oc scale deployment orderer-deployment -n {central_namespace}-dataforge --replicas=1
+----
+
+The orderer will catch up automatically through the gossip protocol.
+
+== Demo: Peer Recovery
+
+Each organization's peer maintains a full copy of the ledger and the CouchDB state database.
+
+=== Peer Crash and Recovery
+
+[source,bash]
+----
+# Scale down TechPulse peer
+oc scale deployment peer-deployment -n {central_namespace}-techpulse --replicas=0
+
+# Wait a few seconds, then scale back up
+oc scale deployment peer-deployment -n {central_namespace}-techpulse --replicas=1
+----
+
+When the peer comes back:
+
+* It re-syncs any missed blocks from other peers via gossip
+* CouchDB state is rebuilt from the ledger if needed
+* The peer becomes available for endorsement and queries again
+
+During the outage, *verifications through other orgs' peers still work* — the `verify-api` connects to TechPulse's peer by default, but the blockchain data exists on all peers.
+
+== Demo: CouchDB State Rebuild
+
+CouchDB is the *state database* — a queryable view of the latest ledger state. If CouchDB data is corrupted, it can be rebuilt from the blockchain:
+
+[source,bash]
+----
+# Delete the CouchDB PVC (drastic — for demo purposes)
+oc delete pvc couchdb-data -n {central_namespace}-techpulse
+
+# Restart the peer — it will rebuild CouchDB from the ledger
+oc rollout restart deployment peer-deployment -n {central_namespace}-techpulse
+----
+
+The peer replays all blocks from the ledger to rebuild the CouchDB state. This proves that the *blockchain is the source of truth*, and CouchDB is just a queryable index.
+
+[WARNING]
+====
+Rebuilding CouchDB from the ledger takes time proportional to the number of blocks. In production with thousands of blocks, this could take minutes to hours.
+====
+
+== Production Considerations
+
+[cols="1,2"]
+|===
+| Consideration | Recommendation
+
+| *Orderer count*
+| Use 7 orderers (3f+1 = 7 for f=2) in production for better fault tolerance
+
+| *Peer redundancy*
+| Run 2+ peers per org for endorsement availability
+
+| *Storage*
+| Use ReadWriteMany (RWX) or replicated storage for PVCs
+
+| *Backup*
+| Snapshot CouchDB and ledger PVCs regularly
+
+| *Cross-region*
+| Distribute orderers across availability zones for geographic resilience
+
+| *Monitoring*
+| Set alerts on consensus view changes, endorsement failures, and peer gossip metrics
+|===

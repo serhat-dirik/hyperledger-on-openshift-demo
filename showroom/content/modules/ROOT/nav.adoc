@@ -1,6 +1,16 @@
 * xref:index.adoc[How to Use This Guide]
-* xref:01-overview.adoc[Architecture Overview]
-* xref:02-admin-issue.adoc[Admin: Issue Certificates]
-* xref:03-user-verify.adoc[Verify Certificates]
-* xref:04-explore.adoc[Explore ArgoCD & Monitoring]
-* xref:05-api.adoc[API Walkthrough]
+* Understanding CertChain
+** xref:01-overview.adoc[Business Context]
+** xref:01a-architecture.adoc[Technical Architecture]
+* Business Scenario
+** xref:02-admin-issue.adoc[Cert Admin: Issue Certificates]
+** xref:03-employer-verify.adoc[Employer: Verify a Certificate]
+** xref:04-student-portal.adoc[Student: View Transcript]
+* Platform Management
+** xref:05-security-identity.adoc[Security & Identity]
+** xref:06-monitoring.adoc[Monitoring & Observability]
+** xref:07-scalability.adoc[Scalability]
+** xref:08-resilience.adoc[Resilience & Fault Tolerance]
+* Reference
+** xref:09-api.adoc[API Walkthrough]
+** xref:10-troubleshooting.adoc[Troubleshooting]

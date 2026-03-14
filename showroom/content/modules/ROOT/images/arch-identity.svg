@@ -1,0 +1,127 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 960 420" font-family="Inter, Segoe UI, Arial, sans-serif" font-size="12">
+  <defs>
+    <marker id="a" viewBox="0 0 10 7" refX="10" refY="3.5" markerWidth="8" markerHeight="6" orient="auto-start-reverse">
+      <polygon points="0 0, 10 3.5, 0 7" fill="#666"/>
+    </marker>
+    <marker id="aP" viewBox="0 0 10 7" refX="10" refY="3.5" markerWidth="8" markerHeight="6" orient="auto-start-reverse">
+      <polygon points="0 0, 10 3.5, 0 7" fill="#9c27b0"/>
+    </marker>
+    <filter id="sh" x="-2%" y="-2%" width="104%" height="104%">
+      <feDropShadow dx="1" dy="1" stdDeviation="2" flood-opacity="0.12"/>
+    </filter>
+  </defs>
+
+  <!-- Title -->
+  <text x="480" y="26" text-anchor="middle" font-size="18" font-weight="bold" fill="#1a1a2e">Identity Architecture — Keycloak + Fabric MSP</text>
+
+  <!-- ===== Users ===== -->
+  <rect x="30" y="50" width="120" height="55" rx="25" fill="#1a73e8" filter="url(#sh)"/>
+  <text x="90" y="74" text-anchor="middle" font-weight="600" fill="#fff">Registrar</text>
+  <text x="90" y="92" text-anchor="middle" font-size="10" fill="#ccc">admin@techpulse.demo</text>
+
+  <rect x="30" y="130" width="120" height="55" rx="25" fill="#34a853" filter="url(#sh)"/>
+  <text x="90" y="154" text-anchor="middle" font-weight="600" fill="#fff">Student</text>
+  <text x="90" y="172" text-anchor="middle" font-size="10" fill="#ccc">student01@tp.demo</text>
+
+  <rect x="30" y="210" width="120" height="55" rx="25" fill="#fbbc04" filter="url(#sh)"/>
+  <text x="90" y="234" text-anchor="middle" font-weight="600" fill="#fff">Employer</text>
+  <text x="90" y="252" text-anchor="middle" font-size="10" fill="#ccc">No login required</text>
+
+  <!-- ===== Central Keycloak ===== -->
+  <rect x="220" y="45" width="250" height="230" rx="12" fill="#f3e5f5" stroke="#9c27b0" stroke-width="2" filter="url(#sh)"/>
+  <text x="345" y="70" text-anchor="middle" font-size="15" font-weight="bold" fill="#7b1fa2">Central Keycloak</text>
+  <text x="345" y="88" text-anchor="middle" font-size="10" fill="#666">certchain namespace</text>
+
+  <!-- Organizations -->
+  <rect x="240" y="100" width="210" height="30" rx="5" fill="#fff" stroke="#9c27b0" stroke-width="1"/>
+  <text x="345" y="120" text-anchor="middle" font-weight="600" fill="#7b1fa2">Organizations</text>
+
+  <rect x="240" y="138" width="65" height="28" rx="4" fill="#fce4ec" stroke="#e91e63" stroke-width="1"/>
+  <text x="272" y="157" text-anchor="middle" font-size="10" font-weight="600" fill="#c2185b">TechPulse</text>
+
+  <rect x="312" y="138" width="65" height="28" rx="4" fill="#e8eaf6" stroke="#3f51b5" stroke-width="1"/>
+  <text x="344" y="157" text-anchor="middle" font-size="10" font-weight="600" fill="#283593">DataForge</text>
+
+  <rect x="384" y="138" width="65" height="28" rx="4" fill="#e0f2f1" stroke="#009688" stroke-width="1"/>
+  <text x="416" y="157" text-anchor="middle" font-size="10" font-weight="600" fill="#00695c">NeuralPath</text>
+
+  <!-- Identity Providers -->
+  <rect x="240" y="178" width="210" height="30" rx="5" fill="#fff" stroke="#9c27b0" stroke-width="1"/>
+  <text x="345" y="198" text-anchor="middle" font-weight="600" fill="#7b1fa2">Identity Providers (OIDC)</text>
+
+  <rect x="240" y="216" width="65" height="28" rx="4" fill="#fce4ec" stroke="#e91e63" stroke-width="1"/>
+  <text x="272" y="235" text-anchor="middle" font-size="10" fill="#c2185b">TP IdP</text>
+
+  <rect x="312" y="216" width="65" height="28" rx="4" fill="#e8eaf6" stroke="#3f51b5" stroke-width="1"/>
+  <text x="344" y="235" text-anchor="middle" font-size="10" fill="#283593">DF IdP</text>
+
+  <rect x="384" y="216" width="65" height="28" rx="4" fill="#e0f2f1" stroke="#009688" stroke-width="1"/>
+  <text x="416" y="235" text-anchor="middle" font-size="10" fill="#00695c">NP IdP</text>
+
+  <!-- User arrows to Central KC -->
+  <line x1="150" y1="77" x2="218" y2="120" stroke="#666" stroke-width="1.5" marker-end="url(#a)"/>
+  <line x1="150" y1="157" x2="218" y2="155" stroke="#666" stroke-width="1.5" marker-end="url(#a)"/>
+
+  <!-- ===== Org Keycloaks ===== -->
+  <!-- TechPulse KC -->
+  <rect x="550" y="45" width="170" height="100" rx="10" fill="#fce4ec" stroke="#e91e63" stroke-width="1.5" filter="url(#sh)"/>
+  <text x="635" y="70" text-anchor="middle" font-weight="bold" fill="#c2185b">TechPulse Keycloak</text>
+  <text x="635" y="88" text-anchor="middle" font-size="10" fill="#666">certchain-techpulse</text>
+  <text x="635" y="108" text-anchor="middle" font-size="10" fill="#888">Users: admin, student01, student02</text>
+  <text x="635" y="122" text-anchor="middle" font-size="10" fill="#888">Roles: org-admin, user</text>
+
+  <!-- DataForge KC -->
+  <rect x="550" y="160" width="170" height="100" rx="10" fill="#e8eaf6" stroke="#3f51b5" stroke-width="1.5" filter="url(#sh)"/>
+  <text x="635" y="185" text-anchor="middle" font-weight="bold" fill="#283593">DataForge Keycloak</text>
+  <text x="635" y="203" text-anchor="middle" font-size="10" fill="#666">certchain-dataforge</text>
+  <text x="635" y="223" text-anchor="middle" font-size="10" fill="#888">Users: admin, student03, student04</text>
+  <text x="635" y="237" text-anchor="middle" font-size="10" fill="#888">Roles: org-admin, user</text>
+
+  <!-- NeuralPath KC -->
+  <rect x="550" y="275" width="170" height="100" rx="10" fill="#e0f2f1" stroke="#009688" stroke-width="1.5" filter="url(#sh)"/>
+  <text x="635" y="300" text-anchor="middle" font-weight="bold" fill="#00695c">NeuralPath Keycloak</text>
+  <text x="635" y="318" text-anchor="middle" font-size="10" fill="#666">certchain-neuralpath</text>
+  <text x="635" y="338" text-anchor="middle" font-size="10" fill="#888">Users: admin, student05, student06</text>
+  <text x="635" y="352" text-anchor="middle" font-size="10" fill="#888">Roles: org-admin, user</text>
+
+  <!-- Brokering arrows: Central KC → Org KCs -->
+  <line x1="450" y1="230" x2="548" y2="95" stroke="#9c27b0" stroke-width="2" marker-end="url(#aP)"/>
+  <line x1="450" y1="230" x2="548" y2="210" stroke="#9c27b0" stroke-width="2" marker-end="url(#aP)"/>
+  <line x1="450" y1="240" x2="548" y2="325" stroke="#9c27b0" stroke-width="2" marker-end="url(#aP)"/>
+
+  <!-- Brokering label -->
+  <rect x="470" y="146" width="65" height="22" rx="10" fill="#9c27b0"/>
+  <text x="502" y="162" text-anchor="middle" font-size="10" font-weight="bold" fill="#fff">Broker</text>
+
+  <!-- ===== Fabric MSP ===== -->
+  <rect x="780" y="45" width="160" height="330" rx="12" fill="#e8f5e9" stroke="#2e7d32" stroke-width="2" filter="url(#sh)"/>
+  <text x="860" y="70" text-anchor="middle" font-size="14" font-weight="bold" fill="#2e7d32">Fabric MSP</text>
+  <text x="860" y="88" text-anchor="middle" font-size="10" fill="#666">X.509 Certificates</text>
+
+  <rect x="795" y="100" width="130" height="60" rx="6" fill="#fff" stroke="#e91e63" stroke-width="1"/>
+  <text x="860" y="120" text-anchor="middle" font-weight="600" font-size="11" fill="#c2185b">TechPulseMSP</text>
+  <text x="860" y="137" text-anchor="middle" font-size="9" fill="#666">admin-msp, peer0-tls</text>
+  <text x="860" y="150" text-anchor="middle" font-size="9" fill="#666">orderer-msp, orderer-tls</text>
+
+  <rect x="795" y="175" width="130" height="60" rx="6" fill="#fff" stroke="#3f51b5" stroke-width="1"/>
+  <text x="860" y="195" text-anchor="middle" font-weight="600" font-size="11" fill="#283593">DataForgeMSP</text>
+  <text x="860" y="212" text-anchor="middle" font-size="9" fill="#666">admin-msp, peer0-tls</text>
+  <text x="860" y="225" text-anchor="middle" font-size="9" fill="#666">orderer-msp, orderer-tls</text>
+
+  <rect x="795" y="250" width="130" height="60" rx="6" fill="#fff" stroke="#009688" stroke-width="1"/>
+  <text x="860" y="270" text-anchor="middle" font-weight="600" font-size="11" fill="#00695c">NeuralPathMSP</text>
+  <text x="860" y="287" text-anchor="middle" font-size="9" fill="#666">admin-msp, peer0-tls</text>
+  <text x="860" y="300" text-anchor="middle" font-size="9" fill="#666">orderer-msp, orderer-tls</text>
+
+  <!-- Org KC → MSP arrows -->
+  <line x1="720" y1="95" x2="793" y2="130" stroke="#2e7d32" stroke-width="1.5" stroke-dasharray="4,3" marker-end="url(#a)"/>
+  <line x1="720" y1="210" x2="793" y2="205" stroke="#2e7d32" stroke-width="1.5" stroke-dasharray="4,3" marker-end="url(#a)"/>
+  <line x1="720" y1="325" x2="793" y2="280" stroke="#2e7d32" stroke-width="1.5" stroke-dasharray="4,3" marker-end="url(#a)"/>
+
+  <!-- Flow explanation -->
+  <rect x="200" y="310" width="530" height="90" rx="10" fill="#fff" stroke="#ddd" stroke-width="1" filter="url(#sh)"/>
+  <text x="465" y="335" text-anchor="middle" font-size="13" font-weight="bold" fill="#333">Identity Brokering Flow</text>
+  <text x="465" y="355" text-anchor="middle" font-size="11" fill="#555">1. User clicks "Sign In" on cert-portal → redirected to Central Keycloak</text>
+  <text x="465" y="372" text-anchor="middle" font-size="11" fill="#555">2. Central KC shows org picker → user selects their organization</text>
+  <text x="465" y="389" text-anchor="middle" font-size="11" fill="#555">3. Redirected to Org Keycloak → authenticates with org credentials → token returned</text>
+</svg>

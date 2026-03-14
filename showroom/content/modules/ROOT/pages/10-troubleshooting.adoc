@@ -1,0 +1,132 @@
+= Troubleshooting
+
+== Common Issues
+
+[cols="2,2,2"]
+|===
+| Symptom | Cause | Fix
+
+| Course Manager shows *Access Denied*
+| Logged in as student instead of admin
+| Log out, log in as `admin@<org>.demo` / `admin`
+
+| Cert Portal shows *Not Found* for a valid cert
+| Certificate was issued to a different org
+| Verify the cert ID is correct — check the Course Manager certificates list
+
+| Keycloak login loops (redirect back to login)
+| Browser cookies conflict between org Keycloaks
+| Clear cookies for the cluster domain, or use incognito mode
+
+| ArgoCD shows *Degraded* status
+| Job pods completed (expected) or init containers failed
+| Click the Application → check resource tree for actual errors
+
+| ArgoCD shows *OutOfSync*
+| Manual changes were made to the cluster
+| Click *Sync* to reconcile with git. For Jobs, you may need to delete them first.
+
+| Grafana dashboards show *No data*
+| Metrics haven't been collected yet
+| Issue a few certificates or run API calls to generate traffic. Wait 30 seconds for Prometheus scrape.
+
+| `cert-admin-api` returns HTTP 500
+| Fabric peer or orderer not ready
+| Check peer and orderer pod status in the org namespace: `oc get pods -n {central_namespace}-techpulse`
+
+| Certificate issuance fails with *MVCC_READ_CONFLICT*
+| Concurrent transactions modifying the same key
+| Retry the request — this is a normal Fabric concurrency error
+
+| Token request returns *unauthorized_client*
+| Using wrong client_id
+| Use `course-manager-ui` (not `cert-admin-api`) for direct access grant token requests
+
+| Student transcript is empty
+| Student email doesn't match any certificate's studentID
+| Verify the student email matches the `studentID` used when issuing certificates
+|===
+
+== ArgoCD Stuck Syncs
+
+ArgoCD Jobs are immutable — once completed, they cannot be re-synced. If a Job fails:
+
+[source,bash]
+----
+# 1. Terminate the sync operation in ArgoCD UI
+# 2. Delete the stuck job
+oc delete job <job-name> -n {central_namespace}
+
+# 3. In ArgoCD: click Refresh (Hard), then Sync
+----
+
+== Pods in CrashLoopBackOff
+
+Check logs for the failing pod:
+
+[source,bash]
+----
+oc logs -n {central_namespace}-techpulse deployment/<name> --previous
+----
+
+Common causes:
+
+* *Peer/Orderer*: MSP secrets not yet created (enrollment job hasn't run). Wait for the enrollment job to complete.
+* *cert-admin-api*: Can't connect to peer. Ensure the peer pod is running.
+* *CouchDB*: PVC not bound. Check storage class availability.
+* *Keycloak*: Postgres not ready. Check the postgres pod in the same namespace.
+
+== Checking Pod Status
+
+Quick health check across all CertChain namespaces:
+
+[source,bash]
+----
+for ns in {central_namespace} {central_namespace}-techpulse {central_namespace}-dataforge {central_namespace}-neuralpath; do
+  echo "=== $ns ==="
+  oc get pods -n $ns --no-headers | grep -v Completed | grep -v "1/1\|2/2\|3/3" || echo "All pods healthy"
+done
+----
+
+== Fabric Network Debugging
+
+=== Check Peer Status
+
+[source,bash]
+----
+oc logs deployment/peer-deployment -n {central_namespace}-techpulse --tail=20
+----
+
+Look for: `Successfully committed block` messages indicating the peer is processing blocks.
+
+=== Check Orderer Status
+
+[source,bash]
+----
+oc logs deployment/orderer-deployment -n {central_namespace}-techpulse --tail=20
+----
+
+Look for: `BFT view` and `committed block` messages indicating consensus participation.
+
+=== Check Chaincode Status
+
+[source,bash]
+----
+oc logs deployment/certcontract-deployment -n {central_namespace} --tail=20
+----
+
+Look for: connection established messages and transaction invocations.
+
+== How This Environment Was Provisioned
+
+This demo environment was provisioned automatically through the *Red Hat Demo Platform (RHDP)*:
+
+. RHDP provisions an OpenShift cluster
+. The deployment script installs ArgoCD (OpenShift GitOps Operator)
+. A root ArgoCD Application is created pointing at the Helm chart in git
+. ArgoCD generates 5 child Applications and syncs them in wave order
+. Sync waves ensure correct ordering: CA → enrollment → peers/orderers → channel → chaincode → apps
+. Keycloak is configured with organizations and identity brokering
+. Demo certificate data is seeded for realistic screenshots
+
+Total deployment time is approximately *25-30 minutes* from cluster provisioning to fully operational demo.

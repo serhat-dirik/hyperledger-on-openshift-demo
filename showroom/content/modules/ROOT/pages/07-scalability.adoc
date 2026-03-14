@@ -1,0 +1,116 @@
+= Scalability
+
+CertChain is designed for horizontal scalability at multiple layers — from adding new organizations to scaling individual components.
+
+== Adding a New Organization
+
+The App-of-Apps Helm structure makes adding a 4th (or 5th, 6th...) organization straightforward. Each org is a parameterized instance of the same `certchain-org` Helm chart.
+
+=== What It Takes
+
+To add a new organization called "QuantumLeap":
+
+. *Add org config to `helm/values.yaml`*:
++
+[source,yaml]
+----
+components:
+  orgs:
+    - name: quantumleap
+      displayName: "QuantumLeap Labs"
+      mspId: QuantumLeapMSP
+      adminEmail: admin@quantumleap.demo
+----
+
+. *Create a values override file* at `helm/components/certchain-org/values-quantumleap.yaml` with org-specific settings (Keycloak realm name, display name, peer/orderer identity references).
+
+. *Push to git* — ArgoCD detects the change and auto-generates a new `certchain-quantumleap` Application.
+
+. *Update Fabric config* — The `configtx.yaml` needs the new org's MSP definition, and a channel configuration update transaction must be submitted.
+
+=== What Gets Auto-Generated
+
+The App-of-Apps template in `helm/templates/applications.yaml` iterates over the org list and generates one ArgoCD Application per org. Each org Application deploys:
+
+* Peer + CouchDB + Orderer (blockchain nodes)
+* cert-admin-api + course-manager-ui (application layer)
+* Keycloak + Postgres (identity)
+* RBAC, ExternalName services, enrollment jobs
+
+== Horizontal Scaling
+
+=== Read Scaling (Verification)
+
+Certificate verification is a *read-only* operation against CouchDB. Scaling reads is straightforward:
+
+[cols="1,2"]
+|===
+| Component | Scaling Approach
+
+| *verify-api*
+| Scale replicas — each instance connects to the same peer. Load balancer distributes requests.
+
+| *cert-portal*
+| Scale replicas — static frontend, no state.
+
+| *Peers (read)*
+| Add read-only peers for query load distribution. Each peer maintains a full copy of the ledger.
+
+| *CouchDB*
+| CouchDB follows the peer — scaling peers automatically scales the state database.
+|===
+
+=== Write Scaling (Issuance)
+
+Certificate issuance requires *blockchain consensus*, which bounds write throughput:
+
+[cols="1,2"]
+|===
+| Component | Scaling Notes
+
+| *cert-admin-api*
+| Scale replicas — each submits transactions to its org's peer independently.
+
+| *Peers (write)*
+| Single endorsing peer per org in this demo. Production can add endorsing peers but consensus remains the bottleneck.
+
+| *Orderers*
+| BFT requires 3f+1 orderers (f = faults tolerated). Adding orderers increases fault tolerance but does not increase throughput linearly.
+
+| *Chaincode (CcaaS)*
+| Scale replicas — the chaincode server is deployed as a regular Kubernetes Deployment.
+|===
+
+=== Read vs Write Characteristics
+
+[cols="1,1,1"]
+|===
+| Metric | Read (Verify) | Write (Issue)
+
+| Latency
+| ~50-200ms
+| ~1-3 seconds
+
+| Requires consensus
+| No
+| Yes (SmartBFT)
+
+| Scales linearly
+| Yes (add pods/peers)
+| Limited by consensus
+
+| Network impact
+| Local peer only
+| All orderers + endorsing peers
+|===
+
+== Multi-Cluster Considerations
+
+For production deployments across multiple OpenShift clusters:
+
+* Each organization could run on its own cluster with its own peer and orderer
+* Cross-cluster communication uses Fabric's gossip protocol and orderer TLS
+* The central namespace could run on a dedicated infrastructure cluster
+* Keycloak identity brokering works across clusters via public OIDC endpoints
+
+The Helm chart structure already supports this — each org chart is independently deployable with a different `global.domain` and `global.centralNamespace`.

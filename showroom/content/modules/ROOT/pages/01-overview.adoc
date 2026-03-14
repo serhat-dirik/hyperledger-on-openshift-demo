@@ -1,52 +1,75 @@
-= Architecture Overview
+= Business Context
 
-CertChain demonstrates a multi-organization blockchain credentialing system running on Red Hat OpenShift.
+== The Problem
 
-== Use Case
+Academic certificates are easy to forge. A PDF, a stamp, and a signature — and suddenly someone has a degree they never earned. Verification is manual, slow, and unreliable. Employers call universities, wait for responses, and often just trust the paper.
 
-Training organizations issue tamper-proof academic certificates stored on a Hyperledger Fabric blockchain. Anyone can verify a certificate's authenticity through a public verification portal — no account required.
+Every year, credential fraud costs organizations billions in bad hires, compliance failures, and reputational damage.
 
-== Organizations
+== The Solution: Blockchain-Backed Credentials
 
-[cols="1,1,1"]
+CertChain replaces paper certificates with blockchain-anchored credentials on *Hyperledger Fabric*. Every certificate is a transaction on an immutable distributed ledger — it cannot be altered, backdated, or forged after issuance.
+
+[cols="1,2"]
 |===
-| Organization | Role | Namespace
+| Property | How CertChain delivers it
 
-| *Central Infrastructure*
-| Orderer, CA, Verification Portal
-| `{central_namespace}`
+| *Tamper-proof*
+| Certificates are stored as blockchain transactions. Any modification would invalidate the chain.
+
+| *Instant verification*
+| Anyone can verify a certificate in seconds through the public portal — no phone calls, no waiting.
+
+| *Privacy-preserving*
+| Sensitive fields (grade, degree) are visible only to the certificate owner. Public verification shows status and metadata only.
+
+| *Decentralized trust*
+| No single organization controls the ledger. Three independent academies jointly maintain the blockchain through BFT consensus.
+
+| *Auditable*
+| Every issuance and revocation is permanently recorded with timestamps and organization identity.
+|===
+
+== The Demo Scenario
+
+CertChain simulates a consortium of three training academies that jointly operate a blockchain credentialing network:
+
+[cols="1,1,2"]
+|===
+| Organization | Namespace | Description
 
 | *TechPulse Academy*
-| Training org (peer + orderer)
 | `{central_namespace}-techpulse`
+| Full-stack web development and DevSecOps courses
 
 | *DataForge Institute*
-| Training org (peer + orderer)
 | `{central_namespace}-dataforge`
+| Cloud-native microservices and data engineering
 
 | *NeuralPath Labs*
-| Training org (peer + orderer)
 | `{central_namespace}-neuralpath`
+| AI/ML engineering and deep learning specializations
 |===
 
-== Key Components
+Central infrastructure (Fabric CA, verification portal, shared orderer, Grafana) runs in the `{central_namespace}` namespace.
 
-* *Hyperledger Fabric 3.1* — BFT consensus with 4 orderers, 3 peers, CouchDB state stores
-* *CertContract* — Go chaincode (CcaaS) for certificate issuance, revocation, verification
-* *cert-admin-api* — Quarkus REST API per org for managing certificates
-* *course-manager-ui* — Node.js UI per org for course/student management
-* *verify-api* — Quarkus REST API for public verification
-* *cert-portal* — Node.js public verification UI
-* *Keycloak* — Per-org identity management with central SSO brokering
-* *Grafana* — Dashboards for Fabric metrics and application metrics
+== Three Roles
 
-== Blockchain Network
+*Registrar (Cert Admin)* — A training administrator who logs into their organization's Course Manager, issues certificates to students, views certificate lists, and can revoke certificates. Each org has its own admin.
 
-The Fabric network uses *BFT (Byzantine Fault Tolerant)* consensus across 4 orderers:
+*Student* — A certificate holder who logs into the public Cert Portal to view their transcript and see full certificate details including private fields like grade and degree.
 
-* `orderer0` — Central namespace
-* `orderer1` — TechPulse namespace
-* `orderer2` — DataForge namespace
-* `orderer3` — NeuralPath namespace
+*Employer* — Anyone who receives a certificate ID from a student and verifies it through the public Cert Portal. No login required — but only public fields are visible.
 
-Each organization runs a peer node connected to CouchDB for rich queries.
+== Why Blockchain, Not a Database?
+
+A centralized database could store certificates — but who controls it? If TechPulse runs the database, why would DataForge or NeuralPath trust it?
+
+Hyperledger Fabric solves this with *decentralized consensus*:
+
+* Each organization runs its own peer node and orderer
+* Transactions require endorsement from participating peers
+* The BFT consensus protocol tolerates up to 1 Byzantine (malicious) node out of 4
+* No single organization can unilaterally modify the ledger
+
+This is the core value proposition: *trust without a central authority*.

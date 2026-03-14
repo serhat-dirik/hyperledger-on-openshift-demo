@@ -1,0 +1,114 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 960 340" font-family="Inter, Segoe UI, Arial, sans-serif" font-size="12">
+  <defs>
+    <marker id="arr" viewBox="0 0 10 7" refX="10" refY="3.5" markerWidth="8" markerHeight="6" orient="auto-start-reverse">
+      <polygon points="0 0, 10 3.5, 0 7" fill="#666"/>
+    </marker>
+    <marker id="arrGreen" viewBox="0 0 10 7" refX="10" refY="3.5" markerWidth="8" markerHeight="6" orient="auto-start-reverse">
+      <polygon points="0 0, 10 3.5, 0 7" fill="#34a853"/>
+    </marker>
+    <marker id="arrRed" viewBox="0 0 10 7" refX="10" refY="3.5" markerWidth="8" markerHeight="6" orient="auto-start-reverse">
+      <polygon points="0 0, 10 3.5, 0 7" fill="#ea4335"/>
+    </marker>
+    <filter id="s" x="-2%" y="-2%" width="104%" height="104%">
+      <feDropShadow dx="1" dy="1" stdDeviation="2" flood-opacity="0.12"/>
+    </filter>
+  </defs>
+
+  <!-- Title -->
+  <text x="480" y="26" text-anchor="middle" font-size="18" font-weight="bold" fill="#1a1a2e">Certificate Lifecycle — Issue, Verify, Revoke</text>
+
+  <!-- ===== ISSUE FLOW (top) ===== -->
+  <text x="30" y="62" font-size="14" font-weight="bold" fill="#1a73e8">Issue Flow</text>
+
+  <!-- Step boxes -->
+  <rect x="30" y="72" width="120" height="55" rx="8" fill="#e8f0fe" stroke="#1a73e8" stroke-width="1.5" filter="url(#s)"/>
+  <text x="90" y="95" text-anchor="middle" font-weight="bold" fill="#1a73e8">1. Submit</text>
+  <text x="90" y="112" text-anchor="middle" font-size="10" fill="#555">Course Manager UI</text>
+
+  <rect x="190" y="72" width="120" height="55" rx="8" fill="#e8f0fe" stroke="#1a73e8" stroke-width="1.5" filter="url(#s)"/>
+  <text x="250" y="95" text-anchor="middle" font-weight="bold" fill="#1a73e8">2. API Call</text>
+  <text x="250" y="112" text-anchor="middle" font-size="10" fill="#555">cert-admin-api</text>
+
+  <rect x="350" y="72" width="120" height="55" rx="8" fill="#fce4ec" stroke="#e91e63" stroke-width="1.5" filter="url(#s)"/>
+  <text x="410" y="95" text-anchor="middle" font-weight="bold" fill="#c2185b">3. Endorse</text>
+  <text x="410" y="112" text-anchor="middle" font-size="10" fill="#555">Peer signs proposal</text>
+
+  <rect x="510" y="72" width="120" height="55" rx="8" fill="#fbe9e7" stroke="#ea4335" stroke-width="1.5" filter="url(#s)"/>
+  <text x="570" y="95" text-anchor="middle" font-weight="bold" fill="#ea4335">4. Order</text>
+  <text x="570" y="112" text-anchor="middle" font-size="10" fill="#555">SmartBFT consensus</text>
+
+  <rect x="670" y="72" width="120" height="55" rx="8" fill="#e8f5e9" stroke="#34a853" stroke-width="1.5" filter="url(#s)"/>
+  <text x="730" y="95" text-anchor="middle" font-weight="bold" fill="#34a853">5. Commit</text>
+  <text x="730" y="112" text-anchor="middle" font-size="10" fill="#555">Block → Ledger</text>
+
+  <rect x="830" y="72" width="110" height="55" rx="8" fill="#e8f5e9" stroke="#34a853" stroke-width="1.5" filter="url(#s)"/>
+  <text x="885" y="95" text-anchor="middle" font-weight="bold" fill="#34a853">6. Index</text>
+  <text x="885" y="112" text-anchor="middle" font-size="10" fill="#555">CouchDB update</text>
+
+  <!-- Arrows -->
+  <line x1="150" y1="100" x2="188" y2="100" stroke="#666" stroke-width="1.5" marker-end="url(#arr)"/>
+  <line x1="310" y1="100" x2="348" y2="100" stroke="#666" stroke-width="1.5" marker-end="url(#arr)"/>
+  <line x1="470" y1="100" x2="508" y2="100" stroke="#666" stroke-width="1.5" marker-end="url(#arr)"/>
+  <line x1="630" y1="100" x2="668" y2="100" stroke="#666" stroke-width="1.5" marker-end="url(#arr)"/>
+  <line x1="790" y1="100" x2="828" y2="100" stroke="#666" stroke-width="1.5" marker-end="url(#arr)"/>
+
+  <!-- Detail labels below -->
+  <text x="90" y="142" text-anchor="middle" font-size="9" fill="#888">Registrar fills form</text>
+  <text x="250" y="142" text-anchor="middle" font-size="9" fill="#888">JWT + org-admin role</text>
+  <text x="410" y="142" text-anchor="middle" font-size="9" fill="#888">Simulate + RW set</text>
+  <text x="570" y="142" text-anchor="middle" font-size="9" fill="#888">4 orderers agree</text>
+  <text x="730" y="142" text-anchor="middle" font-size="9" fill="#888">All peers persist</text>
+  <text x="885" y="142" text-anchor="middle" font-size="9" fill="#888">World state updated</text>
+
+  <!-- ===== VERIFY FLOW (middle) ===== -->
+  <text x="30" y="182" font-size="14" font-weight="bold" fill="#34a853">Verify Flow</text>
+
+  <rect x="30" y="192" width="120" height="50" rx="8" fill="#e8f5e9" stroke="#34a853" stroke-width="1.5" filter="url(#s)"/>
+  <text x="90" y="213" text-anchor="middle" font-weight="bold" fill="#34a853">1. Enter ID</text>
+  <text x="90" y="228" text-anchor="middle" font-size="10" fill="#555">cert-portal</text>
+
+  <rect x="190" y="192" width="120" height="50" rx="8" fill="#e8f5e9" stroke="#34a853" stroke-width="1.5" filter="url(#s)"/>
+  <text x="250" y="213" text-anchor="middle" font-weight="bold" fill="#34a853">2. Query</text>
+  <text x="250" y="228" text-anchor="middle" font-size="10" fill="#555">verify-api</text>
+
+  <rect x="350" y="192" width="120" height="50" rx="8" fill="#e8f5e9" stroke="#34a853" stroke-width="1.5" filter="url(#s)"/>
+  <text x="410" y="213" text-anchor="middle" font-weight="bold" fill="#34a853">3. Read Ledger</text>
+  <text x="410" y="228" text-anchor="middle" font-size="10" fill="#555">CouchDB query</text>
+
+  <rect x="510" y="192" width="130" height="50" rx="8" fill="#e8f5e9" stroke="#34a853" stroke-width="1.5" filter="url(#s)"/>
+  <text x="575" y="213" text-anchor="middle" font-weight="bold" fill="#34a853">4. Result</text>
+  <text x="575" y="228" text-anchor="middle" font-size="10" fill="#555">VALID / REVOKED / NOT_FOUND</text>
+
+  <line x1="150" y1="217" x2="188" y2="217" stroke="#34a853" stroke-width="1.5" marker-end="url(#arrGreen)"/>
+  <line x1="310" y1="217" x2="348" y2="217" stroke="#34a853" stroke-width="1.5" marker-end="url(#arrGreen)"/>
+  <line x1="470" y1="217" x2="508" y2="217" stroke="#34a853" stroke-width="1.5" marker-end="url(#arrGreen)"/>
+
+  <text x="90" y="256" text-anchor="middle" font-size="9" fill="#888">Public — no login</text>
+  <text x="250" y="256" text-anchor="middle" font-size="9" fill="#888">Public endpoint</text>
+  <text x="410" y="256" text-anchor="middle" font-size="9" fill="#888">Peer → CouchDB</text>
+  <text x="575" y="256" text-anchor="middle" font-size="9" fill="#888">Public fields only</text>
+
+  <!-- Privacy box -->
+  <rect x="680" y="185" width="260" height="65" rx="8" fill="#fff3e0" stroke="#ff9800" stroke-width="1.5" filter="url(#s)"/>
+  <text x="810" y="205" text-anchor="middle" font-weight="bold" fill="#e65100">Privacy Enforcement</text>
+  <text x="810" y="222" text-anchor="middle" font-size="10" fill="#555">Anonymous → public fields only</text>
+  <text x="810" y="236" text-anchor="middle" font-size="10" fill="#555">Cert owner (JWT) → full details</text>
+
+  <!-- ===== REVOKE FLOW (bottom) ===== -->
+  <text x="30" y="290" font-size="14" font-weight="bold" fill="#ea4335">Revoke Flow</text>
+
+  <rect x="30" y="298" width="120" height="40" rx="8" fill="#fbe9e7" stroke="#ea4335" stroke-width="1.5" filter="url(#s)"/>
+  <text x="90" y="323" text-anchor="middle" font-weight="bold" fill="#ea4335">1. Revoke</text>
+
+  <rect x="190" y="298" width="120" height="40" rx="8" fill="#fbe9e7" stroke="#ea4335" stroke-width="1.5" filter="url(#s)"/>
+  <text x="250" y="323" text-anchor="middle" font-weight="bold" fill="#ea4335">2. New Tx</text>
+
+  <rect x="350" y="298" width="140" height="40" rx="8" fill="#fbe9e7" stroke="#ea4335" stroke-width="1.5" filter="url(#s)"/>
+  <text x="420" y="323" text-anchor="middle" font-weight="bold" fill="#ea4335">3. Status → REVOKED</text>
+
+  <line x1="150" y1="318" x2="188" y2="318" stroke="#ea4335" stroke-width="1.5" marker-end="url(#arrRed)"/>
+  <line x1="310" y1="318" x2="348" y2="318" stroke="#ea4335" stroke-width="1.5" marker-end="url(#arrRed)"/>
+
+  <text x="90" y="330" text-anchor="middle" font-size="0" fill="transparent">.</text>
+  <text x="540" y="323" text-anchor="start" font-size="10" fill="#888">Irreversible — blockchain audit trail preserved</text>
+</svg>

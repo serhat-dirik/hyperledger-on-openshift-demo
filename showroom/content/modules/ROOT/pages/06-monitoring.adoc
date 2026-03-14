@@ -1,0 +1,103 @@
+= Monitoring & Observability
+
+CertChain includes comprehensive monitoring through ArgoCD for deployment management and Grafana for runtime metrics.
+
+== ArgoCD — GitOps Dashboard
+
+CertChain is deployed via ArgoCD using the *App-of-Apps* pattern. A single root Application generates all child Applications automatically.
+
+=== Access ArgoCD
+
+Navigate to ArgoCD: {argocd_url}[Open window=_blank]
+
+Login with `admin` / `admin`, or click *Log in via OpenShift*.
+
+=== ArgoCD Applications
+
+You should see 6 Applications, all *Synced* and *Healthy*:
+
+[cols="1,3"]
+|===
+| Application | Description
+
+| *certchain*
+| Root App-of-Apps — generates the 5 child Applications from Helm values
+
+| *certchain-central*
+| Central infrastructure: Fabric CA, orderer0, cert-portal, verify-api, Keycloak, Grafana
+
+| *certchain-techpulse*
+| TechPulse org: peer0, orderer1, CouchDB, cert-admin-api, course-manager-ui, Keycloak
+
+| *certchain-dataforge*
+| DataForge org: same layout as TechPulse
+
+| *certchain-neuralpath*
+| NeuralPath org: same layout as TechPulse
+
+| *certchain-showroom*
+| This lab guide
+|===
+
+Click any Application to explore its *resource tree*, *sync status*, and *sync-wave ordering*. The sync waves ensure resources are created in the correct order — for example, Fabric CA must be running before enrollment jobs can execute.
+
+== Grafana — Metrics Dashboards
+
+Navigate to Grafana: {grafana_url}[Open window=_blank]
+
+Grafana is configured with *anonymous access* — no login required.
+
+=== Fabric Network Dashboard
+
+Select *CertChain — Fabric Network* from the dashboard list.
+
+This dashboard provides deep visibility into the Hyperledger Fabric blockchain network:
+
+*Summary Row:*
+
+* *Fabric Version* — The running Fabric version across peers and orderers
+* *Ledger Height* — Current block count on the ledger
+* *Endorsement Success %* — Ratio of successful proposals to total proposals
+* *Proposals Received* — Total endorsement proposals received by peers
+* *BFT Leader* — Current SmartBFT consensus leader
+* *Gossip Peers* — Number of known gossip peers in the network
+
+*Detail Sections:*
+
+* *Endorsement* — Success/failure timeline, proposals rate per peer, endorsement duration p99
+* *Ledger & State DB* — Block commit latency, CouchDB commit and query latency (all p99)
+* *SmartBFT Consensus* — Consensus view table, committed block progress, batch latency, pool sizes
+* *Chaincode & gRPC* — Chaincode execution duration, launch metrics, gRPC stream activity
+
+=== Application APIs Dashboard
+
+Select *CertChain — Application APIs*.
+
+This dashboard tracks the Quarkus API services:
+
+* *Certificate Stats* — Total issued, revoked, verified, and not-found counters
+* *Certificate Operations* — Operations rate over time, certificates issued per org
+* *cert-admin-api* — HTTP request rate, latency p99, error rates (4xx/5xx), active connections
+* *verify-api* — HTTP request rate, latency p99
+* *JVM Runtime* — Heap memory usage, GC pause time, thread count
+
+=== Infrastructure Health Dashboard
+
+Select *CertChain — Infrastructure Health*.
+
+This dashboard covers the underlying OpenShift infrastructure:
+
+* *Status Overview* — Total running pods, pods not ready, container restarts, namespace count
+* *Blockchain Components* — CPU and memory usage for peers and orderers
+* *Applications & Databases* — CPU and memory for APIs, UIs, CouchDB, Postgres
+* *Storage* — PVC usage percentage and capacity gauges
+* *Pod Health & Network* — Restart counts, network traffic by namespace
+
+== Generating Traffic
+
+To see the dashboards come alive with real data, repeat the certificate issuance and verification steps from the previous sections. Each operation generates metrics that appear in the dashboards within 30 seconds.
+
+[TIP]
+====
+For rapid traffic generation, use the terminal to run `curl` commands from the xref:09-api.adoc[API Walkthrough]. Issue and verify several certificates in quick succession to see endorsement rates, latency distributions, and consensus metrics in real time.
+====

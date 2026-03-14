@@ -2,13 +2,54 @@
 
 Welcome to the *CertChain Blockchain Credentialing* demo on Red Hat OpenShift.
 
-This guide walks you through the demo environment — from issuing academic certificates on a Hyperledger Fabric blockchain to verifying them through a public portal.
+This lab guide walks you through a complete blockchain credentialing scenario — from issuing tamper-proof academic certificates on Hyperledger Fabric to verifying them through a public portal, and exploring the platform management capabilities underneath.
 
-== What You'll Need
+== Demo Credentials
 
-* Access to the OpenShift Console (see the *OpenShift Console* tab above)
-* Access to the embedded Terminal (see the *Terminal* tab above)
-* A modern web browser
+[cols="2,2,2,1"]
+|===
+| Role | Username | Password | Used For
+
+| *ArgoCD Admin*
+| `admin`
+| `admin`
+| GitOps dashboard
+
+| *OpenShift Admin*
+| `admin`
+| (provided by RHDP)
+| OpenShift Console
+
+| *TechPulse Admin*
+| `admin@techpulse.demo`
+| `admin`
+| Course Manager UI
+
+| *DataForge Admin*
+| `admin@dataforge.demo`
+| `admin`
+| Course Manager UI
+
+| *NeuralPath Admin*
+| `admin@neuralpath.demo`
+| `admin`
+| Course Manager UI
+
+| *TechPulse Student*
+| `student01@techpulse.demo`
+| `student`
+| Cert Portal (transcript)
+
+| *DataForge Student*
+| `student03@dataforge.demo`
+| `student`
+| Cert Portal (transcript)
+
+| *NeuralPath Student*
+| `student05@neuralpath.demo`
+| `student`
+| Cert Portal (transcript)
+|===
 
 == Environment URLs
 
@@ -16,25 +57,39 @@ This guide walks you through the demo environment — from issuing academic cert
 |===
 | Component | URL
 
-| Cert Portal (verification)
-| {cert_portal_url}
+| Cert Portal (public verification)
+| {cert_portal_url}[Open window=_blank]
 
 | TechPulse Course Manager
-| {techpulse_course_manager_url}
+| {techpulse_course_manager_url}[Open window=_blank]
 
 | DataForge Course Manager
-| {dataforge_course_manager_url}
+| {dataforge_course_manager_url}[Open window=_blank]
 
 | NeuralPath Course Manager
-| {neuralpath_course_manager_url}
+| {neuralpath_course_manager_url}[Open window=_blank]
+
+| ArgoCD Dashboard
+| {argocd_url}[Open window=_blank]
 
 | Grafana Dashboards
-| {grafana_url}
+| {grafana_url}[Open window=_blank]
 |===
 
-== Demo Flow
+== Suggested Demo Paths
 
-. *Admin: Issue Certificates* — Log in to a Course Manager UI, create a course, enroll students, and issue blockchain-backed certificates.
-. *User: Verify Certificates* — Use the public Cert Portal to verify certificates by ID.
-. *Explore Monitoring* — View Fabric network and application metrics in Grafana.
-. *API Walkthrough* — Use `curl` to interact directly with the REST APIs.
+*30-Minute Path (Business Focus):*
+
+. xref:01-overview.adoc[Business Context] — Why blockchain for credentials
+. xref:02-admin-issue.adoc[Issue Certificates] — Issue certs from TechPulse
+. xref:03-employer-verify.adoc[Verify a Certificate] — Employer verification flow
+. xref:04-student-portal.adoc[Student Transcript] — Login and view private data
+
+*60-Minute Path (Full Platform):*
+
+. All of the above, plus:
+. xref:05-security-identity.adoc[Security & Identity] — Keycloak brokering, RBAC, MSP
+. xref:06-monitoring.adoc[Monitoring] — ArgoCD and Grafana dashboards
+. xref:07-scalability.adoc[Scalability] — Adding orgs, horizontal scaling
+. xref:08-resilience.adoc[Resilience] — BFT consensus, fault tolerance demos
+. xref:09-api.adoc[API Walkthrough] — curl commands from terminal

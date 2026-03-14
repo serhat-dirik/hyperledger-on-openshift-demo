@@ -1,0 +1,151 @@
+= Technical Architecture
+
+== Network Topology
+
+The CertChain network runs across 4 OpenShift namespaces, each containing a subset of the Fabric blockchain components and application services.
+
+image::arch-network-topology.svg[Network Topology,width=100%]
+
+=== Namespace Layout
+
+[cols="1,3"]
+|===
+| Namespace | Components
+
+| `{central_namespace}`
+| Fabric CA, orderer0, cert-portal, verify-api, central Keycloak, Postgres, Grafana, certcontract (chaincode)
+
+| `{central_namespace}-techpulse`
+| peer0, orderer1, CouchDB, Postgres, org Keycloak, cert-admin-api, course-manager-ui
+
+| `{central_namespace}-dataforge`
+| peer0, orderer2, CouchDB, Postgres, org Keycloak, cert-admin-api, course-manager-ui
+
+| `{central_namespace}-neuralpath`
+| peer0, orderer3, CouchDB, Postgres, org Keycloak, cert-admin-api, course-manager-ui
+|===
+
+=== Technology Stack
+
+[cols="1,2"]
+|===
+| Layer | Technology
+
+| Blockchain
+| Hyperledger Fabric 3.1, SmartBFT consensus, CouchDB state database
+
+| Chaincode
+| Go (CcaaS — Chaincode as a Service)
+
+| APIs
+| Quarkus 3.x (Java 21) — cert-admin-api, verify-api
+
+| UIs
+| React + Vite — course-manager-ui, cert-portal
+
+| Identity
+| Keycloak 26 with OIDC, identity brokering, organizations
+
+| Deployment
+| Helm App-of-Apps → ArgoCD on OpenShift
+
+| Monitoring
+| Prometheus ServiceMonitors + Grafana Operator
+|===
+
+== Certificate Lifecycle
+
+Every certificate goes through a well-defined blockchain transaction lifecycle — from issuance through optional revocation.
+
+image::arch-cert-lifecycle.svg[Certificate Lifecycle,width=100%]
+
+=== Issue Flow (Write Path)
+
+. *Submit* — Registrar fills the certificate form in the Course Manager UI
+. *API Call* — `cert-admin-api` receives the request with a JWT bearing the `org-admin` role
+. *Endorse* — The Fabric peer simulates the chaincode and signs the proposal (read-write set)
+. *Order* — The SmartBFT orderer cluster (4 nodes) agrees on block ordering
+. *Commit* — All peers validate and persist the block to their local ledger
+. *Index* — CouchDB world state is updated for rich queries
+
+=== Verify Flow (Read Path)
+
+. *Enter ID* — Anyone enters a certificate ID on the cert-portal (no login required)
+. *Query* — `verify-api` evaluates the transaction via the Fabric Gateway
+. *Read Ledger* — The peer reads from CouchDB (no new transaction is created)
+. *Result* — Returns VALID, REVOKED, EXPIRED, or NOT_FOUND with public fields only
+
+=== Revoke Flow
+
+. *Revoke* — Admin clicks Revoke in the Course Manager (irreversible)
+. *New Tx* — A new blockchain transaction records the status change
+. *Status → REVOKED* — All subsequent verifications return REVOKED
+
+[IMPORTANT]
+====
+Revocation is *irreversible* — the blockchain audit trail is permanently preserved. There is no "un-revoke" operation.
+====
+
+=== Public vs Private Data
+
+[cols="1,1,1"]
+|===
+| Field | Public (anonymous) | Private (cert owner)
+
+| Status (VALID/REVOKED)
+| ✓
+| ✓
+
+| Student Name
+| ✓
+| ✓
+
+| Course Name
+| ✓
+| ✓
+
+| Organization
+| ✓
+| ✓
+
+| Issue / Expiry Date
+| ✓
+| ✓
+
+| *Grade*
+| ✗
+| ✓
+
+| *Degree*
+| ✗
+| ✓
+
+| Student ID (email)
+| ✗
+| ✓
+|===
+
+Privacy enforcement is server-side in the `verify-api`. The JWT email claim is matched against the certificate's `studentID` to determine ownership.
+
+== Identity Architecture
+
+CertChain uses a federated identity model with Keycloak identity brokering across organizations.
+
+image::arch-identity.svg[Identity Architecture,width=100%]
+
+=== Identity Brokering Flow
+
+. User clicks *Sign In* on the cert-portal → redirected to Central Keycloak
+. Central Keycloak shows the organization picker → user selects their org
+. Redirected to the org's Keycloak instance → authenticates with org credentials
+. Token returned to the application with org-specific claims
+
+=== Fabric MSP (Membership Service Provider)
+
+Each organization has its own MSP with X.509 certificates:
+
+* *admin-msp* — Organization administrator identity (for chaincode operations)
+* *peer0-msp / peer0-tls* — Peer node identity and TLS certificates
+* *orderer-msp / orderer-tls* — Orderer node identity and TLS certificates
+
+The Fabric CA in the central namespace issues all certificates. Each organization's MSP defines which identities are authorized to submit transactions on behalf of that organization.

@@ -1,0 +1,123 @@
+= Security & Identity
+
+CertChain uses a multi-layered identity and security model combining Keycloak OIDC, Fabric MSP (X.509), and Kubernetes RBAC.
+
+== Keycloak Architecture
+
+The demo runs *4 Keycloak instances* — one central broker and one per organization:
+
+[cols="1,2,2"]
+|===
+| Instance | Namespace | Purpose
+
+| *Central Keycloak*
+| `{central_namespace}`
+| Federation hub — identity brokering for cert-portal
+
+| *TechPulse Keycloak*
+| `{central_namespace}-techpulse`
+| TechPulse users — admin, student01, student02
+
+| *DataForge Keycloak*
+| `{central_namespace}-dataforge`
+| DataForge users — admin, student03, student04
+
+| *NeuralPath Keycloak*
+| `{central_namespace}-neuralpath`
+| NeuralPath users — admin, student05, student06
+|===
+
+=== Identity Brokering
+
+The Central Keycloak uses *Organizations* and *Identity Providers (OIDC)* to route authentication to the correct org:
+
+. Central Keycloak defines three organizations: TechPulse, DataForge, NeuralPath
+. Each organization has a corresponding OIDC Identity Provider pointing to the org's Keycloak
+. When a user logs in, Central Keycloak detects the email domain and redirects to the appropriate org Keycloak
+. The org Keycloak authenticates the user and returns a token through the broker
+
+You can explore this configuration:
+
+. Open Central Keycloak: {central_keycloak_url}[Open window=_blank]
+. Log in with `admin` / `admin`
+. Navigate to *Organizations* — you'll see TechPulse, DataForge, NeuralPath
+. Navigate to *Identity Providers* — you'll see the OIDC providers for each org
+
+== RBAC: Role-Based Access Control
+
+Each org Keycloak defines two roles:
+
+* `org-admin` — Can issue, view, and revoke certificates
+* `user` — Can view their own transcript (student role)
+
+=== Demo: Admin Role Enforcement
+
+. Open the TechPulse Course Manager: {techpulse_course_manager_url}[Open window=_blank]
+. Log in as `student01@techpulse.demo` / `student`
+. You should see an *Access Denied* page — students cannot access admin functions
+
+The `cert-admin-api` validates the JWT token and checks for the `org-admin` role. Without it, all admin endpoints return HTTP 403.
+
+=== Demo: Cross-Org API Rejection
+
+Using the terminal, try accessing TechPulse's cert-admin-api with a DataForge admin token:
+
+[source,bash,subs="attributes"]
+----
+# Get a DataForge admin token
+DF_TOKEN=$(curl -sk -X POST \
+  "{dataforge_keycloak_url}/realms/dataforge/protocol/openid-connect/token" \
+  -d "grant_type=password" \
+  -d "client_id=course-manager-ui" \
+  -d "username=admin@dataforge.demo" \
+  -d "password=admin" | python3 -c "import sys,json; print(json.load(sys.stdin)['access_token'])")
+
+# Try accessing TechPulse API with DataForge token
+curl -sk -o /dev/null -w "HTTP %{http_code}" \
+  "{techpulse_cert_admin_api_url}/api/v1/certificates" \
+  -H "Authorization: Bearer $DF_TOKEN"
+----
+
+Expected result: HTTP 401 or 403 — the token is valid but issued by a different realm. Each org's `cert-admin-api` only accepts tokens from its own Keycloak.
+
+== Fabric MSP: Blockchain Identity
+
+At the blockchain layer, identity is managed through *Membership Service Providers (MSP)* using X.509 certificates:
+
+[cols="1,2"]
+|===
+| Secret | Purpose
+
+| `admin-msp`
+| Organization admin identity — used by `cert-admin-api` to submit transactions
+
+| `peer0-msp` / `peer0-tls`
+| Peer node identity and TLS certificates
+
+| `orderer-msp` / `orderer-tls`
+| Orderer node identity and TLS certificates
+|===
+
+All certificates are issued by the *Fabric CA* running in the central namespace. The MSP configuration in `configtx.yaml` defines which root CA certificates are trusted for each organization.
+
+=== The Two Identity Layers
+
+[cols="1,1,1"]
+|===
+| Layer | Technology | Purpose
+
+| *Application*
+| Keycloak OIDC (JWT)
+| Authenticate users, enforce RBAC roles
+
+| *Blockchain*
+| Fabric MSP (X.509)
+| Authorize transaction submission, endorse proposals
+|===
+
+A certificate issuance request traverses both layers:
+
+. User authenticates via Keycloak → JWT with `org-admin` role
+. `cert-admin-api` validates JWT, then uses the `admin-msp` X.509 identity to submit a Fabric transaction
+. The peer validates the X.509 identity against the channel's MSP configuration
+. The orderer validates the X.509 identity before including the transaction in a block

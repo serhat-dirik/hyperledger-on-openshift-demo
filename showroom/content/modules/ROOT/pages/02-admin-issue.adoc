@@ -1,68 +1,107 @@
-= Admin: Issue Certificates
+= Cert Admin: Issue Certificates
 
-In this section you will act as a training administrator — creating a course, enrolling a student, and issuing a blockchain certificate.
+In this section you act as a *Registrar* — the training administrator who issues blockchain-backed certificates to students.
 
-[NOTE]
-====
-The Course Manager requires the `org-admin` role. If you log in as a student (e.g., `student01@techpulse.demo`), you will see an "Access Denied" page — this is the admin role enforcement in action.
-====
+== Step 1: Log in to TechPulse Course Manager
 
-== Step 1: Log in to a Course Manager
-
-. Open the *TechPulse Course Manager*: {techpulse_course_manager_url}
-. Click *Login* and use the Keycloak credentials:
+. Open the *TechPulse Course Manager*: {techpulse_course_manager_url}[Open window=_blank]
+. You will be redirected to Keycloak. Log in with:
 +
-[cols="1,1"]
+[cols="1,2"]
 |===
 | Username | `admin@techpulse.demo`
 | Password | `admin`
 |===
+. After login, you land on the *Dashboard* showing certificate statistics — total certificates, active count, and revoked count.
 
-== Step 2: Create a Course
+[NOTE]
+====
+The Course Manager requires the `org-admin` role. If you try logging in as a student (e.g., `student01@techpulse.demo`), you will see an *Access Denied* page. This is the RBAC enforcement in action — only admins can issue or revoke certificates.
+====
 
-. Click *Create Course*.
+== Step 2: View the Dashboard
+
+The dashboard shows:
+
+* *Total Certificates* — All certificates issued by this organization
+* *Active* — Certificates in VALID status
+* *Revoked* — Certificates that have been revoked
+* *Certificates by Status* — Bar chart showing the distribution
+* *Recent Issuances* — The latest certificates with their status
+
+== Step 3: Issue a Certificate
+
+. Click *Issue Certificate* in the left sidebar.
+. The form auto-generates a unique *Certificate ID* (e.g., `CERT-MMQ8YQ49-AXP2`). Click *Regenerate* for a new one.
 . Fill in the details:
 +
 [cols="1,2"]
 |===
-| Field | Value
+| Field | Example Value
 
-| Course Name | `OpenShift Administration`
-| Description | `Red Hat OpenShift cluster administration fundamentals`
-| Duration | `40`
+| Student ID
+| `student01@techpulse.demo`
+
+| Student Name
+| `Alice Chen`
+
+| Course
+| Select from the dropdown (e.g., `Full-Stack Web Dev`)
+
+| Issue Date
+| Today's date (auto-filled)
+
+| Expiry Date
+| One year from today (auto-filled)
+
+| Grade _(optional)_
+| `4.0`
+
+| Degree _(optional)_
+| `Professional Certificate`
 |===
-. Click *Save*.
-
-== Step 3: Enroll a Student
-
-. Select the course you just created.
-. Click *Enroll Student*.
-. Enter student details:
-+
-[cols="1,2"]
-|===
-| Field | Value
-
-| Name | `Jane Doe`
-| Email | `jane.doe@example.com`
-|===
-. Click *Enroll*.
-
-== Step 4: Issue a Certificate
-
-. In the enrolled students list, select *Jane Doe*.
 . Click *Issue Certificate*.
-. The certificate is now recorded on the Hyperledger Fabric blockchain.
-. Copy the *Certificate ID* — you will need it in the next section.
+. On success, you see a confirmation. The certificate is now *permanently recorded on the Hyperledger Fabric blockchain*.
 
-[NOTE]
+[TIP]
 ====
-The certificate issuance calls the `cert-admin-api`, which submits a transaction to the `certcontract` chaincode. The transaction is endorsed by the peer, ordered by the BFT orderers, and committed to the ledger.
+Copy the *Certificate ID* — you will need it in the next section to verify the certificate as an employer.
 ====
 
-== Try Other Organizations
+== Step 4: View Certificate List
 
-Repeat the same flow with *DataForge* or *NeuralPath* to see how each org operates independently on the same blockchain network.
+. Click *Certificates* in the left sidebar.
+. You see a table of all certificates issued by TechPulse, with columns for Cert ID, Student, Course, Status, Issue Date, and Actions.
+. Use the *search box* to filter by ID, student name, course, or status.
+. Each certificate has a *View* link to see full details and a *QR code* icon for the verification QR.
 
-* DataForge: {dataforge_course_manager_url}
-* NeuralPath: {neuralpath_course_manager_url}
+== Step 5: View Certificate Details
+
+. Click *View* on any certificate.
+. The detail page shows all certificate fields including:
+** Certificate ID, Student ID, Student Name
+** Course, Issue Date, Expiry Date
+** *Grade* and *Degree* — these are the private fields
+** Organization, Status (ACTIVE or REVOKED)
+
+[IMPORTANT]
+====
+As an admin, you see *all fields* including Grade and Degree. When an employer verifies this same certificate through the public portal, Grade and Degree will be *hidden*. This is the privacy enforcement in action.
+====
+
+== Step 6: Try Another Organization
+
+Repeat the same flow with *DataForge* to see how each org operates independently:
+
+. Open *DataForge Course Manager*: {dataforge_course_manager_url}[Open window=_blank]
+. Log in as `admin@dataforge.demo` / `admin`
+. Issue a certificate for a DataForge student
+
+Each organization:
+
+* Has its own Keycloak instance and user directory
+* Runs its own peer node on the Fabric network
+* Can only issue certificates under its own organization name
+* Cannot see or modify certificates from other organizations
+
+This is *organizational isolation* — a core principle of the multi-org blockchain architecture.
