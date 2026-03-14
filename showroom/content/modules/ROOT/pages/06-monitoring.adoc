@@ -69,6 +69,8 @@ This dashboard provides deep visibility into the Hyperledger Fabric blockchain n
 * *SmartBFT Consensus* — Consensus view table, committed block progress, batch latency, pool sizes
 * *Chaincode & gRPC* — Chaincode execution duration, launch metrics, gRPC stream activity
 
+image::06-grafana-fabric.png[Grafana Fabric Network dashboard showing ledger height endorsement metrics and BFT consensus status]
+
 === Application APIs Dashboard
 
 Select *CertChain — Application APIs*.
@@ -81,6 +83,8 @@ This dashboard tracks the Quarkus API services:
 * *verify-api* — HTTP request rate, latency p99
 * *JVM Runtime* — Heap memory usage, GC pause time, thread count
 
+image::06-grafana-apis.png[Grafana Application APIs dashboard showing certificate operation counters and HTTP metrics]
+
 === Infrastructure Health Dashboard
 
 Select *CertChain — Infrastructure Health*.
@@ -92,6 +96,8 @@ This dashboard covers the underlying OpenShift infrastructure:
 * *Applications & Databases* — CPU and memory for APIs, UIs, CouchDB, Postgres
 * *Storage* — PVC usage percentage and capacity gauges
 * *Pod Health & Network* — Restart counts, network traffic by namespace
+
+image::06-grafana-infra.png[Grafana Infrastructure Health dashboard showing pod status CPU memory and storage gauges]
 
 == Generating Traffic
 

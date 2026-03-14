@@ -43,6 +43,10 @@ You can explore this configuration:
 . Navigate to *Organizations* — you'll see TechPulse, DataForge, NeuralPath
 . Navigate to *Identity Providers* — you'll see the OIDC providers for each org
 
+image::05-kc-organizations.png[Keycloak Organizations showing the three CertChain orgs with their email domains]
+
+image::05-kc-identity-providers.png[Keycloak Identity Providers — one OIDC provider per organization]
+
 == RBAC: Role-Based Access Control
 
 Each org Keycloak defines two roles:
@@ -50,21 +54,110 @@ Each org Keycloak defines two roles:
 * `org-admin` — Can issue, view, and revoke certificates
 * `user` — Can view their own transcript (student role)
 
-=== Demo: Admin Role Enforcement
+=== Demo: End-to-End Security Walkthrough
 
-. Open the TechPulse Course Manager: {techpulse_course_manager_url}[Open^]
-. Log in as `student01@techpulse.demo` / `student`
-. You should see an *Access Denied* page — students cannot access admin functions
+This scenario proves that security is enforced at every layer by tracing a single certificate issuance through the full trust chain — from OIDC authentication to blockchain consensus.
 
-The `cert-admin-api` validates the JWT token and checks for the `org-admin` role. Without it, all admin endpoints return HTTP 403.
+==== Step 1: Obtain an Admin JWT Token
 
-=== Demo: Cross-Org API Rejection
-
-Using the terminal, try accessing TechPulse's cert-admin-api with a DataForge admin token:
+Request a token from TechPulse's Keycloak as the org admin:
 
 [source,bash,subs="attributes"]
 ----
-# Get a DataForge admin token
+# Authenticate as TechPulse admin
+ADMIN_TOKEN=$(curl -sk -X POST \
+  "{techpulse_keycloak_url}/realms/techpulse/protocol/openid-connect/token" \
+  -d "grant_type=password" \
+  -d "client_id=course-manager-ui" \
+  -d "username=admin@techpulse.demo" \
+  -d "password=admin" | python3 -c "import sys,json; print(json.load(sys.stdin)['access_token'])")
+
+echo "$ADMIN_TOKEN" | cut -d. -f2 | base64 -d 2>/dev/null | python3 -m json.tool
+----
+
+Inspect the decoded JWT payload. Notice these key claims:
+
+* `realm_access.roles` contains `org-admin` — this is the role the API checks
+* `iss` points to the TechPulse Keycloak realm — proving the token's origin
+* `azp` is `course-manager-ui` — the authorized client
+
+==== Step 2: Issue a Certificate (Admin Succeeds)
+
+Use the admin token to issue a certificate:
+
+[source,bash,subs="attributes"]
+----
+curl -sk -X POST \
+  "{techpulse_cert_admin_api_url}/api/v1/certificates" \
+  -H "Authorization: Bearer $ADMIN_TOKEN" \
+  -H "Content-Type: application/json" \
+  -d '{
+    "certID": "SEC-TEST-001",
+    "studentID": "student01@techpulse.demo",
+    "studentName": "Security Walkthrough",
+    "courseID": "SEC-101",
+    "courseName": "Security Verification",
+    "issueDate": "2026-03-14",
+    "expiryDate": "2027-03-14"
+  }' | python3 -m json.tool
+----
+
+Expected: HTTP 200 with the issued certificate. This request passed *three* security checks:
+
+. *Keycloak OIDC* — Valid JWT with `org-admin` role from TechPulse realm
+. *Fabric MSP (X.509)* — The API used the `admin-msp` identity to sign the Fabric transaction proposal
+. *BFT Consensus* — The orderers validated the transaction before committing to the ledger
+
+==== Step 3: Verify the Certificate Publicly
+
+Now verify the certificate through the public verify-api — no token required:
+
+[source,bash,subs="attributes"]
+----
+curl -sk "{verify_api_url}/api/v1/verify/SEC-TEST-001" | python3 -m json.tool
+----
+
+Expected: `"status": "VALID"` — the certificate exists on the blockchain and is publicly verifiable.
+
+==== Step 4: Attempt Issuance as a Student (Rejected)
+
+Now prove that a student cannot issue certificates:
+
+[source,bash,subs="attributes"]
+----
+# Authenticate as a student (no org-admin role)
+STUDENT_TOKEN=$(curl -sk -X POST \
+  "{techpulse_keycloak_url}/realms/techpulse/protocol/openid-connect/token" \
+  -d "grant_type=password" \
+  -d "client_id=course-manager-ui" \
+  -d "username=student01@techpulse.demo" \
+  -d "password=student" | python3 -c "import sys,json; print(json.load(sys.stdin)['access_token'])")
+
+# Try to issue a certificate — should be rejected
+curl -sk -w "\nHTTP %{http_code}\n" -X POST \
+  "{techpulse_cert_admin_api_url}/api/v1/certificates" \
+  -H "Authorization: Bearer $STUDENT_TOKEN" \
+  -H "Content-Type: application/json" \
+  -d '{
+    "certID": "SEC-HACK-001",
+    "studentID": "student01@techpulse.demo",
+    "studentName": "Unauthorized Attempt",
+    "courseID": "HACK-101",
+    "courseName": "Should Not Work",
+    "issueDate": "2026-03-14",
+    "expiryDate": "2027-03-14"
+  }'
+----
+
+Expected: *HTTP 403 Forbidden* — the student's JWT lacks the `org-admin` role. The request never reaches the blockchain.
+
+==== Step 5: Attempt Cross-Org Access (Rejected)
+
+Prove that a DataForge admin cannot issue certificates through TechPulse's API:
+
+[source,bash,subs="attributes"]
+----
+# Authenticate as DataForge admin
 DF_TOKEN=$(curl -sk -X POST \
   "{dataforge_keycloak_url}/realms/dataforge/protocol/openid-connect/token" \
   -d "grant_type=password" \
@@ -72,13 +165,52 @@ DF_TOKEN=$(curl -sk -X POST \
   -d "username=admin@dataforge.demo" \
   -d "password=admin" | python3 -c "import sys,json; print(json.load(sys.stdin)['access_token'])")
 
-# Try accessing TechPulse API with DataForge token
-curl -sk -o /dev/null -w "HTTP %\{http_code}" \
+# Try issuing through TechPulse's API
+curl -sk -w "\nHTTP %{http_code}\n" -X POST \
   "{techpulse_cert_admin_api_url}/api/v1/certificates" \
-  -H "Authorization: Bearer $DF_TOKEN"
+  -H "Authorization: Bearer $DF_TOKEN" \
+  -H "Content-Type: application/json" \
+  -d '{
+    "certID": "SEC-XORG-001",
+    "studentID": "student03@dataforge.demo",
+    "studentName": "Cross-Org Attempt",
+    "courseID": "XORG-101",
+    "courseName": "Should Not Work",
+    "issueDate": "2026-03-14",
+    "expiryDate": "2027-03-14"
+  }'
 ----
 
-Expected result: HTTP 401 or 403 — the token is valid but issued by a different realm. Each org's `cert-admin-api` only accepts tokens from its own Keycloak.
+Expected: *HTTP 401 or 403* — DataForge's token was issued by a different Keycloak realm. TechPulse's `cert-admin-api` rejects it because the `iss` (issuer) claim does not match.
+
+==== Step 6: Confirm Nothing Was Tampered
+
+Verify that only the legitimate certificate exists:
+
+[source,bash,subs="attributes"]
+----
+# The legitimate certificate is valid
+curl -sk "{verify_api_url}/api/v1/verify/SEC-TEST-001" | python3 -c "import sys,json; d=json.load(sys.stdin); print(f'SEC-TEST-001: {d[\"status\"]}')"
+
+# The unauthorized attempts never reached the blockchain
+curl -sk "{verify_api_url}/api/v1/verify/SEC-HACK-001" | python3 -c "import sys,json; d=json.load(sys.stdin); print(f'SEC-HACK-001: {d[\"status\"]}')"
+curl -sk "{verify_api_url}/api/v1/verify/SEC-XORG-001" | python3 -c "import sys,json; d=json.load(sys.stdin); print(f'SEC-XORG-001: {d[\"status\"]}')"
+----
+
+Expected output:
+
+----
+SEC-TEST-001: VALID
+SEC-HACK-001: NOT_FOUND
+SEC-XORG-001: NOT_FOUND
+----
+
+This confirms that the unauthorized attempts were *blocked before reaching the blockchain*. The ledger contains only legitimately issued certificates.
+
+[NOTE]
+====
+*What this proves:* The security model works at three independent layers. Even if one layer were compromised, the others would still prevent unauthorized certificate issuance. A student who somehow obtained an `org-admin` role would still need the correct X.509 identity. An attacker with the X.509 key would still need a valid JWT. This defense-in-depth approach is fundamental to enterprise blockchain deployments.
+====
 
 == Fabric MSP: Blockchain Identity
 
