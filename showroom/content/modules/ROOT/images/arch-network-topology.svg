@@ -1,221 +1,183 @@
-<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 960 620" font-family="Inter, Segoe UI, Arial, sans-serif" font-size="12">
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 700 820" font-family="Inter, Segoe UI, Arial, sans-serif" font-size="14">
   <defs>
     <filter id="shadow" x="-2%" y="-2%" width="104%" height="104%">
       <feDropShadow dx="1" dy="1" stdDeviation="2" flood-opacity="0.15"/>
     </filter>
-    <marker id="arrow" viewBox="0 0 10 7" refX="10" refY="3.5" markerWidth="8" markerHeight="6" orient="auto-start-reverse">
+    <marker id="arrow" viewBox="0 0 10 7" refX="10" refY="3.5" markerWidth="9" markerHeight="7" orient="auto-start-reverse">
       <polygon points="0 0, 10 3.5, 0 7" fill="#666"/>
     </marker>
   </defs>
 
   <!-- Title -->
-  <text x="480" y="28" text-anchor="middle" font-size="18" font-weight="bold" fill="#1a1a2e">CertChain — Network Topology</text>
+  <text x="350" y="28" text-anchor="middle" font-size="22" font-weight="bold" fill="#1a1a2e">CertChain — Network Topology</text>
 
-  <!-- Central Namespace -->
-  <rect x="10" y="45" width="940" height="220" rx="12" fill="#e8f0fe" stroke="#4285f4" stroke-width="1.5" filter="url(#shadow)"/>
-  <text x="25" y="67" font-size="14" font-weight="bold" fill="#1a73e8">certchain (Central)</text>
+  <!-- ===== Central Namespace ===== -->
+  <rect x="10" y="45" width="680" height="250" rx="12" fill="#e8f0fe" stroke="#4285f4" stroke-width="1.5" filter="url(#shadow)"/>
+  <text x="25" y="72" font-size="17" font-weight="bold" fill="#1a73e8">certchain (Central)</text>
 
-  <!-- Fabric CA -->
-  <rect x="30" y="80" width="110" height="50" rx="6" fill="#fff" stroke="#34a853" stroke-width="1.5"/>
-  <text x="85" y="101" text-anchor="middle" font-weight="600" fill="#34a853">Fabric CA</text>
-  <text x="85" y="118" text-anchor="middle" font-size="10" fill="#666">TLS + MSP</text>
+  <!-- Row 1: Core infrastructure -->
+  <rect x="25" y="85" width="145" height="55" rx="6" fill="#fff" stroke="#34a853" stroke-width="1.5"/>
+  <text x="97" y="108" text-anchor="middle" font-weight="600" font-size="14" fill="#34a853">Fabric CA</text>
+  <text x="97" y="128" text-anchor="middle" font-size="12" fill="#666">TLS + MSP certs</text>
 
-  <!-- Orderer 0 -->
-  <rect x="160" y="80" width="110" height="50" rx="6" fill="#fff" stroke="#ea4335" stroke-width="1.5"/>
-  <text x="215" y="101" text-anchor="middle" font-weight="600" fill="#ea4335">Orderer 0</text>
-  <text x="215" y="118" text-anchor="middle" font-size="10" fill="#666">SmartBFT</text>
+  <rect x="185" y="85" width="145" height="55" rx="6" fill="#fff" stroke="#ea4335" stroke-width="1.5"/>
+  <text x="257" y="108" text-anchor="middle" font-weight="600" font-size="14" fill="#ea4335">Orderer 0</text>
+  <text x="257" y="128" text-anchor="middle" font-size="12" fill="#666">SmartBFT</text>
 
-  <!-- Verify API -->
-  <rect x="290" y="80" width="110" height="50" rx="6" fill="#fff" stroke="#fbbc04" stroke-width="1.5"/>
-  <text x="345" y="101" text-anchor="middle" font-weight="600" fill="#f29900">verify-api</text>
-  <text x="345" y="118" text-anchor="middle" font-size="10" fill="#666">Quarkus</text>
+  <rect x="345" y="85" width="145" height="55" rx="6" fill="#fff" stroke="#fbbc04" stroke-width="1.5"/>
+  <text x="417" y="108" text-anchor="middle" font-weight="600" font-size="14" fill="#f29900">verify-api</text>
+  <text x="417" y="128" text-anchor="middle" font-size="12" fill="#666">Quarkus</text>
 
-  <!-- Cert Portal -->
-  <rect x="420" y="80" width="110" height="50" rx="6" fill="#fff" stroke="#fbbc04" stroke-width="1.5"/>
-  <text x="475" y="101" text-anchor="middle" font-weight="600" fill="#f29900">cert-portal</text>
-  <text x="475" y="118" text-anchor="middle" font-size="10" fill="#666">React + Vite</text>
+  <rect x="505" y="85" width="170" height="55" rx="6" fill="#fff" stroke="#fbbc04" stroke-width="1.5"/>
+  <text x="590" y="108" text-anchor="middle" font-weight="600" font-size="14" fill="#f29900">cert-portal</text>
+  <text x="590" y="128" text-anchor="middle" font-size="12" fill="#666">React + Vite</text>
 
-  <!-- Central Keycloak -->
-  <rect x="550" y="80" width="130" height="50" rx="6" fill="#fff" stroke="#9c27b0" stroke-width="1.5"/>
-  <text x="615" y="101" text-anchor="middle" font-weight="600" fill="#9c27b0">Keycloak</text>
-  <text x="615" y="118" text-anchor="middle" font-size="10" fill="#666">Central IdP</text>
+  <!-- Row 2: Supporting services -->
+  <rect x="25" y="155" width="145" height="55" rx="6" fill="#fff" stroke="#9c27b0" stroke-width="1.5"/>
+  <text x="97" y="178" text-anchor="middle" font-weight="600" font-size="14" fill="#9c27b0">Keycloak</text>
+  <text x="97" y="198" text-anchor="middle" font-size="12" fill="#666">Central IdP</text>
 
-  <!-- Postgres Central -->
-  <rect x="700" y="80" width="100" height="50" rx="6" fill="#fff" stroke="#0d47a1" stroke-width="1.5"/>
-  <text x="750" y="101" text-anchor="middle" font-weight="600" fill="#0d47a1">Postgres</text>
-  <text x="750" y="118" text-anchor="middle" font-size="10" fill="#666">KC store</text>
+  <rect x="185" y="155" width="145" height="55" rx="6" fill="#fff" stroke="#0d47a1" stroke-width="1.5"/>
+  <text x="257" y="178" text-anchor="middle" font-weight="600" font-size="14" fill="#0d47a1">Postgres</text>
+  <text x="257" y="198" text-anchor="middle" font-size="12" fill="#666">KC store</text>
 
-  <!-- Grafana -->
-  <rect x="820" y="80" width="110" height="50" rx="6" fill="#fff" stroke="#ff6d00" stroke-width="1.5"/>
-  <text x="875" y="101" text-anchor="middle" font-weight="600" fill="#ff6d00">Grafana</text>
-  <text x="875" y="118" text-anchor="middle" font-size="10" fill="#666">3 dashboards</text>
+  <rect x="345" y="155" width="145" height="55" rx="6" fill="#fff" stroke="#ff6d00" stroke-width="1.5"/>
+  <text x="417" y="178" text-anchor="middle" font-weight="600" font-size="14" fill="#ff6d00">Grafana</text>
+  <text x="417" y="198" text-anchor="middle" font-size="12" fill="#666">3 dashboards</text>
 
-  <!-- CertContract -->
-  <rect x="30" y="150" width="130" height="50" rx="6" fill="#fff" stroke="#00897b" stroke-width="1.5"/>
-  <text x="95" y="171" text-anchor="middle" font-weight="600" fill="#00897b">certcontract</text>
-  <text x="95" y="188" text-anchor="middle" font-size="10" fill="#666">Go chaincode (CcaaS)</text>
+  <rect x="505" y="155" width="170" height="55" rx="6" fill="#fff" stroke="#00897b" stroke-width="1.5"/>
+  <text x="590" y="178" text-anchor="middle" font-weight="600" font-size="14" fill="#00897b">certcontract</text>
+  <text x="590" y="198" text-anchor="middle" font-size="12" fill="#666">Go chaincode (CcaaS)</text>
 
-  <!-- Copy-secrets Job -->
-  <rect x="180" y="150" width="120" height="50" rx="6" fill="#fff" stroke="#78909c" stroke-width="1.5" stroke-dasharray="5,3"/>
-  <text x="240" y="171" text-anchor="middle" font-weight="600" fill="#78909c">copy-secrets</text>
-  <text x="240" y="188" text-anchor="middle" font-size="10" fill="#666">Job (wave 8)</text>
+  <!-- Jobs row -->
+  <rect x="25" y="225" width="130" height="40" rx="6" fill="#fff" stroke="#78909c" stroke-width="1.5" stroke-dasharray="5,3"/>
+  <text x="90" y="250" text-anchor="middle" font-weight="600" font-size="12" fill="#78909c">copy-secrets (w8)</text>
 
-  <!-- Channel-setup Job -->
-  <rect x="320" y="150" width="120" height="50" rx="6" fill="#fff" stroke="#78909c" stroke-width="1.5" stroke-dasharray="5,3"/>
-  <text x="380" y="171" text-anchor="middle" font-weight="600" fill="#78909c">channel-setup</text>
-  <text x="380" y="188" text-anchor="middle" font-size="10" fill="#666">Job (wave 10)</text>
+  <rect x="170" y="225" width="130" height="40" rx="6" fill="#fff" stroke="#78909c" stroke-width="1.5" stroke-dasharray="5,3"/>
+  <text x="235" y="250" text-anchor="middle" font-weight="600" font-size="12" fill="#78909c">genesis (w9)</text>
 
-  <!-- Genesis Job -->
-  <rect x="460" y="150" width="110" height="50" rx="6" fill="#fff" stroke="#78909c" stroke-width="1.5" stroke-dasharray="5,3"/>
-  <text x="515" y="171" text-anchor="middle" font-weight="600" fill="#78909c">genesis</text>
-  <text x="515" y="188" text-anchor="middle" font-size="10" fill="#666">Job (wave 9)</text>
+  <rect x="315" y="225" width="140" height="40" rx="6" fill="#fff" stroke="#78909c" stroke-width="1.5" stroke-dasharray="5,3"/>
+  <text x="385" y="250" text-anchor="middle" font-weight="600" font-size="12" fill="#78909c">channel-setup (w10)</text>
 
-  <!-- Lifecycle Job -->
-  <rect x="590" y="150" width="130" height="50" rx="6" fill="#fff" stroke="#78909c" stroke-width="1.5" stroke-dasharray="5,3"/>
-  <text x="655" y="171" text-anchor="middle" font-weight="600" fill="#78909c">chaincode-lifecycle</text>
-  <text x="655" y="188" text-anchor="middle" font-size="10" fill="#666">Job (wave 11)</text>
+  <rect x="470" y="225" width="160" height="40" rx="6" fill="#fff" stroke="#78909c" stroke-width="1.5" stroke-dasharray="5,3"/>
+  <text x="550" y="250" text-anchor="middle" font-weight="600" font-size="12" fill="#78909c">chaincode-lifecycle (w11)</text>
 
-  <!-- Central legend -->
-  <rect x="30" y="215" width="8" height="8" rx="2" fill="#78909c"/>
-  <text x="44" y="223" font-size="10" fill="#666">Dashed = one-time Jobs</text>
-  <rect x="160" y="215" width="8" height="8" rx="2" fill="#34a853"/>
-  <text x="174" y="223" font-size="10" fill="#666">PKI</text>
-  <rect x="220" y="215" width="8" height="8" rx="2" fill="#ea4335"/>
-  <text x="234" y="223" font-size="10" fill="#666">Orderer</text>
-  <rect x="300" y="215" width="8" height="8" rx="2" fill="#fbbc04"/>
-  <text x="314" y="223" font-size="10" fill="#666">Apps</text>
-  <rect x="360" y="215" width="8" height="8" rx="2" fill="#9c27b0"/>
-  <text x="374" y="223" font-size="10" fill="#666">Identity</text>
-  <rect x="440" y="215" width="8" height="8" rx="2" fill="#00897b"/>
-  <text x="454" y="223" font-size="10" fill="#666">Chaincode</text>
+  <!-- Legend -->
+  <rect x="25" y="275" width="10" height="10" rx="2" fill="#78909c"/>
+  <text x="40" y="285" font-size="11" fill="#666">Dashed = one-time Jobs</text>
 
-  <!-- Org Namespaces -->
+  <!-- ===== BFT Cluster label ===== -->
+  <rect x="240" y="308" width="220" height="26" rx="12" fill="#ea4335" opacity="0.9"/>
+  <text x="350" y="326" text-anchor="middle" font-size="14" font-weight="bold" fill="#fff">SmartBFT Cluster (4 nodes)</text>
+
+  <!-- ===== Org Namespaces ===== -->
   <!-- TechPulse -->
-  <rect x="10" y="280" width="310" height="175" rx="12" fill="#fce4ec" stroke="#e91e63" stroke-width="1.5" filter="url(#shadow)"/>
-  <text x="25" y="302" font-size="14" font-weight="bold" fill="#c2185b">certchain-techpulse</text>
+  <rect x="10" y="348" width="220" height="195" rx="12" fill="#fce4ec" stroke="#e91e63" stroke-width="1.5" filter="url(#shadow)"/>
+  <text x="25" y="375" font-size="16" font-weight="bold" fill="#c2185b">certchain-techpulse</text>
 
-  <rect x="25" y="315" width="85" height="42" rx="5" fill="#fff" stroke="#1565c0" stroke-width="1"/>
-  <text x="67" y="335" text-anchor="middle" font-weight="600" font-size="11" fill="#1565c0">Peer 0</text>
-  <text x="67" y="350" text-anchor="middle" font-size="9" fill="#666">Endorser</text>
+  <rect x="25" y="390" width="90" height="48" rx="5" fill="#fff" stroke="#1565c0" stroke-width="1"/>
+  <text x="70" y="412" text-anchor="middle" font-weight="600" font-size="13" fill="#1565c0">Peer 0</text>
+  <text x="70" y="430" text-anchor="middle" font-size="11" fill="#666">Endorser</text>
 
-  <rect x="120" y="315" width="85" height="42" rx="5" fill="#fff" stroke="#ea4335" stroke-width="1"/>
-  <text x="162" y="335" text-anchor="middle" font-weight="600" font-size="11" fill="#ea4335">Orderer 1</text>
-  <text x="162" y="350" text-anchor="middle" font-size="9" fill="#666">SmartBFT</text>
+  <rect x="125" y="390" width="90" height="48" rx="5" fill="#fff" stroke="#ea4335" stroke-width="1"/>
+  <text x="170" y="412" text-anchor="middle" font-weight="600" font-size="13" fill="#ea4335">Orderer 1</text>
+  <text x="170" y="430" text-anchor="middle" font-size="11" fill="#666">SmartBFT</text>
 
-  <rect x="215" y="315" width="85" height="42" rx="5" fill="#fff" stroke="#0d47a1" stroke-width="1"/>
-  <text x="257" y="335" text-anchor="middle" font-weight="600" font-size="11" fill="#0d47a1">CouchDB</text>
-  <text x="257" y="350" text-anchor="middle" font-size="9" fill="#666">State DB</text>
+  <rect x="25" y="448" width="90" height="48" rx="5" fill="#fff" stroke="#fbbc04" stroke-width="1"/>
+  <text x="70" y="470" text-anchor="middle" font-weight="600" font-size="13" fill="#f29900">admin-api</text>
+  <text x="70" y="488" text-anchor="middle" font-size="11" fill="#666">Quarkus</text>
 
-  <rect x="25" y="368" width="85" height="42" rx="5" fill="#fff" stroke="#fbbc04" stroke-width="1"/>
-  <text x="67" y="386" text-anchor="middle" font-weight="600" font-size="11" fill="#f29900">admin-api</text>
-  <text x="67" y="401" text-anchor="middle" font-size="9" fill="#666">Quarkus</text>
+  <rect x="125" y="448" width="90" height="48" rx="5" fill="#fff" stroke="#fbbc04" stroke-width="1"/>
+  <text x="170" y="470" text-anchor="middle" font-weight="600" font-size="13" fill="#f29900">course-mgr</text>
+  <text x="170" y="488" text-anchor="middle" font-size="11" fill="#666">React</text>
 
-  <rect x="120" y="368" width="85" height="42" rx="5" fill="#fff" stroke="#fbbc04" stroke-width="1"/>
-  <text x="162" y="386" text-anchor="middle" font-weight="600" font-size="11" fill="#f29900">course-mgr</text>
-  <text x="162" y="401" text-anchor="middle" font-size="9" fill="#666">React</text>
+  <rect x="25" y="506" width="90" height="28" rx="5" fill="#fff" stroke="#9c27b0" stroke-width="1"/>
+  <text x="70" y="525" text-anchor="middle" font-weight="600" font-size="12" fill="#9c27b0">Keycloak</text>
 
-  <rect x="215" y="368" width="85" height="42" rx="5" fill="#fff" stroke="#9c27b0" stroke-width="1"/>
-  <text x="257" y="386" text-anchor="middle" font-weight="600" font-size="11" fill="#9c27b0">Keycloak</text>
-  <text x="257" y="401" text-anchor="middle" font-size="9" fill="#666">Org IdP</text>
-
-  <rect x="25" y="420" width="85" height="28" rx="5" fill="#fff" stroke="#0d47a1" stroke-width="1"/>
-  <text x="67" y="439" text-anchor="middle" font-weight="600" font-size="10" fill="#0d47a1">Postgres</text>
+  <rect x="125" y="506" width="90" height="28" rx="5" fill="#fff" stroke="#0d47a1" stroke-width="1"/>
+  <text x="170" y="525" text-anchor="middle" font-weight="600" font-size="12" fill="#0d47a1">CouchDB</text>
 
   <!-- DataForge -->
-  <rect x="330" y="280" width="310" height="175" rx="12" fill="#e8eaf6" stroke="#3f51b5" stroke-width="1.5" filter="url(#shadow)"/>
-  <text x="345" y="302" font-size="14" font-weight="bold" fill="#283593">certchain-dataforge</text>
+  <rect x="240" y="348" width="220" height="195" rx="12" fill="#e8eaf6" stroke="#3f51b5" stroke-width="1.5" filter="url(#shadow)"/>
+  <text x="255" y="375" font-size="16" font-weight="bold" fill="#283593">certchain-dataforge</text>
 
-  <rect x="345" y="315" width="85" height="42" rx="5" fill="#fff" stroke="#1565c0" stroke-width="1"/>
-  <text x="387" y="335" text-anchor="middle" font-weight="600" font-size="11" fill="#1565c0">Peer 0</text>
-  <text x="387" y="350" text-anchor="middle" font-size="9" fill="#666">Endorser</text>
+  <rect x="255" y="390" width="90" height="48" rx="5" fill="#fff" stroke="#1565c0" stroke-width="1"/>
+  <text x="300" y="412" text-anchor="middle" font-weight="600" font-size="13" fill="#1565c0">Peer 0</text>
+  <text x="300" y="430" text-anchor="middle" font-size="11" fill="#666">Endorser</text>
 
-  <rect x="440" y="315" width="85" height="42" rx="5" fill="#fff" stroke="#ea4335" stroke-width="1"/>
-  <text x="482" y="335" text-anchor="middle" font-weight="600" font-size="11" fill="#ea4335">Orderer 2</text>
-  <text x="482" y="350" text-anchor="middle" font-size="9" fill="#666">SmartBFT</text>
+  <rect x="355" y="390" width="90" height="48" rx="5" fill="#fff" stroke="#ea4335" stroke-width="1"/>
+  <text x="400" y="412" text-anchor="middle" font-weight="600" font-size="13" fill="#ea4335">Orderer 2</text>
+  <text x="400" y="430" text-anchor="middle" font-size="11" fill="#666">SmartBFT</text>
 
-  <rect x="535" y="315" width="85" height="42" rx="5" fill="#fff" stroke="#0d47a1" stroke-width="1"/>
-  <text x="577" y="335" text-anchor="middle" font-weight="600" font-size="11" fill="#0d47a1">CouchDB</text>
-  <text x="577" y="350" text-anchor="middle" font-size="9" fill="#666">State DB</text>
+  <rect x="255" y="448" width="90" height="48" rx="5" fill="#fff" stroke="#fbbc04" stroke-width="1"/>
+  <text x="300" y="470" text-anchor="middle" font-weight="600" font-size="13" fill="#f29900">admin-api</text>
+  <text x="300" y="488" text-anchor="middle" font-size="11" fill="#666">Quarkus</text>
 
-  <rect x="345" y="368" width="85" height="42" rx="5" fill="#fff" stroke="#fbbc04" stroke-width="1"/>
-  <text x="387" y="386" text-anchor="middle" font-weight="600" font-size="11" fill="#f29900">admin-api</text>
-  <text x="387" y="401" text-anchor="middle" font-size="9" fill="#666">Quarkus</text>
+  <rect x="355" y="448" width="90" height="48" rx="5" fill="#fff" stroke="#fbbc04" stroke-width="1"/>
+  <text x="400" y="470" text-anchor="middle" font-weight="600" font-size="13" fill="#f29900">course-mgr</text>
+  <text x="400" y="488" text-anchor="middle" font-size="11" fill="#666">React</text>
 
-  <rect x="440" y="368" width="85" height="42" rx="5" fill="#fff" stroke="#fbbc04" stroke-width="1"/>
-  <text x="482" y="386" text-anchor="middle" font-weight="600" font-size="11" fill="#f29900">course-mgr</text>
-  <text x="482" y="401" text-anchor="middle" font-size="9" fill="#666">React</text>
+  <rect x="255" y="506" width="90" height="28" rx="5" fill="#fff" stroke="#9c27b0" stroke-width="1"/>
+  <text x="300" y="525" text-anchor="middle" font-weight="600" font-size="12" fill="#9c27b0">Keycloak</text>
 
-  <rect x="535" y="368" width="85" height="42" rx="5" fill="#fff" stroke="#9c27b0" stroke-width="1"/>
-  <text x="577" y="386" text-anchor="middle" font-weight="600" font-size="11" fill="#9c27b0">Keycloak</text>
-  <text x="577" y="401" text-anchor="middle" font-size="9" fill="#666">Org IdP</text>
-
-  <rect x="345" y="420" width="85" height="28" rx="5" fill="#fff" stroke="#0d47a1" stroke-width="1"/>
-  <text x="387" y="439" text-anchor="middle" font-weight="600" font-size="10" fill="#0d47a1">Postgres</text>
+  <rect x="355" y="506" width="90" height="28" rx="5" fill="#fff" stroke="#0d47a1" stroke-width="1"/>
+  <text x="400" y="525" text-anchor="middle" font-weight="600" font-size="12" fill="#0d47a1">CouchDB</text>
 
   <!-- NeuralPath -->
-  <rect x="650" y="280" width="300" height="175" rx="12" fill="#e0f2f1" stroke="#009688" stroke-width="1.5" filter="url(#shadow)"/>
-  <text x="665" y="302" font-size="14" font-weight="bold" fill="#00695c">certchain-neuralpath</text>
+  <rect x="470" y="348" width="220" height="195" rx="12" fill="#e0f2f1" stroke="#009688" stroke-width="1.5" filter="url(#shadow)"/>
+  <text x="485" y="375" font-size="16" font-weight="bold" fill="#00695c">certchain-neuralpath</text>
 
-  <rect x="665" y="315" width="85" height="42" rx="5" fill="#fff" stroke="#1565c0" stroke-width="1"/>
-  <text x="707" y="335" text-anchor="middle" font-weight="600" font-size="11" fill="#1565c0">Peer 0</text>
-  <text x="707" y="350" text-anchor="middle" font-size="9" fill="#666">Endorser</text>
+  <rect x="485" y="390" width="90" height="48" rx="5" fill="#fff" stroke="#1565c0" stroke-width="1"/>
+  <text x="530" y="412" text-anchor="middle" font-weight="600" font-size="13" fill="#1565c0">Peer 0</text>
+  <text x="530" y="430" text-anchor="middle" font-size="11" fill="#666">Endorser</text>
 
-  <rect x="760" y="315" width="85" height="42" rx="5" fill="#fff" stroke="#ea4335" stroke-width="1"/>
-  <text x="802" y="335" text-anchor="middle" font-weight="600" font-size="11" fill="#ea4335">Orderer 3</text>
-  <text x="802" y="350" text-anchor="middle" font-size="9" fill="#666">SmartBFT</text>
+  <rect x="585" y="390" width="90" height="48" rx="5" fill="#fff" stroke="#ea4335" stroke-width="1"/>
+  <text x="630" y="412" text-anchor="middle" font-weight="600" font-size="13" fill="#ea4335">Orderer 3</text>
+  <text x="630" y="430" text-anchor="middle" font-size="11" fill="#666">SmartBFT</text>
 
-  <rect x="855" y="315" width="85" height="42" rx="5" fill="#fff" stroke="#0d47a1" stroke-width="1"/>
-  <text x="897" y="335" text-anchor="middle" font-weight="600" font-size="11" fill="#0d47a1">CouchDB</text>
-  <text x="897" y="350" text-anchor="middle" font-size="9" fill="#666">State DB</text>
+  <rect x="485" y="448" width="90" height="48" rx="5" fill="#fff" stroke="#fbbc04" stroke-width="1"/>
+  <text x="530" y="470" text-anchor="middle" font-weight="600" font-size="13" fill="#f29900">admin-api</text>
+  <text x="530" y="488" text-anchor="middle" font-size="11" fill="#666">Quarkus</text>
 
-  <rect x="665" y="368" width="85" height="42" rx="5" fill="#fff" stroke="#fbbc04" stroke-width="1"/>
-  <text x="707" y="386" text-anchor="middle" font-weight="600" font-size="11" fill="#f29900">admin-api</text>
-  <text x="707" y="401" text-anchor="middle" font-size="9" fill="#666">Quarkus</text>
+  <rect x="585" y="448" width="90" height="48" rx="5" fill="#fff" stroke="#fbbc04" stroke-width="1"/>
+  <text x="630" y="470" text-anchor="middle" font-weight="600" font-size="13" fill="#f29900">course-mgr</text>
+  <text x="630" y="488" text-anchor="middle" font-size="11" fill="#666">React</text>
 
-  <rect x="760" y="368" width="85" height="42" rx="5" fill="#fff" stroke="#fbbc04" stroke-width="1"/>
-  <text x="802" y="386" text-anchor="middle" font-weight="600" font-size="11" fill="#f29900">course-mgr</text>
-  <text x="802" y="401" text-anchor="middle" font-size="9" fill="#666">React</text>
+  <rect x="485" y="506" width="90" height="28" rx="5" fill="#fff" stroke="#9c27b0" stroke-width="1"/>
+  <text x="530" y="525" text-anchor="middle" font-weight="600" font-size="12" fill="#9c27b0">Keycloak</text>
 
-  <rect x="855" y="368" width="85" height="42" rx="5" fill="#fff" stroke="#9c27b0" stroke-width="1"/>
-  <text x="897" y="386" text-anchor="middle" font-weight="600" font-size="11" fill="#9c27b0">Keycloak</text>
-  <text x="897" y="401" text-anchor="middle" font-size="9" fill="#666">Org IdP</text>
+  <rect x="585" y="506" width="90" height="28" rx="5" fill="#fff" stroke="#0d47a1" stroke-width="1"/>
+  <text x="630" y="525" text-anchor="middle" font-weight="600" font-size="12" fill="#0d47a1">CouchDB</text>
 
-  <rect x="665" y="420" width="85" height="28" rx="5" fill="#fff" stroke="#0d47a1" stroke-width="1"/>
-  <text x="707" y="439" text-anchor="middle" font-weight="600" font-size="10" fill="#0d47a1">Postgres</text>
+  <!-- Orderer cluster connections -->
+  <line x1="257" y1="140" x2="170" y2="390" stroke="#ea4335" stroke-width="1.5" stroke-dasharray="4,3" marker-end="url(#arrow)"/>
+  <line x1="257" y1="140" x2="400" y2="390" stroke="#ea4335" stroke-width="1.5" stroke-dasharray="4,3" marker-end="url(#arrow)"/>
+  <line x1="257" y1="140" x2="630" y2="390" stroke="#ea4335" stroke-width="1.5" stroke-dasharray="4,3" marker-end="url(#arrow)"/>
 
-  <!-- Connections: Orderers form BFT cluster -->
-  <line x1="215" y1="130" x2="162" y2="315" stroke="#ea4335" stroke-width="1.5" stroke-dasharray="4,3" marker-end="url(#arrow)"/>
-  <line x1="215" y1="130" x2="482" y2="315" stroke="#ea4335" stroke-width="1.5" stroke-dasharray="4,3" marker-end="url(#arrow)"/>
-  <line x1="215" y1="130" x2="802" y2="315" stroke="#ea4335" stroke-width="1.5" stroke-dasharray="4,3" marker-end="url(#arrow)"/>
+  <!-- ===== External users ===== -->
+  <rect x="25" y="570" width="150" height="52" rx="25" fill="#1a73e8" filter="url(#shadow)"/>
+  <text x="100" y="594" text-anchor="middle" font-weight="600" font-size="15" fill="#fff">Registrar</text>
+  <text x="100" y="612" text-anchor="middle" font-size="11" fill="#ddd">Course Manager</text>
 
-  <!-- BFT cluster label -->
-  <rect x="380" y="250" width="200" height="22" rx="10" fill="#ea4335" opacity="0.9"/>
-  <text x="480" y="265" text-anchor="middle" font-size="11" font-weight="bold" fill="#fff">SmartBFT Cluster (4 nodes)</text>
+  <rect x="195" y="570" width="150" height="52" rx="25" fill="#34a853" filter="url(#shadow)"/>
+  <text x="270" y="594" text-anchor="middle" font-weight="600" font-size="15" fill="#fff">Student</text>
+  <text x="270" y="612" text-anchor="middle" font-size="11" fill="#ddd">Cert Portal</text>
 
-  <!-- External users -->
-  <rect x="50" y="480" width="140" height="50" rx="25" fill="#1a73e8" filter="url(#shadow)"/>
-  <text x="120" y="504" text-anchor="middle" font-weight="600" fill="#fff" font-size="13">Registrar</text>
-  <text x="120" y="520" text-anchor="middle" font-size="10" fill="#ddd">Course Manager</text>
+  <rect x="365" y="570" width="150" height="52" rx="25" fill="#fbbc04" filter="url(#shadow)"/>
+  <text x="440" y="594" text-anchor="middle" font-weight="600" font-size="15" fill="#fff">Employer</text>
+  <text x="440" y="612" text-anchor="middle" font-size="11" fill="#ddd">Public Verify</text>
 
-  <rect x="260" y="480" width="140" height="50" rx="25" fill="#34a853" filter="url(#shadow)"/>
-  <text x="330" y="504" text-anchor="middle" font-weight="600" fill="#fff" font-size="13">Student</text>
-  <text x="330" y="520" text-anchor="middle" font-size="10" fill="#ddd">Cert Portal</text>
-
-  <rect x="470" y="480" width="140" height="50" rx="25" fill="#fbbc04" filter="url(#shadow)"/>
-  <text x="540" y="504" text-anchor="middle" font-weight="600" fill="#fff" font-size="13">Employer</text>
-  <text x="540" y="520" text-anchor="middle" font-size="10" fill="#ddd">Public Verify</text>
-
-  <rect x="680" y="480" width="140" height="50" rx="25" fill="#9c27b0" filter="url(#shadow)"/>
-  <text x="750" y="504" text-anchor="middle" font-weight="600" fill="#fff" font-size="13">Platform Admin</text>
-  <text x="750" y="520" text-anchor="middle" font-size="10" fill="#ddd">ArgoCD + Grafana</text>
+  <rect x="535" y="570" width="150" height="52" rx="25" fill="#9c27b0" filter="url(#shadow)"/>
+  <text x="610" y="594" text-anchor="middle" font-weight="600" font-size="15" fill="#fff">Platform Admin</text>
+  <text x="610" y="612" text-anchor="middle" font-size="11" fill="#ddd">ArgoCD + Grafana</text>
 
   <!-- User arrows -->
-  <line x1="120" y1="480" x2="67" y2="410" stroke="#1a73e8" stroke-width="1.5" marker-end="url(#arrow)"/>
-  <line x1="330" y1="480" x2="475" y2="130" stroke="#34a853" stroke-width="1.5" marker-end="url(#arrow)"/>
-  <line x1="540" y1="480" x2="345" y2="130" stroke="#fbbc04" stroke-width="1.5" marker-end="url(#arrow)"/>
-  <line x1="750" y1="480" x2="875" y2="130" stroke="#9c27b0" stroke-width="1.5" marker-end="url(#arrow)"/>
+  <line x1="100" y1="570" x2="70" y2="496" stroke="#1a73e8" stroke-width="1.5" marker-end="url(#arrow)"/>
+  <line x1="270" y1="570" x2="590" y2="140" stroke="#34a853" stroke-width="1.5" marker-end="url(#arrow)"/>
+  <line x1="440" y1="570" x2="417" y2="140" stroke="#fbbc04" stroke-width="1.5" marker-end="url(#arrow)"/>
+  <line x1="610" y1="570" x2="417" y2="210" stroke="#9c27b0" stroke-width="1.5" marker-end="url(#arrow)"/>
 
   <!-- Footer -->
-  <text x="480" y="560" text-anchor="middle" font-size="11" fill="#999">Each org namespace contains identical components. Orderers form a 4-node SmartBFT cluster across namespaces.</text>
-  <text x="480" y="578" text-anchor="middle" font-size="11" fill="#999">Central namespace hosts shared infrastructure: Fabric CA, cert-portal, verify-api, Grafana, and central Keycloak.</text>
+  <text x="350" y="660" text-anchor="middle" font-size="12" fill="#999">Each org namespace contains identical components. Orderers form a 4-node SmartBFT cluster across namespaces.</text>
+  <text x="350" y="680" text-anchor="middle" font-size="12" fill="#999">Central namespace hosts shared infrastructure: Fabric CA, cert-portal, verify-api, Grafana, and central Keycloak.</text>
 </svg>
