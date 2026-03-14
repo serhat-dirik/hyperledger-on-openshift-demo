@@ -161,7 +161,7 @@ Try accessing the cert-admin-api with a student token — it should be rejected:
 
 [source,bash,subs="attributes"]
 ----
-curl -sk -o /dev/null -w "HTTP %{http_code}" \
+curl -sk -o /dev/null -w "HTTP %\{http_code}" \
   "{techpulse_cert_admin_api_url}/api/v1/certificates" \
   -H "Authorization: Bearer $STUDENT_TOKEN"
 ----
@@ -187,9 +187,9 @@ Returns HTTP 404 with `status: "NOT_FOUND"`.
 
 | POST | `/api/v1/certificates` | Issue a new certificate
 | GET | `/api/v1/certificates?page=0&size=20` | List org certificates (paginated)
-| GET | `/api/v1/certificates/{certId}` | Get single certificate
-| PUT | `/api/v1/certificates/{certId}` | Update mutable fields
-| PUT | `/api/v1/certificates/{certId}/revoke` | Revoke (irreversible)
+| GET | `/api/v1/certificates/\{certId}` | Get single certificate
+| PUT | `/api/v1/certificates/\{certId}` | Update mutable fields
+| PUT | `/api/v1/certificates/\{certId}/revoke` | Revoke (irreversible)
 | GET | `/api/v1/courses` | List course catalog
 | GET | `/api/v1/dashboard/stats` | Certificate stats
 |===
@@ -200,9 +200,9 @@ Returns HTTP 404 with `status: "NOT_FOUND"`.
 |===
 | Method | Path | Auth | Description
 
-| GET | `/api/v1/verify/{certId}` | Public | Verify certificate status
-| GET | `/api/v1/verify/{certId}/qr` | Public | Generate QR code (PNG)
+| GET | `/api/v1/verify/\{certId}` | Public | Verify certificate status
+| GET | `/api/v1/verify/\{certId}/qr` | Public | Generate QR code (PNG)
 | GET | `/api/v1/verify/batch?ids=X,Y` | Public | Batch verify
 | GET | `/api/v1/transcript` | JWT | Student's certificates
-| GET | `/api/v1/transcript/{certId}` | JWT | Single certificate
+| GET | `/api/v1/transcript/\{certId}` | JWT | Single certificate
 |===

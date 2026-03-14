@@ -73,7 +73,7 @@ DF_TOKEN=$(curl -sk -X POST \
   -d "password=admin" | python3 -c "import sys,json; print(json.load(sys.stdin)['access_token'])")
 
 # Try accessing TechPulse API with DataForge token
-curl -sk -o /dev/null -w "HTTP %{http_code}" \
+curl -sk -o /dev/null -w "HTTP %\{http_code}" \
   "{techpulse_cert_admin_api_url}/api/v1/certificates" \
   -H "Authorization: Bearer $DF_TOKEN"
 ----
