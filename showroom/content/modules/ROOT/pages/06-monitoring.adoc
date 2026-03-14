@@ -41,6 +41,8 @@ You should see 6 Applications, all *Synced* and *Healthy*:
 
 Click any Application to explore its *resource tree*, *sync status*, and *sync-wave ordering*. The sync waves ensure resources are created in the correct order — for example, Fabric CA must be running before enrollment jobs can execute.
 
+image::06-argocd-apps.png[ArgoCD App-of-Apps tree showing the root certchain Application and its 5 child Applications all Synced and Healthy]
+
 == Grafana — Metrics Dashboards
 
 Navigate to Grafana: {grafana_url}[Open^]
@@ -70,34 +72,6 @@ This dashboard provides deep visibility into the Hyperledger Fabric blockchain n
 * *Chaincode & gRPC* — Chaincode execution duration, launch metrics, gRPC stream activity
 
 image::06-grafana-fabric.png[Grafana Fabric Network dashboard showing ledger height endorsement metrics and BFT consensus status]
-
-=== Application APIs Dashboard
-
-Select *CertChain — Application APIs*.
-
-This dashboard tracks the Quarkus API services:
-
-* *Certificate Stats* — Total issued, revoked, verified, and not-found counters
-* *Certificate Operations* — Operations rate over time, certificates issued per org
-* *cert-admin-api* — HTTP request rate, latency p99, error rates (4xx/5xx), active connections
-* *verify-api* — HTTP request rate, latency p99
-* *JVM Runtime* — Heap memory usage, GC pause time, thread count
-
-image::06-grafana-apis.png[Grafana Application APIs dashboard showing certificate operation counters and HTTP metrics]
-
-=== Infrastructure Health Dashboard
-
-Select *CertChain — Infrastructure Health*.
-
-This dashboard covers the underlying OpenShift infrastructure:
-
-* *Status Overview* — Total running pods, pods not ready, container restarts, namespace count
-* *Blockchain Components* — CPU and memory usage for peers and orderers
-* *Applications & Databases* — CPU and memory for APIs, UIs, CouchDB, Postgres
-* *Storage* — PVC usage percentage and capacity gauges
-* *Pod Health & Network* — Restart counts, network traffic by namespace
-
-image::06-grafana-infra.png[Grafana Infrastructure Health dashboard showing pod status CPU memory and storage gauges]
 
 == Generating Traffic
 

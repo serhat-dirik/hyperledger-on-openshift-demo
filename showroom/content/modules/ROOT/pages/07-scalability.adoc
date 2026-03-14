@@ -39,78 +39,80 @@ The App-of-Apps template in `helm/templates/applications.yaml` iterates over the
 
 == Horizontal Scaling
 
-=== Read Scaling (Verification)
+Fabric peers and orderers are deployed as standard Kubernetes Deployments, so scaling them is as simple as increasing the replica count. The database (CouchDB) is paired 1:1 with each peer and does *not* need independent scaling.
 
-Certificate verification is a *read-only* operation against CouchDB. Scaling reads is straightforward:
+=== Scaling Peers
 
-[cols="1,2"]
+Each organization runs a single peer in this demo. In production, you can add peer replicas to increase endorsement capacity and query throughput:
+
+[source,bash]
+----
+# Scale TechPulse peers to 2 replicas
+oc scale deployment peer-deployment -n {central_namespace}-techpulse --replicas=2
+----
+
+Each peer replica:
+
+* Maintains a full copy of the ledger via gossip sync
+* Has its own CouchDB sidecar for state queries — no shared database needed
+* Can independently endorse transactions and serve read queries
+* Is load-balanced by the Kubernetes Service for incoming gRPC connections
+
+=== Scaling Orderers
+
+The orderer cluster uses SmartBFT consensus with 4 nodes (tolerating 1 Byzantine fault). You can add orderers to increase fault tolerance:
+
+[cols="1,1,1"]
 |===
-| Component | Scaling Approach
+| Orderers | Faults Tolerated | How to Add
 
-| *verify-api*
-| Scale replicas — each instance connects to the same peer. Load balancer distributes requests.
+| 4 (this demo)
+| 1
+| Default — one orderer per org + central
 
-| *cert-portal*
-| Scale replicas — static frontend, no state.
+| 7
+| 2
+| Add 3 orderers across orgs, update `configtx.yaml` consenter set
 
-| *Peers (read)*
-| Add read-only peers for query load distribution. Each peer maintains a full copy of the ledger.
-
-| *CouchDB*
-| CouchDB follows the peer — scaling peers automatically scales the state database.
+| 10
+| 3
+| Add 6 orderers, requires channel config update transaction
 |===
 
-=== Write Scaling (Issuance)
+Adding orderers increases *fault tolerance* (more Byzantine faults survived), but does not increase throughput linearly — consensus round-trips grow with the number of nodes.
 
-Certificate issuance requires *blockchain consensus*, which bounds write throughput:
+=== Scaling Application Services
+
+The API and UI services are stateless and scale freely:
+
+[source,bash]
+----
+# Scale verify-api for higher read throughput
+oc scale deployment verify-api -n {central_namespace} --replicas=3
+
+# Scale cert-admin-api for higher write throughput
+oc scale deployment cert-admin-api -n {central_namespace}-techpulse --replicas=2
+----
 
 [cols="1,2"]
 |===
 | Component | Scaling Notes
 
+| *verify-api*
+| Stateless — each replica connects to the same peer. OpenShift Service load-balances.
+
 | *cert-admin-api*
-| Scale replicas — each submits transactions to its org's peer independently.
+| Each replica submits transactions independently to its org's peer.
 
-| *Peers (write)*
-| Single endorsing peer per org in this demo. Production can add endorsing peers but consensus remains the bottleneck.
-
-| *Orderers*
-| BFT requires 3f+1 orderers (f = faults tolerated). Adding orderers increases fault tolerance but does not increase throughput linearly.
+| *cert-portal / course-manager-ui*
+| Static frontends — scale freely, no backend state.
 
 | *Chaincode (CcaaS)*
-| Scale replicas — the chaincode server is deployed as a regular Kubernetes Deployment.
+| Deployed as a Kubernetes Deployment — scale replicas for concurrent endorsement execution.
 |===
 
-=== Read vs Write Characteristics
+=== What Does NOT Need Scaling
 
-[cols="1,1,1"]
-|===
-| Metric | Read (Verify) | Write (Issue)
-
-| Latency
-| ~50-200ms
-| ~1-3 seconds
-
-| Requires consensus
-| No
-| Yes (SmartBFT)
-
-| Scales linearly
-| Yes (add pods/peers)
-| Limited by consensus
-
-| Network impact
-| Local peer only
-| All orderers + endorsing peers
-|===
-
-== Multi-Cluster Considerations
-
-For production deployments across multiple OpenShift clusters:
-
-* Each organization could run on its own cluster with its own peer and orderer
-* Cross-cluster communication uses Fabric's gossip protocol and orderer TLS
-* The central namespace could run on a dedicated infrastructure cluster
-* Keycloak identity brokering works across clusters via public OIDC endpoints
-
-The Helm chart structure already supports this — each org chart is independently deployable with a different `global.domain` and `global.centralNamespace`.
+* *CouchDB* — Paired 1:1 with each peer. Scaling peers automatically creates new CouchDB instances.
+* *Fabric CA* — Only used during enrollment (startup). Not in the transaction path.
+* *Keycloak / Postgres* — Identity layer operates independently from blockchain throughput.
