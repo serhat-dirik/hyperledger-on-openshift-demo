@@ -52,13 +52,11 @@ data:
         listen 8080;
         absolute_redirect off;
         location / {
-          proxy_pass http://127.0.0.1:8000;
+          root /showroom/www;
+          index index.html;
+          try_files $uri $uri/ $uri.html /index.html;
           expires off;
-          proxy_cache off;
-          proxy_pass_request_headers on;
-          proxy_set_header Accept-Encoding "gzip";
-          proxy_set_header X-Forwarded-For $proxy_add_x_forwarded_for;
-          proxy_set_header X-Forwarded-Proto $scheme;
+          add_header Cache-Control "no-cache, no-store, must-revalidate";
         }
         {{- if .Values.showroom.terminal.enabled }}
         location /terminal/ {
@@ -171,8 +169,9 @@ spec:
             - name: CLONE_DIR
               value: /showroom/repo
           volumeMounts:
-            - mountPath: /showroom
+            - mountPath: /showroom/repo
               name: showroom-files
+              subPath: repo
         - name: antora-builder
           image: "quay.io/rhpds/antora:v1.0.1"
           env:
@@ -183,10 +182,14 @@ spec:
             - name: ANTORA_SITE_FILE
               value: {{ .Values.showroom.content.antoraPlaybook | quote }}
           volumeMounts:
-            - mountPath: /showroom
+            - mountPath: /showroom/repo
               name: showroom-files
+              subPath: repo
             - name: user-data
               mountPath: /user_data/
+            - mountPath: /showroom/www
+              name: showroom-files
+              subPath: www
       containers:
         - name: nginx
           image: "quay.io/rhpds/nginx:1.25"
@@ -202,34 +205,17 @@ spec:
               name: nginx-cache
             - mountPath: /var/run
               name: nginx-pid
-        - name: content
-          image: {{ .Values.showroom.content.image | quote }}
-          imagePullPolicy: IfNotPresent
-          env:
-            - name: GIT_REPO_URL
-              value: {{ .Values.showroom.content.repoUrl | quote }}
-            - name: GIT_REPO_REF
-              value: {{ .Values.showroom.content.repoRef | quote }}
-            - name: ANTORA_PLAYBOOK
-              value: {{ .Values.showroom.content.antoraPlaybook | quote }}
-            - name: DOMAIN
-              value: {{ .Values.global.domain | quote }}
-          ports:
-            - containerPort: 8000
-              protocol: TCP
-          volumeMounts:
-            - name: user-data
-              mountPath: /user_data/
-            - mountPath: /showroom
+            - mountPath: /showroom/www
               name: showroom-files
+              subPath: www
           livenessProbe:
             httpGet:
               path: /
-              port: 8000
+              port: 8080
           readinessProbe:
             httpGet:
               path: /
-              port: 8000
+              port: 8080
         {{- if .Values.showroom.terminal.enabled }}
         - name: terminal
           image: {{ .Values.showroom.terminal.image | quote }}
