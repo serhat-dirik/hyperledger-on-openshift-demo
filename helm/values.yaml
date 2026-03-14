@@ -69,6 +69,6 @@ components:
     content:
       repoUrl: ""    # Defaults to gitops.repoUrl at deploy time
       repoRef: "main"
-      antoraPlaybook: "showroom/site.yml"
+      antoraPlaybook: "site.yml"
     terminal:
       enabled: true
