@@ -102,6 +102,7 @@ data:
     techpulse_cert_admin_api_url: https://cert-admin-api-{{ .Values.demo.centralNamespace }}-techpulse.{{ .Values.global.domain }}
     dataforge_cert_admin_api_url: https://cert-admin-api-{{ .Values.demo.centralNamespace }}-dataforge.{{ .Values.global.domain }}
     neuralpath_cert_admin_api_url: https://cert-admin-api-{{ .Values.demo.centralNamespace }}-neuralpath.{{ .Values.global.domain }}
+    argocd_url: https://openshift-gitops-server-openshift-gitops.{{ .Values.global.domain }}
 
 ---
 # --- Terminal PVC ---

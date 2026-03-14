@@ -79,6 +79,7 @@ echo ""
 echo "[3/5] Configuring ArgoCD permissions..."
 
 ARGOCD_NS="openshift-gitops"
+ARGOCD_ADMIN_PASSWORD="admin"
 
 # ArgoCD controller needs cluster-admin for cross-namespace operations
 oc adm policy add-cluster-role-to-user cluster-admin \
@@ -86,8 +87,15 @@ oc adm policy add-cluster-role-to-user cluster-admin \
     2>/dev/null || true
 echo "  [OK] ArgoCD controller has cluster-admin"
 
-# Grant current user ArgoCD admin role so apps are visible in the UI
+# Create cluster-admins Group and add the current user.
+# ArgoCD RBAC scopes by [groups] — without a real OpenShift Group object,
+# OAuth tokens don't carry group claims and users see no apps.
 CURRENT_USER=$(oc whoami)
+oc adm groups new cluster-admins 2>/dev/null || true
+oc adm groups add-users cluster-admins "$CURRENT_USER" 2>/dev/null || true
+echo "  [OK] OpenShift Group 'cluster-admins' → user '$CURRENT_USER'"
+
+# ArgoCD RBAC: map OpenShift groups to ArgoCD admin role
 oc patch configmap argocd-rbac-cm -n "$ARGOCD_NS" --type merge -p "{
   \"data\": {
     \"policy.csv\": \"g, system:cluster-admins, role:admin\ng, cluster-admins, role:admin\ng, ${CURRENT_USER}, role:admin\",
@@ -95,7 +103,42 @@ oc patch configmap argocd-rbac-cm -n "$ARGOCD_NS" --type merge -p "{
     \"scopes\": \"[groups]\"
   }
 }" 2>/dev/null || true
-echo "  [OK] ArgoCD RBAC: user '$CURRENT_USER' granted admin role"
+echo "  [OK] ArgoCD RBAC: cluster-admins group + user '$CURRENT_USER' → role:admin"
+
+# Enable local ArgoCD admin account (OpenShift GitOps disables it by default)
+oc patch argocd openshift-gitops -n "$ARGOCD_NS" --type merge \
+    -p '{"spec":{"disableAdmin":false}}' 2>/dev/null || true
+echo "  [OK] ArgoCD local admin account enabled"
+
+# Set admin password — generate bcrypt hash, update the cluster secret
+BCRYPT_HASH=$(python3 -c "
+import hashlib, base64, os, struct
+# bcrypt via htpasswd fallback: try bcrypt module, then htpasswd, then fallback
+try:
+    import bcrypt
+    print(bcrypt.hashpw(b'${ARGOCD_ADMIN_PASSWORD}', bcrypt.gensalt(10)).decode())
+except ImportError:
+    import subprocess, shlex
+    r = subprocess.run(['htpasswd', '-nbBC', '10', '', '${ARGOCD_ADMIN_PASSWORD}'],
+                       capture_output=True, text=True)
+    h = r.stdout.strip().lstrip(':')
+    # htpasswd uses \$2y\$, ArgoCD expects \$2a\$
+    print(h.replace('\$2y\$', '\$2a\$'))
+" 2>/dev/null)
+
+if [ -n "$BCRYPT_HASH" ]; then
+    # The secret name follows pattern: {argocd-instance-name}-cluster
+    oc patch secret openshift-gitops-cluster -n "$ARGOCD_NS" --type merge \
+        -p "{\"stringData\":{\"admin.password\":\"${BCRYPT_HASH}\"}}" 2>/dev/null || true
+    # Clear mtime so ArgoCD doesn't reject the password as "already changed"
+    oc patch secret openshift-gitops-cluster -n "$ARGOCD_NS" --type merge \
+        -p '{"stringData":{"admin.passwordMtime":"'$(date -u +"%Y-%m-%dT%H:%M:%SZ")'"}}' 2>/dev/null || true
+    echo "  [OK] ArgoCD admin password set to '${ARGOCD_ADMIN_PASSWORD}'"
+else
+    echo "  [WARN] Could not generate bcrypt hash (need python3 with bcrypt or htpasswd)"
+    echo "         Retrieve auto-generated password with:"
+    echo "         oc get secret openshift-gitops-cluster -n $ARGOCD_NS -o jsonpath='{.data.admin\\.password}' | base64 -d"
+fi
 
 # --- 4. Create root Application ---
 echo ""
@@ -210,4 +253,8 @@ echo "  URLs:"
 echo "    ArgoCD:    https://openshift-gitops-server-${ARGOCD_NS}.${DOMAIN_SUFFIX}"
 echo "    Portal:    https://cert-portal-${PROJECT_NAMESPACE}.${DOMAIN_SUFFIX}"
 echo "    Showroom:  https://showroom-showroom.${DOMAIN_SUFFIX}"
+echo ""
+echo "  ArgoCD Access:"
+echo "    Option 1:  Log in with OpenShift (cluster-admin users auto-mapped)"
+echo "    Option 2:  admin / ${ARGOCD_ADMIN_PASSWORD}"
 echo ""

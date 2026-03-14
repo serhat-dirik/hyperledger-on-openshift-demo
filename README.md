@@ -610,12 +610,15 @@ This is a manual, step-by-step guide. Open the URLs in your browser and follow a
 
 | Role | Login URL | Username | Password |
 |---|---|---|---|
+| **ArgoCD Admin** | `https://openshift-gitops-server-openshift-gitops.${DOMAIN}` | `admin` | `admin` |
 | TechPulse Registrar | `https://course-manager-ui-certchain-techpulse.${DOMAIN}` | `admin@techpulse.demo` | `admin` |
 | DataForge Registrar | `https://course-manager-ui-certchain-dataforge.${DOMAIN}` | `admin@dataforge.demo` | `admin` |
 | NeuralPath Registrar | `https://course-manager-ui-certchain-neuralpath.${DOMAIN}` | `admin@neuralpath.demo` | `admin` |
 | Student (TechPulse) | `https://cert-portal-certchain.${DOMAIN}` | `student01@techpulse.demo` | `student` |
 | Student (DataForge) | `https://cert-portal-certchain.${DOMAIN}` | `student03@dataforge.demo` | `student` |
 | Student (NeuralPath) | `https://cert-portal-certchain.${DOMAIN}` | `student05@neuralpath.demo` | `student` |
+
+> **Tip:** ArgoCD also accepts **Log in via OpenShift** — any user in the `cluster-admins` group gets admin access automatically.
 
 ---
 
@@ -886,6 +889,14 @@ echo "TechPulse Keycloak:     https://keycloak-certchain-techpulse.${DOMAIN}"
 ```
 
 Open each URL in a browser. All should load without errors.
+
+### ArgoCD Console
+
+| URL | Username | Password |
+|---|---|---|
+| `https://openshift-gitops-server-openshift-gitops.${DOMAIN}` | `admin` | `admin` |
+
+You can also click **Log in via OpenShift** — cluster-admin users are auto-mapped to ArgoCD admin role.
 
 ### Keycloak Admin Consoles
 
