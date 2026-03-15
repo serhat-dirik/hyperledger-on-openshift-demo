@@ -44,7 +44,7 @@ This demo proves the network continues operating with one orderer down.
 
 First, confirm transactions work:
 
-[source,bash,subs="attributes"]
+[source,bash,role=execute,subs="attributes"]
 ----
 # Get a token
 TOKEN=$(curl -sk -X POST \
@@ -74,14 +74,14 @@ curl -sk -X POST \
 
 Scale down one orderer (e.g., orderer2 in DataForge):
 
-[source,bash]
+[source,bash,role=execute,subs="attributes"]
 ----
 oc scale deployment orderer-deployment -n {central_namespace}-dataforge --replicas=0
 ----
 
 === Step 3: Verify Transactions Still Work
 
-[source,bash,subs="attributes"]
+[source,bash,role=execute,subs="attributes"]
 ----
 curl -sk -X POST \
   "{techpulse_cert_admin_api_url}/api/v1/certificates" \
@@ -102,7 +102,7 @@ The transaction should *succeed* — 3 out of 4 orderers is sufficient for BFT c
 
 === Step 4: Restore the Orderer
 
-[source,bash]
+[source,bash,role=execute,subs="attributes"]
 ----
 oc scale deployment orderer-deployment -n {central_namespace}-dataforge --replicas=1
 ----
@@ -115,7 +115,7 @@ Each organization's peer maintains a full copy of the ledger and the CouchDB sta
 
 === Peer Crash and Recovery
 
-[source,bash]
+[source,bash,role=execute,subs="attributes"]
 ----
 # Scale down TechPulse peer
 oc scale deployment peer-deployment -n {central_namespace}-techpulse --replicas=0
@@ -136,7 +136,7 @@ During the outage, *verifications through other orgs' peers still work* — the 
 
 CouchDB is the *state database* — a queryable view of the latest ledger state. If CouchDB data is corrupted, it can be rebuilt from the blockchain:
 
-[source,bash]
+[source,bash,role=copy,subs="attributes"]
 ----
 # Delete the CouchDB PVC (drastic — for demo purposes)
 oc delete pvc couchdb-data -n {central_namespace}-techpulse

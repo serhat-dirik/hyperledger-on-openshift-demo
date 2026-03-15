@@ -4,6 +4,30 @@ Welcome to the *CertChain Blockchain Credentialing* demo on Red Hat OpenShift.
 
 This lab guide walks you through a complete blockchain credentialing scenario — from issuing tamper-proof academic certificates on Hyperledger Fabric to verifying them through a public portal, and exploring the platform management capabilities underneath.
 
+== Getting Started: Log In to OpenShift
+
+First, log in to the OpenShift cluster from the terminal. Click the command below to run it — you will be prompted for the password:
+
+[source,bash,role=execute,subs="attributes"]
+----
+oc login {openshift_api_url} -u admin
+----
+
+[NOTE]
+====
+If you are running this demo on RHDP, the password is provided in your lab provisioning email. For BYO clusters, use the password you set during installation.
+====
+
+After login, verify the CertChain namespaces are healthy:
+
+[source,bash,role=execute,subs="attributes"]
+----
+for ns in certchain certchain-techpulse certchain-dataforge certchain-neuralpath; do
+  echo "=== $ns ==="
+  oc get pods -n $ns --no-headers | grep -v Completed | awk '{print $1, $2, $3}'
+done
+----
+
 == Demo Credentials
 
 [cols="2,2,2,1"]

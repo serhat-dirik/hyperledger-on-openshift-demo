@@ -169,6 +169,7 @@ spec:
             enabled: {{ .Values.components.showroom.terminal.enabled }}
         demo:
           centralNamespace: {{ .Values.central.namespace }}
+          apiUrl: {{ .Values.deployer.apiUrl | default "" | quote }}
         gitea:
           enabled: {{ .Values.gitea.enabled }}
           url: "https://gitea-{{ .Values.gitea.namespace }}.{{ .Values.deployer.domain }}"

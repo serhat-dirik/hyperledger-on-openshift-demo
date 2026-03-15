@@ -26,22 +26,18 @@ tabs:
 
   - name: OCP Console
     url: 'https://console-openshift-console.${DOMAIN}'
-    external: true
 
   - name: Git Repository
     url: 'https://gitea-certchain-showroom.${DOMAIN}'
 
   - name: ArgoCD
     url: 'https://openshift-gitops-server-openshift-gitops.${DOMAIN}'
-    external: true
 
   - name: Cert Portal
     url: 'https://cert-portal-certchain.${DOMAIN}'
 
   - name: Course Manager
     url: 'https://course-manager-ui-certchain-techpulse.${DOMAIN}'
-    external: true
 
   - name: Grafana
     url: 'https://certchain-grafana-route-certchain.${DOMAIN}'
-    external: true

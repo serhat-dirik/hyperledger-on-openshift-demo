@@ -32,6 +32,7 @@ showroom:
 demo:
   centralNamespace: certchain
   appName: certchain
+  apiUrl: ""
 
 # --- Gitea (injected by bootstrap chart) ------------------------------------
 gitea:

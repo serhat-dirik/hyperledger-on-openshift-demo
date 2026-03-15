@@ -104,6 +104,11 @@ data:
     neuralpath_cert_admin_api_url: https://cert-admin-api-{{ .Values.demo.centralNamespace }}-neuralpath.{{ .Values.global.domain }}
     argocd_url: https://openshift-gitops-server-openshift-gitops.{{ .Values.global.domain }}
     openshift_console_url: https://console-openshift-console.{{ .Values.global.domain }}
+    {{- if .Values.demo.apiUrl }}
+    openshift_api_url: {{ .Values.demo.apiUrl }}
+    {{- else }}
+    openshift_api_url: https://api.{{ trimPrefix "apps." .Values.global.domain }}:6443
+    {{- end }}
     {{- if .Values.gitea.enabled }}
     gitea_url: {{ .Values.gitea.url }}
     {{- end }}
@@ -301,22 +306,18 @@ spec:
                     port: 443
                   - name: OCP Console
                     url: https://console-openshift-console.{{ .Values.global.domain }}
-                    external: true
                   {{- if .Values.gitea.enabled }}
                   - name: Git Repository
                     url: {{ .Values.gitea.url }}
                   {{- end }}
                   - name: ArgoCD
                     url: https://openshift-gitops-server-openshift-gitops.{{ .Values.global.domain }}
-                    external: true
                   - name: Cert Portal
                     url: https://cert-portal-{{ .Values.demo.centralNamespace }}.{{ .Values.global.domain }}
                   - name: Course Manager
                     url: https://course-manager-ui-{{ .Values.demo.centralNamespace }}-techpulse.{{ .Values.global.domain }}
-                    external: true
                   - name: Grafana
                     url: https://certchain-grafana-route-{{ .Values.demo.centralNamespace }}.{{ .Values.global.domain }}
-                    external: true
           volumeMounts:
             - name: user-data
               mountPath: /user_data/

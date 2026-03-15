@@ -45,7 +45,7 @@ Fabric peers and orderers are deployed as standard Kubernetes Deployments, so sc
 
 Each organization runs a single peer in this demo. In production, you can add peer replicas to increase endorsement capacity and query throughput:
 
-[source,bash]
+[source,bash,role=execute,subs="attributes"]
 ----
 # Scale TechPulse peers to 2 replicas
 oc scale deployment peer-deployment -n {central_namespace}-techpulse --replicas=2
@@ -85,7 +85,7 @@ Adding orderers increases *fault tolerance* (more Byzantine faults survived), bu
 
 The API and UI services are stateless and scale freely:
 
-[source,bash]
+[source,bash,role=execute,subs="attributes"]
 ----
 # Scale verify-api for higher read throughput
 oc scale deployment verify-api -n {central_namespace} --replicas=3
