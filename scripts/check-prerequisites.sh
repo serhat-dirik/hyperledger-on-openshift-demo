@@ -157,16 +157,14 @@ elif [ "$WARN" -gt 0 ]; then
     echo "  STATUS: READY WITH WARNINGS — Review warnings above."
     echo ""
     echo "  Next steps:"
-    echo "    1. bash scripts/setup.sh       # Auto-detect domain, generate crypto"
-    echo "    2. make build-all push-all     # Build and push container images"
-    echo "    3. make deploy                 # Deploy via ArgoCD"
-    echo "    4. make seed                   # Load demo data"
+    echo "    ./scripts/install.sh --gitea           # Install with local Gitea"
+    echo "    ./scripts/install.sh --repo-url <url>  # Install from your fork"
     exit 0
 else
     echo "  STATUS: READY"
     echo ""
     echo "  Next steps:"
-    echo "    1. bash scripts/setup.sh"
-    echo "    2. make all"
+    echo "    ./scripts/install.sh --gitea           # Install with local Gitea"
+    echo "    ./scripts/install.sh --repo-url <url>  # Install from your fork"
     exit 0
 fi

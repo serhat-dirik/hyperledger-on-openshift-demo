@@ -372,13 +372,21 @@ If you have RHDP access, use the **Field Sourced Content** catalog item:
 
 For any OpenShift 4.16+ cluster with cluster-admin access.
 
-**Prerequisites:** `oc` CLI logged into the cluster.
+**Prerequisites:** `oc` CLI logged into the cluster with cluster-admin.
 
-**Option B1 — With Gitea (recommended for workshops):**
+**Check readiness** (optional but recommended):
 
 ```bash
 git clone https://github.com/serhat-dirik/hyperledger-on-openshift-demo.git
 cd hyperledger-on-openshift-demo
+./scripts/check-prerequisites.sh
+```
+
+This checks: local tools (`oc`, `helm`, `curl`), cluster connectivity, OpenShift version ≥ 4.16, ingress domain, permissions, GitOps operator, and node capacity.
+
+**Option B1 — With Gitea (recommended for workshops):**
+
+```bash
 ./scripts/install.sh --gitea
 ```
 
