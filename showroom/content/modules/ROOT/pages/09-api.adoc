@@ -6,7 +6,8 @@ Use the *Terminal* tab to interact directly with the CertChain REST APIs using `
 
 First, obtain a Keycloak token for the TechPulse organization:
 
-[source,bash,role=execute,subs="attributes"]
+[.console-input]
+[source,bash,subs="attributes"]
 ----
 TOKEN=$(curl -sk -X POST \
   "{techpulse_keycloak_url}/realms/techpulse/protocol/openid-connect/token" \
@@ -21,7 +22,8 @@ echo "Token: ${TOKEN:0:20}..."
 
 Submit a certificate issuance request to the cert-admin-api:
 
-[source,bash,role=execute,subs="attributes"]
+[.console-input]
+[source,bash,subs="attributes"]
 ----
 curl -sk -X POST \
   "{techpulse_cert_admin_api_url}/api/v1/certificates" \
@@ -46,7 +48,8 @@ Expected: HTTP 200 with the full certificate JSON including `status: "ACTIVE"`.
 
 Query the public verify-api — no authentication needed:
 
-[source,bash,role=execute,subs="attributes"]
+[.console-input]
+[source,bash,subs="attributes"]
 ----
 curl -sk "{verify_api_url}/api/v1/verify/API-TEST-001" | python3 -m json.tool
 ----
@@ -57,7 +60,8 @@ The response includes status, student name, course, organization, and dates — 
 
 Verify several certificates in a single request:
 
-[source,bash,role=execute,subs="attributes"]
+[.console-input]
+[source,bash,subs="attributes"]
 ----
 curl -sk "{verify_api_url}/api/v1/verify/batch?ids=API-TEST-001,FAKE-CERT-123" \
   | python3 -m json.tool
@@ -69,7 +73,8 @@ Each certificate returns its own status — VALID, REVOKED, or NOT_FOUND.
 
 Get a student token and query the transcript endpoint:
 
-[source,bash,role=execute,subs="attributes"]
+[.console-input]
+[source,bash,subs="attributes"]
 ----
 STUDENT_TOKEN=$(curl -sk -X POST \
   "{central_keycloak_url}/realms/certchain/protocol/openid-connect/token" \
@@ -87,7 +92,8 @@ The transcript response includes *all certificates issued to this student's emai
 
 == View a Single Certificate as Student
 
-[source,bash,role=execute,subs="attributes"]
+[.console-input]
+[source,bash,subs="attributes"]
 ----
 curl -sk -H "Authorization: Bearer $STUDENT_TOKEN" \
   "{verify_api_url}/api/v1/transcript/API-TEST-001" | python3 -m json.tool
@@ -99,7 +105,8 @@ Compare this response to the anonymous verification — grade and degree are now
 
 List all certificates issued by TechPulse with pagination:
 
-[source,bash,role=execute,subs="attributes"]
+[.console-input]
+[source,bash,subs="attributes"]
 ----
 curl -sk \
   "{techpulse_cert_admin_api_url}/api/v1/certificates?page=0&size=10" \
@@ -110,7 +117,8 @@ curl -sk \
 
 Get aggregate certificate statistics:
 
-[source,bash,role=execute,subs="attributes"]
+[.console-input]
+[source,bash,subs="attributes"]
 ----
 curl -sk \
   "{techpulse_cert_admin_api_url}/api/v1/dashboard/stats" \
@@ -123,7 +131,8 @@ Returns: `totalCertificates`, `activeCertificates`, `revokedCertificates`, `expi
 
 Update mutable fields on an existing certificate:
 
-[source,bash,role=execute,subs="attributes"]
+[.console-input]
+[source,bash,subs="attributes"]
 ----
 curl -sk -X PUT \
   "{techpulse_cert_admin_api_url}/api/v1/certificates/API-TEST-001" \
@@ -137,7 +146,8 @@ curl -sk -X PUT \
 
 == Revoke a Certificate
 
-[source,bash,role=execute,subs="attributes"]
+[.console-input]
+[source,bash,subs="attributes"]
 ----
 curl -sk -X PUT \
   "{techpulse_cert_admin_api_url}/api/v1/certificates/API-TEST-001/revoke" \
@@ -148,7 +158,8 @@ curl -sk -X PUT \
 
 After revocation, re-verify to confirm the status changed:
 
-[source,bash,role=execute,subs="attributes"]
+[.console-input]
+[source,bash,subs="attributes"]
 ----
 curl -sk "{verify_api_url}/api/v1/verify/API-TEST-001" | python3 -m json.tool
 ----
@@ -159,7 +170,8 @@ Expected: `status: "REVOKED"` with `revokedDate` and `revokedReason` fields.
 
 Try accessing the cert-admin-api with a student token — it should be rejected:
 
-[source,bash,role=execute,subs="attributes"]
+[.console-input]
+[source,bash,subs="attributes"]
 ----
 curl -sk -o /dev/null -w "HTTP %\{http_code}" \
   "{techpulse_cert_admin_api_url}/api/v1/certificates" \
@@ -170,7 +182,8 @@ Expected: HTTP 401 or 403 — students cannot access admin endpoints.
 
 == Verify a Non-Existent Certificate
 
-[source,bash,role=execute,subs="attributes"]
+[.console-input]
+[source,bash,subs="attributes"]
 ----
 curl -sk "{verify_api_url}/api/v1/verify/does-not-exist" | python3 -m json.tool
 ----

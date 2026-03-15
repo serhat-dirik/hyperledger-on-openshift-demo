@@ -1,0 +1,151 @@
+= Reference
+
+== Demo Credentials
+
+[cols="2,2,2,1"]
+|===
+| Role | Username | Password | Used For
+
+| *ArgoCD Admin*
+| `admin`
+| `admin`
+| GitOps dashboard
+
+| *OpenShift Admin*
+| `admin`
+| (provided by RHDP)
+| OpenShift Console
+
+| *TechPulse Admin*
+| `admin@techpulse.demo`
+| `admin`
+| Course Manager UI
+
+| *DataForge Admin*
+| `admin@dataforge.demo`
+| `admin`
+| Course Manager UI
+
+| *NeuralPath Admin*
+| `admin@neuralpath.demo`
+| `admin`
+| Course Manager UI
+
+| *TechPulse Student*
+| `student01@techpulse.demo`
+| `student`
+| Cert Portal (transcript)
+
+| *DataForge Student*
+| `student03@dataforge.demo`
+| `student`
+| Cert Portal (transcript)
+
+| *NeuralPath Student*
+| `student05@neuralpath.demo`
+| `student`
+| Cert Portal (transcript)
+|===
+
+== Environment URLs
+
+[cols="1,2"]
+|===
+| Component | URL
+
+| Cert Portal (public verification)
+| {cert_portal_url}[Open^]
+
+| TechPulse Course Manager
+| {techpulse_course_manager_url}[Open^]
+
+| DataForge Course Manager
+| {dataforge_course_manager_url}[Open^]
+
+| NeuralPath Course Manager
+| {neuralpath_course_manager_url}[Open^]
+
+| ArgoCD Dashboard
+| {argocd_url}[Open^]
+
+| Grafana Dashboards
+| {grafana_url}[Open^]
+|===
+
+== OpenShift CLI Access
+
+To run `oc` commands from the Terminal tab, first log in to the cluster:
+
+[.console-input]
+[source,bash,subs="attributes"]
+----
+oc login {openshift_api_url} -u admin
+----
+
+[NOTE]
+====
+If you are running this demo on RHDP, the password is provided in your lab provisioning email. For BYO clusters, use the password you set during installation.
+====
+
+Verify the CertChain namespaces are healthy:
+
+[.console-input]
+[source,bash,subs="attributes"]
+----
+for ns in certchain certchain-techpulse certchain-dataforge certchain-neuralpath; do
+  echo "=== $ns ==="
+  oc get pods -n $ns --no-headers | grep -v Completed | awk '{print $1, $2, $3}'
+done
+----
+
+== API Reference
+
+=== cert-admin-api (per-org, requires `org-admin` role)
+
+[cols="1,1,2"]
+|===
+| Method | Path | Description
+
+| POST | `/api/v1/certificates` | Issue a new certificate
+| GET | `/api/v1/certificates?page=0&size=20` | List org certificates (paginated)
+| GET | `/api/v1/certificates/\{certId}` | Get single certificate
+| PUT | `/api/v1/certificates/\{certId}` | Update mutable fields
+| PUT | `/api/v1/certificates/\{certId}/revoke` | Revoke (irreversible)
+| GET | `/api/v1/courses` | List course catalog
+| GET | `/api/v1/dashboard/stats` | Certificate stats
+|===
+
+=== verify-api (central, public + JWT)
+
+[cols="1,1,1,2"]
+|===
+| Method | Path | Auth | Description
+
+| GET | `/api/v1/verify/\{certId}` | Public | Verify certificate status
+| GET | `/api/v1/verify/\{certId}/qr` | Public | Generate QR code (PNG)
+| GET | `/api/v1/verify/batch?ids=X,Y` | Public | Batch verify
+| GET | `/api/v1/transcript` | JWT | Student's certificates
+| GET | `/api/v1/transcript/\{certId}` | JWT | Single certificate
+|===
+
+== Namespace Layout
+
+[cols="1,2"]
+|===
+| Namespace | Contents
+
+| `certchain`
+| Fabric CA, orderer0, cert-portal, verify-api, central Keycloak, Postgres, Grafana
+
+| `certchain-techpulse`
+| Peer, orderer, CouchDB, certcontract (CcaaS), Postgres, org Keycloak, cert-admin-api, course-manager-ui
+
+| `certchain-dataforge`
+| Same as techpulse
+
+| `certchain-neuralpath`
+| Same as techpulse
+
+| `certchain-showroom`
+| Antora lab guide, Gitea
+|===

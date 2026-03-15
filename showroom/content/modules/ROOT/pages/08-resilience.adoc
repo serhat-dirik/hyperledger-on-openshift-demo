@@ -1,5 +1,10 @@
 = Resilience & Fault Tolerance
 
+[NOTE]
+====
+This section uses `oc` commands. If you haven't already, log in from the *Terminal* tab — see xref:11-reference.adoc#_openshift_cli_access[OpenShift CLI Access].
+====
+
 CertChain uses *SmartBFT (Byzantine Fault Tolerant)* consensus, which provides stronger guarantees than traditional Raft — tolerating not just crash failures but also *malicious* nodes.
 
 == BFT Consensus Theory
@@ -44,7 +49,8 @@ This demo proves the network continues operating with one orderer down.
 
 First, confirm transactions work:
 
-[source,bash,role=execute,subs="attributes"]
+[.console-input]
+[source,bash,subs="attributes"]
 ----
 # Get a token
 TOKEN=$(curl -sk -X POST \
@@ -74,14 +80,16 @@ curl -sk -X POST \
 
 Scale down one orderer (e.g., orderer2 in DataForge):
 
-[source,bash,role=execute,subs="attributes"]
+[.console-input]
+[source,bash,subs="attributes"]
 ----
 oc scale deployment orderer-deployment -n {central_namespace}-dataforge --replicas=0
 ----
 
 === Step 3: Verify Transactions Still Work
 
-[source,bash,role=execute,subs="attributes"]
+[.console-input]
+[source,bash,subs="attributes"]
 ----
 curl -sk -X POST \
   "{techpulse_cert_admin_api_url}/api/v1/certificates" \
@@ -102,7 +110,8 @@ The transaction should *succeed* — 3 out of 4 orderers is sufficient for BFT c
 
 === Step 4: Restore the Orderer
 
-[source,bash,role=execute,subs="attributes"]
+[.console-input]
+[source,bash,subs="attributes"]
 ----
 oc scale deployment orderer-deployment -n {central_namespace}-dataforge --replicas=1
 ----
@@ -115,7 +124,8 @@ Each organization's peer maintains a full copy of the ledger and the CouchDB sta
 
 === Peer Crash and Recovery
 
-[source,bash,role=execute,subs="attributes"]
+[.console-input]
+[source,bash,subs="attributes"]
 ----
 # Scale down TechPulse peer
 oc scale deployment peer-deployment -n {central_namespace}-techpulse --replicas=0
@@ -136,7 +146,8 @@ During the outage, *verifications through other orgs' peers still work* — the 
 
 CouchDB is the *state database* — a queryable view of the latest ledger state. If CouchDB data is corrupted, it can be rebuilt from the blockchain:
 
-[source,bash,role=copy,subs="attributes"]
+[.copypaste]
+[source,bash,subs="attributes"]
 ----
 # Delete the CouchDB PVC (drastic — for demo purposes)
 oc delete pvc couchdb-data -n {central_namespace}-techpulse

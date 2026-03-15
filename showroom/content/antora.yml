@@ -3,3 +3,6 @@ title: CertChain Demo Guide
 version: master
 nav:
   - modules/ROOT/nav.adoc
+asciidoc:
+  attributes:
+    page-pagination: true

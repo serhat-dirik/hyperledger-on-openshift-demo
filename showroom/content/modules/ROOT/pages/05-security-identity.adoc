@@ -62,7 +62,8 @@ This scenario proves that security is enforced at every layer by tracing a singl
 
 Request a token from TechPulse's Keycloak as the org admin:
 
-[source,bash,role=execute,subs="attributes"]
+[.console-input]
+[source,bash,subs="attributes"]
 ----
 # Authenticate as TechPulse admin
 ADMIN_TOKEN=$(curl -sk -X POST \
@@ -85,7 +86,8 @@ Inspect the decoded JWT payload. Notice these key claims:
 
 Use the admin token to issue a certificate:
 
-[source,bash,role=execute,subs="attributes"]
+[.console-input]
+[source,bash,subs="attributes"]
 ----
 curl -sk -X POST \
   "{techpulse_cert_admin_api_url}/api/v1/certificates" \
@@ -112,7 +114,8 @@ Expected: HTTP 200 with the issued certificate. This request passed *three* secu
 
 Now verify the certificate through the public verify-api — no token required:
 
-[source,bash,role=execute,subs="attributes"]
+[.console-input]
+[source,bash,subs="attributes"]
 ----
 curl -sk "{verify_api_url}/api/v1/verify/SEC-TEST-001" | python3 -m json.tool
 ----
@@ -123,7 +126,8 @@ Expected: `"status": "VALID"` — the certificate exists on the blockchain and i
 
 Now prove that a student cannot issue certificates:
 
-[source,bash,role=execute,subs="attributes"]
+[.console-input]
+[source,bash,subs="attributes"]
 ----
 # Authenticate as a student (no org-admin role)
 STUDENT_TOKEN=$(curl -sk -X POST \
@@ -155,7 +159,8 @@ Expected: *HTTP 403 Forbidden* — the student's JWT lacks the `org-admin` role.
 
 Prove that a DataForge admin cannot issue certificates through TechPulse's API:
 
-[source,bash,role=execute,subs="attributes"]
+[.console-input]
+[source,bash,subs="attributes"]
 ----
 # Authenticate as DataForge admin
 DF_TOKEN=$(curl -sk -X POST \
@@ -187,7 +192,8 @@ Expected: *HTTP 401 or 403* — DataForge's token was issued by a different Keyc
 
 Verify that only the legitimate certificate exists:
 
-[source,bash,role=execute,subs="attributes"]
+[.console-input]
+[source,bash,subs="attributes"]
 ----
 # The legitimate certificate is valid
 curl -sk "{verify_api_url}/api/v1/verify/SEC-TEST-001" | python3 -c "import sys,json; d=json.load(sys.stdin); print(f'SEC-TEST-001: {d[\"status\"]}')"

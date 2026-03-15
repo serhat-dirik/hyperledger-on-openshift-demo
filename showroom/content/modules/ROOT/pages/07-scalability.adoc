@@ -1,5 +1,10 @@
 = Scalability
 
+[NOTE]
+====
+This section uses `oc` commands. If you haven't already, log in from the *Terminal* tab — see xref:11-reference.adoc#_openshift_cli_access[OpenShift CLI Access].
+====
+
 CertChain is designed for horizontal scalability at multiple layers — from adding new organizations to scaling individual components.
 
 == Adding a New Organization
@@ -45,7 +50,8 @@ Fabric peers and orderers are deployed as standard Kubernetes Deployments, so sc
 
 Each organization runs a single peer in this demo. In production, you can add peer replicas to increase endorsement capacity and query throughput:
 
-[source,bash,role=execute,subs="attributes"]
+[.console-input]
+[source,bash,subs="attributes"]
 ----
 # Scale TechPulse peers to 2 replicas
 oc scale deployment peer-deployment -n {central_namespace}-techpulse --replicas=2
@@ -85,7 +91,8 @@ Adding orderers increases *fault tolerance* (more Byzantine faults survived), bu
 
 The API and UI services are stateless and scale freely:
 
-[source,bash,role=execute,subs="attributes"]
+[.console-input]
+[source,bash,subs="attributes"]
 ----
 # Scale verify-api for higher read throughput
 oc scale deployment verify-api -n {central_namespace} --replicas=3

@@ -1,5 +1,10 @@
 = Troubleshooting
 
+[NOTE]
+====
+Commands on this page require `oc` login. See xref:11-reference.adoc#_openshift_cli_access[OpenShift CLI Access].
+====
+
 == Common Issues
 
 [cols="2,2,2"]
@@ -51,7 +56,8 @@
 
 ArgoCD Jobs are immutable — once completed, they cannot be re-synced. If a Job fails:
 
-[source,bash,role=copy,subs="attributes"]
+[.copypaste]
+[source,bash,subs="attributes"]
 ----
 # 1. Terminate the sync operation in ArgoCD UI
 # 2. Delete the stuck job
@@ -64,7 +70,8 @@ oc delete job <job-name> -n {central_namespace}
 
 Check logs for the failing pod:
 
-[source,bash,role=copy,subs="attributes"]
+[.copypaste]
+[source,bash,subs="attributes"]
 ----
 oc logs -n {central_namespace}-techpulse deployment/<name> --previous
 ----
@@ -80,7 +87,8 @@ Common causes:
 
 Quick health check across all CertChain namespaces:
 
-[source,bash,role=execute,subs="attributes"]
+[.console-input]
+[source,bash,subs="attributes"]
 ----
 for ns in {central_namespace} {central_namespace}-techpulse {central_namespace}-dataforge {central_namespace}-neuralpath; do
   echo "=== $ns ==="
@@ -92,7 +100,8 @@ done
 
 === Check Peer Status
 
-[source,bash,role=execute,subs="attributes"]
+[.console-input]
+[source,bash,subs="attributes"]
 ----
 oc logs deployment/peer-deployment -n {central_namespace}-techpulse --tail=20
 ----
@@ -101,7 +110,8 @@ Look for: `Successfully committed block` messages indicating the peer is process
 
 === Check Orderer Status
 
-[source,bash,role=execute,subs="attributes"]
+[.console-input]
+[source,bash,subs="attributes"]
 ----
 oc logs deployment/orderer-deployment -n {central_namespace}-techpulse --tail=20
 ----
@@ -110,7 +120,8 @@ Look for: `BFT view` and `committed block` messages indicating consensus partici
 
 === Check Chaincode Status
 
-[source,bash,role=execute,subs="attributes"]
+[.console-input]
+[source,bash,subs="attributes"]
 ----
 oc logs deployment/certcontract-deployment -n {central_namespace} --tail=20
 ----

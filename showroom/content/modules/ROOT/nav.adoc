@@ -15,3 +15,4 @@
 * Reference
 ** xref:09-api.adoc[API Walkthrough]
 ** xref:10-troubleshooting.adoc[Troubleshooting]
+** xref:11-reference.adoc[Credentials & URLs]
