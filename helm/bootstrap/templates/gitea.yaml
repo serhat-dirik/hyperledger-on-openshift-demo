@@ -114,6 +114,11 @@ spec:
         - name: gitea
           image: {{ .Values.gitea.image }}
           command: ["/bin/sh", "/home/gitea/conf/start.sh"]
+          env:
+            - name: HOME
+              value: /home/gitea/data
+            - name: GITEA_WORK_DIR
+              value: /home/gitea
           ports:
             - containerPort: 3000
               name: http
