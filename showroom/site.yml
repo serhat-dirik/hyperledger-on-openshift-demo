@@ -18,7 +18,6 @@ ui:
     url: https://github.com/rhpds/rhdp_showroom_theme/releases/download/v0.0.1/ui-bundle.zip
     snapshot: true
   supplemental_files:
-    - path: partials/header-content.hbs
     - path: ui.yml
       contents: |
         header:

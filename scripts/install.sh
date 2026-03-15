@@ -150,6 +150,20 @@ EOF
   echo -e "  OpenShift GitOps: ${GREEN}installed${NC}"
 fi
 
+# --- Step 3b: Configure ArgoCD for OpenShift resources ----------------------
+echo -e "\n${BLUE}=== Step 3b: Configuring ArgoCD health checks ===${NC}"
+
+# ArgoCD doesn't natively know how to health-check OpenShift ImageStream and
+# BuildConfig resources — they report as "unknown" which blocks sync-wave
+# progression. Patch argocd-cm to mark them as always Healthy.
+oc patch configmap argocd-cm -n openshift-gitops --type merge -p '{
+  "data": {
+    "resource.customizations.health.image.openshift.io_ImageStream": "hs = {}\nhs.status = \"Healthy\"\nhs.message = \"ImageStream is available\"\nreturn hs\n",
+    "resource.customizations.health.build.openshift.io_BuildConfig": "hs = {}\nhs.status = \"Healthy\"\nhs.message = \"BuildConfig is available\"\nreturn hs\n"
+  }
+}' 2>/dev/null && echo -e "  ArgoCD health checks: ${GREEN}configured${NC}" \
+  || echo -e "  ${YELLOW}ArgoCD health check patch skipped (may need manual config)${NC}"
+
 # --- Step 4: Determine target repo ------------------------------------------
 echo -e "\n${BLUE}=== Step 4: Configuring source repository ===${NC}"
 
