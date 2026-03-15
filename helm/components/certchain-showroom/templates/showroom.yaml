@@ -282,7 +282,7 @@ spec:
               value: |
                 ---
                 type: showroom
-                default_width: 30
+                default_width: 45
                 persist_url_state: true
                 antora:
                   name: certchain
@@ -311,12 +311,14 @@ spec:
                   {{- if .Values.gitea.enabled }}
                   - name: Git Repository
                     url: {{ .Values.gitea.url }}
+                    external: true
                   {{- end }}
                   - name: ArgoCD
                     url: https://openshift-gitops-server-openshift-gitops.{{ .Values.global.domain }}
                     external: true
                   - name: Cert Portal
                     url: https://cert-portal-{{ .Values.demo.centralNamespace }}.{{ .Values.global.domain }}
+                    external: true
                   - name: Course Manager
                     url: https://course-manager-ui-{{ .Values.demo.centralNamespace }}-techpulse.{{ .Values.global.domain }}
                     external: true

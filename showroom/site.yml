@@ -15,5 +15,5 @@ asciidoc:
 
 ui:
   bundle:
-    url: https://github.com/rhpds/rhdp_showroom_theme/releases/download/rh-one-2025/ui-bundle.zip
+    url: https://github.com/rhpds/rhdp_showroom_theme/releases/download/rh-summit-connect-2025/ui-bundle.zip
     snapshot: true

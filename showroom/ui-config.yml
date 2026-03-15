@@ -1,6 +1,6 @@
 ---
 type: showroom
-default_width: 30
+default_width: 45
 persist_url_state: true
 antora:
   name: certchain
@@ -31,6 +31,7 @@ tabs:
 
   - name: Git Repository
     url: 'https://gitea-certchain-showroom.${DOMAIN}'
+    external: true
 
   - name: ArgoCD
     url: 'https://openshift-gitops-server-openshift-gitops.${DOMAIN}'
@@ -38,6 +39,7 @@ tabs:
 
   - name: Cert Portal
     url: 'https://cert-portal-certchain.${DOMAIN}'
+    external: true
 
   - name: Course Manager
     url: 'https://course-manager-ui-certchain-techpulse.${DOMAIN}'
