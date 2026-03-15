@@ -1,0 +1,50 @@
+# =============================================================================
+# Namespace pre-creation (Wave 1)
+# =============================================================================
+# Creates all CertChain namespaces before child ArgoCD Applications (wave 2)
+# attempt to sync resources into them.
+# ArgoCD's CreateNamespace=true only creates the destination namespace of an
+# Application — resources targeting other namespaces (e.g. the UserInfo
+# ConfigMap) need the namespace to exist beforehand.
+# =============================================================================
+
+---
+apiVersion: v1
+kind: Namespace
+metadata:
+  name: {{ .Values.central.namespace }}
+  annotations:
+    argocd.argoproj.io/sync-wave: "1"
+  labels:
+    app.kubernetes.io/part-of: certchain
+    kubernetes.io/metadata.name: {{ .Values.central.namespace }}
+
+{{- $orgs := list "techpulse" "dataforge" "neuralpath" }}
+{{- range $orgKey := $orgs }}
+{{- $orgConfig := index $.Values.components $orgKey }}
+{{- if $orgConfig.enabled }}
+---
+apiVersion: v1
+kind: Namespace
+metadata:
+  name: {{ $.Values.central.namespace }}-{{ $orgKey }}
+  annotations:
+    argocd.argoproj.io/sync-wave: "1"
+  labels:
+    app.kubernetes.io/part-of: certchain
+    kubernetes.io/metadata.name: {{ $.Values.central.namespace }}-{{ $orgKey }}
+{{- end }}
+{{- end }}
+
+{{- if .Values.components.showroom.enabled }}
+---
+apiVersion: v1
+kind: Namespace
+metadata:
+  name: {{ .Values.components.showroom.namespace | default "certchain-showroom" }}
+  annotations:
+    argocd.argoproj.io/sync-wave: "0"
+  labels:
+    app.kubernetes.io/part-of: certchain
+    kubernetes.io/metadata.name: {{ .Values.components.showroom.namespace | default "certchain-showroom" }}
+{{- end }}

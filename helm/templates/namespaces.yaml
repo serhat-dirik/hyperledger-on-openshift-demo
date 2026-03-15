@@ -1,0 +1,41 @@
+# =============================================================================
+# Namespace pre-creation
+# =============================================================================
+# Creates all CertChain namespaces so that child ArgoCD Applications and
+# cross-namespace resources (e.g. UserInfo ConfigMap) can target them.
+# =============================================================================
+
+---
+apiVersion: v1
+kind: Namespace
+metadata:
+  name: {{ .Values.central.namespace }}
+  labels:
+    app.kubernetes.io/part-of: certchain
+    kubernetes.io/metadata.name: {{ .Values.central.namespace }}
+
+{{- $orgs := list "techpulse" "dataforge" "neuralpath" }}
+{{- range $orgKey := $orgs }}
+{{- $orgConfig := index $.Values.components $orgKey }}
+{{- if $orgConfig.enabled }}
+---
+apiVersion: v1
+kind: Namespace
+metadata:
+  name: {{ $.Values.central.namespace }}-{{ $orgKey }}
+  labels:
+    app.kubernetes.io/part-of: certchain
+    kubernetes.io/metadata.name: {{ $.Values.central.namespace }}-{{ $orgKey }}
+{{- end }}
+{{- end }}
+
+{{- if .Values.components.showroom.enabled }}
+---
+apiVersion: v1
+kind: Namespace
+metadata:
+  name: {{ .Values.components.showroom.namespace | default "certchain-showroom" }}
+  labels:
+    app.kubernetes.io/part-of: certchain
+    kubernetes.io/metadata.name: {{ .Values.components.showroom.namespace | default "certchain-showroom" }}
+{{- end }}
