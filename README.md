@@ -293,21 +293,20 @@ The verification endpoint is anonymous and public. In a production deployment, y
 ## Repository Structure
 
 ```
-helm/                              ← Root App-of-Apps chart (ArgoCD entry point)
-├── Chart.yaml
-├── values.yaml                    ← All config: deployer, gitops, org identities
-├── templates/
-│   ├── applications.yaml          ← Generates 5 ArgoCD Application CRs
-│   └── userinfo.yaml              ← RHDP UserInfo ConfigMap
-└── components/
-    ├── certchain-central/         ← Central services Helm chart
-    │   ├── templates/             ← Fabric CA, orderer0, Keycloak, verify-api, cert-portal, Grafana
-    │   └── values.yaml
-    ├── certchain-org/             ← Per-org services Helm chart (deployed 3x)
-    │   ├── templates/             ← peer, orderer, CouchDB, Keycloak, cert-admin-api, course-manager-ui
-    │   ├── values.yaml
+helm/
+├── bootstrap/                     ← Phase 1: Bootstrap chart (RHDP / install.sh entry point)
+│   ├── Chart.yaml
+│   ├── values.yaml                ← deployer config, Gitea toggle, org definitions
+│   └── templates/
+│       ├── gitea.yaml             ← Local Gitea git server (wave 0)
+│       ├── mirror-job.yaml        ← Clone GitHub → Gitea (wave 1)
+│       └── applications.yaml      ← Creates 5 ArgoCD Applications (wave 2)
+│
+└── components/                    ← Phase 2: Deployed by ArgoCD from Gitea (or your fork)
+    ├── certchain-central/         ← Central services (Fabric CA, orderer0, Keycloak, verify-api, cert-portal, Grafana)
+    ├── certchain-org/             ← Per-org services — deployed 3× (peer, orderer, CouchDB, APIs, UI)
     │   └── values-{org}.yaml      ← Org-specific overrides (identity, branding)
-    └── certchain-showroom/        ← Antora lab guide Helm chart
+    └── certchain-showroom/        ← Lab guide (Antora + terminal + 8 browser tabs)
 
 apps/                              ← Application source code
 ├── cert-admin-api/                ← Quarkus API (per-org certificate CRUD)
@@ -316,7 +315,7 @@ apps/                              ← Application source code
 └── cert-portal/                   ← React + Express (verification portal)
 
 showroom/                          ← Antora lab guide (AsciiDoc)
-├── site.yml                       ← Antora playbook
+├── site.yml                       ← Antora playbook + tab configuration
 └── content/modules/ROOT/pages/    ← Lab guide pages
 
 fabric/                            ← Fabric blockchain configuration
@@ -326,112 +325,83 @@ fabric/                            ← Fabric blockchain configuration
 └── scripts/                       ← In-cluster setup scripts
 
 scripts/                           ← Deployment and management scripts
+├── install.sh                     ← BYO cluster installer (--repo-url or --gitea)
 keycloak/                          ← Realm JSON exports (per-org + central)
 ```
 
-**Two deployment modes:**
+**How deployment works (two phases):**
 
-| Mode | Entry point | When to use |
-|---|---|---|
-| **ArgoCD (RHDP)** | `helm/` root chart → generates ArgoCD Applications | Production, RHDP catalog |
-| **Imperative (dev)** | `scripts/deploy-to-openshift.sh` → `helm upgrade --install` | Local development, testing |
+The bootstrap chart installs a local Gitea server, mirrors this GitHub repo into it, then creates ArgoCD Applications that deploy CertChain from the local Gitea. This gives workshop participants a writable repo — they can push changes (like adding a new org) and ArgoCD auto-syncs.
+
+```
+Phase 1 (from GitHub):  bootstrap → Gitea + mirror + ArgoCD Applications
+Phase 2 (from Gitea):   certchain-central, 3× org, showroom
+```
 
 ---
 
 ## Installation on OpenShift
 
-### Prerequisites
+### Option A — Red Hat Demo Platform (RHDP)
 
-| Requirement | Notes |
-|---|---|
-| OpenShift 4.16+ | Cluster-admin access required |
-| `oc` CLI | Logged into the cluster (`oc login ...`) |
-| `helm` 3.x | Helm CLI for chart rendering |
-| `make`, `curl`, `python3` | Standard dev tools |
+If you have RHDP access, use the **Field Sourced Content** catalog item:
 
-### Step 1 — Clone and Configure
+1. Order from RHDP catalog with these parameters:
+   - **GitOps Repo URL:** `https://github.com/serhat-dirik/hyperledger-on-openshift-demo.git`
+   - **GitOps Path:** `helm/bootstrap`
+   - **GitOps Revision:** `main`
+
+2. RHDP provisions the cluster, installs ArgoCD, and creates the root Application. The bootstrap chart automatically:
+   - Deploys Gitea and mirrors this repo
+   - Creates 5 ArgoCD Applications (central, 3 orgs, showroom)
+   - Deploys the full CertChain platform
+
+3. When deployment completes, open the **Showroom** lab guide URL (provided in RHDP order details). The Showroom has interactive walkthroughs with a built-in terminal, OpenShift Console, and Git repo tabs.
+
+### Option B — Bring Your Own Cluster
+
+For any OpenShift 4.16+ cluster with cluster-admin access.
+
+**Prerequisites:** `oc` CLI logged into the cluster.
+
+**Option B1 — With Gitea (recommended for workshops):**
 
 ```bash
 git clone https://github.com/serhat-dirik/hyperledger-on-openshift-demo.git
 cd hyperledger-on-openshift-demo
+./scripts/install.sh --gitea
 ```
 
-Edit `env.sh` if you need to override the container registry or domain suffix. By default, the deploy script auto-detects these from your cluster.
+This installs a local Gitea, mirrors the repo, and deploys everything via ArgoCD. Workshop participants get a writable repo for hands-on exercises.
 
-### Step 2 — Verify Cluster Readiness
+**Option B2 — With your own fork:**
+
+Fork this repo to your own GitHub/GitLab, then:
 
 ```bash
-./scripts/check-prerequisites.sh
+./scripts/install.sh --repo-url https://github.com/YOUR_USER/hyperledger-on-openshift-demo.git
 ```
 
-This checks: `oc` connectivity, OpenShift version, required operators, resource availability, and tooling. Fix any `[FAIL]` items before proceeding.
+ArgoCD deploys directly from your fork. You can push changes and ArgoCD auto-syncs.
 
-### Step 3 — Deploy
+**What the install script does:**
+
+1. Verifies prerequisites (oc login, cluster-admin, OpenShift 4.16+)
+2. Auto-detects cluster domain and API URL
+3. Ensures OpenShift GitOps (ArgoCD) is installed
+4. Creates the root ArgoCD Application pointing to `helm/bootstrap`
+5. Waits for bootstrap sync and prints summary URLs
+
+**Post-deploy steps** (run after all pods are ready):
 
 ```bash
-source env.sh
-./scripts/deploy-to-openshift.sh
+./scripts/configure-identity-brokering.sh    # Cross-org student login
+./scripts/setup-enable-user-workload-monitoring.sh  # Prometheus scraping
+./scripts/setup-grafana-datasource.sh        # Grafana → Thanos connection
+./scripts/seed-demo-certificates.sh          # 15 sample certificates
 ```
-
-This runs 8 steps automatically:
-1. Creates 4 namespaces and configures cross-namespace image pull access
-2. Creates Keycloak realm ConfigMaps from JSON files
-3. Builds container images on-cluster (cert-admin-api, verify-api, course-manager-ui, cert-portal)
-4. Installs the `certchain-central` Helm chart (Fabric CA, orderer0, Keycloak, cert-portal, verify-api, Grafana)
-5. Installs the `certchain-org` Helm chart per org (peer, orderer, CouchDB, Keycloak, APIs, UIs)
-6. Waits for all pods to be ready
-7. Sets up Fabric crypto (CA enrollment, MSP/TLS secrets) and cross-namespace networking
-8. Verifies all pods and Helm releases
-
-> **Tip:** If images are already built, skip rebuilds: `./scripts/deploy-to-openshift.sh --skip-builds`
-
-### Step 4 — Create Fabric Channel & Deploy Chaincode
-
-After all pods are running and crypto is enrolled, create the channel and deploy the chaincode:
-
-```bash
-./scripts/setup-fabric-channel.sh
-```
-
-This runs 7 steps:
-1. Copies org admin MSP and peer TLS secrets to the central namespace
-2. Creates ServiceAccount and RBAC for setup jobs
-3. Generates the genesis block locally via `configtxgen` (downloads Fabric binaries if needed)
-4. Creates ConfigMaps for channel setup scripts
-5. Runs the channel-setup job (joins 4 orderers and 3 peers to `certchannel`)
-6. Builds the chaincode container image (CcaaS pattern — `certcontract` at port 7052)
-7. Runs the chaincode-lifecycle job (install, approve, commit across all 3 orgs)
-
-> **Note:** The chaincode uses the **Chaincode-as-a-Service (CcaaS)** pattern — it runs as a standalone gRPC service in each org's namespace that the local peer connects to, rather than being managed by the peer process. All orgs run the same sealed image for deterministic endorsement.
-
-### Step 5 — Configure Identity Brokering
-
-```bash
-./scripts/configure-identity-brokering.sh
-```
-
-Sets up the central Keycloak to broker logins to per-org Keycloak instances based on email domain.
-
-### Step 6 — Enable Monitoring
-
-```bash
-./scripts/setup-enable-user-workload-monitoring.sh
-./scripts/setup-grafana-datasource.sh
-```
-
-Enables OpenShift user workload monitoring (Prometheus scraping of ServiceMonitors in user namespaces) and configures Grafana's datasource to query Thanos Querier. Requires cluster-admin.
-
-### Step 7 — Seed Demo Data
-
-```bash
-./scripts/seed-demo-certificates.sh
-```
-
-Issues 15 sample certificates (5 per org) and verifies them.
 
 ### Validation
-
-After deployment, verify everything is working:
 
 ```bash
 # All pods should be Running and 1/1 Ready
@@ -440,141 +410,12 @@ oc get pods -n certchain-techpulse
 oc get pods -n certchain-dataforge
 oc get pods -n certchain-neuralpath
 
-# Check routes are accessible
-oc get routes -n certchain
-oc get routes -n certchain-techpulse
-```
-
-Quick smoke test — verify a seeded certificate:
-
-```bash
+# Quick smoke test
 DOMAIN=$(oc get ingresses.config cluster -o jsonpath='{.spec.domain}')
 curl -sk "https://verify-api-certchain.${DOMAIN}/api/v1/verify/TP-FSWD-001" | python3 -m json.tool
 ```
 
-Expected output: a JSON object with `"status": "ACTIVE"`.
-
-### Full E2E Validation
-
-Run the automated end-to-end validation suite:
-
-```bash
-./scripts/e2e-full-validation.sh --validate
-```
-
-This validates 25 checks across 4 phases: pod health (4 namespaces), route accessibility (10 endpoints), API tests (auth, issue, verify, revoke, re-verify), and monitoring stack (ServiceMonitors, Grafana, metrics, UWM pods).
-
-<details>
-<summary><strong>E2E validation output (25 pass, 0 fail)</strong></summary>
-
-```
-Phase 6: Validate Pod Health
-  ✓ PASS — All 9 service pods running in certchain
-  ✓ PASS — All 7 service pods running in certchain-techpulse
-  ✓ PASS — All 7 service pods running in certchain-dataforge
-  ✓ PASS — All 7 service pods running in certchain-neuralpath
-
-Phase 7: Validate Routes & Endpoints
-  ✓ PASS — CertChain Portal (HTTP 200)
-  ✓ PASS — Verify API health (HTTP 200)
-  ✓ PASS — TechPulse Course Manager (HTTP 200)
-  ✓ PASS — TechPulse cert-admin-api health (HTTP 200)
-  ✓ PASS — DataForge cert-admin-api health (HTTP 200)
-  ✓ PASS — NeuralPath cert-admin-api health (HTTP 200)
-  ✓ PASS — Central Keycloak (HTTP 200)
-  ✓ PASS — TechPulse Keycloak (HTTP 200)
-  ✓ PASS — DataForge Keycloak (HTTP 200)
-  ✓ PASS — NeuralPath Keycloak (HTTP 200)
-
-Phase 8: API Tests — Authentication & Certificate Lifecycle
-  ✓ PASS — Keycloak authentication (TechPulse)
-  ✓ PASS — Dashboard stats API
-  ✓ PASS — Certificate issuance (HTTP 201)
-  ✓ PASS — Certificate verification (status: VALID)
-  ✓ PASS — Certificate revocation (HTTP 200)
-  ✓ PASS — Post-revocation verification (status: REVOKED)
-  ⊘ SKIP — Cross-org verification (seeded certs not found)
-
-Phase 9: Validate Monitoring Stack
-  ✓ PASS — ServiceMonitors in certchain (2 found)
-  ✓ PASS — ServiceMonitors in certchain-techpulse (3 found)
-  ✓ PASS — Grafana reachable (HTTP 200)
-  ✓ PASS — Custom certificate metrics present
-  ✓ PASS — User workload monitoring pods running (5 pods)
-
-Passed: 25  Failed: 0  Skipped: 1
-```
-
-</details>
-
-<details>
-<summary><strong>Certificate lifecycle test output (issue → verify → revoke → re-verify)</strong></summary>
-
-```json
-// 1. Issue certificate
-{
-    "certID": "DEMO-001",
-    "studentName": "Jane Smith",
-    "courseName": "Advanced Blockchain",
-    "orgName": "TechPulse Academy",
-    "status": "ACTIVE",
-    "txID": "41ebde98e6e9e1b014a852fa45980892180376c9..."
-}
-
-// 2. Verify → VALID
-{
-    "certID": "DEMO-001",
-    "status": "VALID",
-    "studentName": "Jane Smith",
-    "courseName": "Advanced Blockchain",
-    "orgName": "TechPulse Academy"
-}
-
-// 3. Revoke
-{
-    "certID": "DEMO-001",
-    "status": "REVOKED",
-    "revokeReason": "Demo revocation test"
-}
-
-// 4. Re-verify → REVOKED
-{
-    "certID": "DEMO-001",
-    "status": "REVOKED",
-    "revokeReason": "Demo revocation test"
-}
-```
-
-</details>
-
-<details>
-<summary><strong>Pod status across all namespaces</strong></summary>
-
-```
-=== certchain (central) ===
-cert-portal          1/1   Running
-fabric-ca            1/1   Running
-grafana              1/1   Running
-grafana-operator     1/1   Running
-keycloak             1/1   Running
-orderer0             1/1   Running     ← BFT orderer (central)
-postgres             1/1   Running
-verify-api           1/1   Running
-
-=== certchain-techpulse ===
-cert-admin-api       1/1   Running
-certcontract         1/1   Running     ← Go chaincode (CcaaS, per-org)
-couchdb              1/1   Running     ← Peer state database
-course-manager-ui    1/1   Running
-keycloak             1/1   Running     ← Org-local identity provider
-orderer              1/1   Running     ← BFT orderer (TechPulse)
-peer0                1/1   Running     ← Fabric peer
-postgres             1/1   Running
-
-(dataforge and neuralpath: same layout)
-```
-
-</details>
+Expected: a JSON object with `"status": "ACTIVE"`.
 
 ### Troubleshooting
 
@@ -586,517 +427,42 @@ postgres             1/1   Running
 | Keycloak not starting | `oc logs <kc-pod> -n <ns>` | Postgres may not be ready. Check PG pod first. |
 | `curl` to route returns 503 | `oc get pods -n <ns>` | Pod may still be starting. Wait 30s and retry. |
 | Identity brokering not working | Central KC admin console → Identity Providers | Run `./scripts/configure-identity-brokering.sh` again. |
-| Seed data fails | Script output shows HTTP codes | Keycloak or API pods may not be ready. Wait and retry. |
 | Channel setup job fails | `oc logs job/fabric-channel-setup -n certchain` | Orderers/peers may not be ready. Delete job and re-run. |
-| Chaincode `CORE_CHAINCODE_ID_NAME` error | `oc logs deploy/certcontract -n certchain-techpulse` | Check ConfigMap `chaincode-id` exists: `oc get cm chaincode-id -n certchain-techpulse` |
-| verify-api TLS handshake fails | `oc logs deploy/verify-api -n certchain` | Use FQDN for `FABRIC_PEER_ENDPOINT` (e.g., `peer0.certchain-techpulse.svc.cluster.local:7051`) |
-| Grafana Operator not installing | `oc get csv -n certchain` | Install Grafana Operator via OLM: `oc apply -f helm/components/certchain-central/templates/grafana/` |
+| Chaincode `CORE_CHAINCODE_ID_NAME` error | `oc logs deploy/certcontract -n certchain-techpulse` | Check ConfigMap `chaincode-id`: `oc get cm chaincode-id -n certchain-techpulse` |
+| ArgoCD sync stuck | ArgoCD UI → Application → Sync Status | Terminate operation → delete stuck Job → force refresh |
+| Gitea mirror job failed | `oc logs job/gitea-mirror -n showroom` | Check Gitea pod is running: `oc get pods -n showroom -l app.kubernetes.io/name=gitea` |
 
 ---
 
-## Demo Walkthrough — End User
+## Demo Walkthroughs
 
-This is a manual, step-by-step guide. Open the URLs in your browser and follow along.
+Interactive demo walkthroughs are available in the **Showroom** lab guide, which is deployed automatically with the platform. Showroom provides a split-pane interface with instructions on the left and interactive tabs on the right (terminal, OpenShift Console, Git repository, ArgoCD, and application UIs).
 
-> **Find your domain:** `oc get ingresses.config cluster -o jsonpath='{.spec.domain}'`
->
-> All URLs below use `${DOMAIN}` as a placeholder. Replace it with your actual domain.
+**Available walkthroughs in Showroom:**
 
-### Demo Users
-
-| Role | Login URL | Username | Password |
-|---|---|---|---|
-| **ArgoCD Admin** | `https://openshift-gitops-server-openshift-gitops.${DOMAIN}` | `admin` | `admin` |
-| TechPulse Registrar | `https://course-manager-ui-certchain-techpulse.${DOMAIN}` | `admin@techpulse.demo` | `admin` |
-| DataForge Registrar | `https://course-manager-ui-certchain-dataforge.${DOMAIN}` | `admin@dataforge.demo` | `admin` |
-| NeuralPath Registrar | `https://course-manager-ui-certchain-neuralpath.${DOMAIN}` | `admin@neuralpath.demo` | `admin` |
-| Student (TechPulse) | `https://cert-portal-certchain.${DOMAIN}` | `student01@techpulse.demo` | `student` |
-| Student (DataForge) | `https://cert-portal-certchain.${DOMAIN}` | `student03@dataforge.demo` | `student` |
-| Student (NeuralPath) | `https://cert-portal-certchain.${DOMAIN}` | `student05@neuralpath.demo` | `student` |
-
-> **Tip:** ArgoCD also accepts **Log in via OpenShift** — any user in the `cluster-admins` group gets admin access automatically.
-
----
-
-### Step 1 — Registrar Issues a Certificate
-
-**Who:** You are a TechPulse Academy registrar.
-
-1. Open **TechPulse Course Manager**: `https://course-manager-ui-certchain-techpulse.${DOMAIN}`
-2. Log in with `admin@techpulse.demo` / `admin`
-3. You land on the **Dashboard** — it shows certificate statistics (total, active, revoked)
-
-   <!-- ![Course Manager Dashboard](media/screenshots/course-manager-dashboard.png) -->
-
-4. Click **"Issue Certificate"** in the navigation
-5. Fill in the form:
-   - Select a course (e.g., "Full-Stack Web Dev")
-   - Enter student name and ID
-   - Set issue and expiry dates
-6. Click **Submit**
-7. **What happened:** The certificate was written to the Hyperledger Fabric ledger via TechPulse's peer. You should see a success message with a certificate ID.
-8. Copy the **certificate ID** — you will need it for the next step.
-
----
-
-### Step 2 — Employer Verifies a Certificate (Anonymous)
-
-**Who:** You are an employer who received a certificate ID from a job applicant.
-
-1. Open **CertChain Portal**: `https://cert-portal-certchain.${DOMAIN}`
-2. You do **not** need to log in — verification is anonymous
-3. Enter the certificate ID from Step 1 (or use a seeded one: `TP-FSWD-001`)
-4. Click **Verify**
-5. **What you see** (public info only):
-   - ✅ **ACTIVE** status (green)
-   - Student name, course name, issuing organization
-   - Issue and expiry dates
-
-   <!-- ![Certificate Verification — VALID](media/screenshots/cert-portal-valid.png) -->
-
-6. **What you don't see:** Grade and degree — these private fields are only visible to the certificate owner when logged in. This privacy enforcement is server-side (verify-api strips private fields from anonymous responses).
-
-> **Alternative:** If the cert-portal has QR scanning enabled, you can also scan a QR code instead of typing the ID.
-
----
-
-### Step 3 — Student Views Their Transcript (Identity Brokering)
-
-**Who:** You are Alice Chen, a TechPulse student.
-
-1. Open **CertChain Portal**: `https://cert-portal-certchain.${DOMAIN}`
-2. Click **"Login"** (top-right)
-3. You are redirected to the **Central Keycloak** login page
-4. Enter email: `student01@techpulse.demo`
-5. **What happens behind the scenes:**
-   - Central Keycloak detects the `@techpulse.demo` domain
-   - It automatically redirects you to **TechPulse's Keycloak** — no manual IDP selection
-6. Enter password: `student`
-7. You are redirected back to the CertChain Portal, now authenticated
-8. Click **"My Transcript"**
-9. **What you see:** All certificates issued to you across all institutes
-   - **Your own certificates:** Full details including grade and degree (private fields)
-   - **Other students' certificates:** Only public info (grade/degree hidden)
-   - This ownership-based privacy is enforced server-side by matching the JWT email claim against the certificate's studentID
-
-   <!-- ![Student Transcript](media/screenshots/cert-portal-transcript.png) -->
-
----
-
-### Step 4 — Registrar Revokes a Certificate
-
-**Who:** You are the TechPulse registrar again.
-
-1. Go back to **TechPulse Course Manager**: `https://course-manager-ui-certchain-techpulse.${DOMAIN}`
-2. Navigate to **Certificate List**
-3. Find the certificate you issued in Step 1
-4. Click on it to view details
-5. Click **"Revoke"**
-6. Enter a reason (e.g., "Academic policy violation")
-7. Confirm the revocation
-8. **What happened:** A revocation transaction was written to the Fabric ledger. This is **permanent** — the certificate can never be un-revoked.
-
----
-
-### Step 5 — Employer Re-verifies (Sees Revoked)
-
-**Who:** You are the employer again.
-
-1. Go back to **CertChain Portal**: `https://cert-portal-certchain.${DOMAIN}`
-2. Enter the **same certificate ID** from Step 1
-3. Click **Verify**
-4. **What you see:**
-   - ❌ **REVOKED** status (red)
-   - The revocation reason
-   - The original certificate details are still visible for reference
-
-   <!-- ![Certificate Verification — REVOKED](media/screenshots/cert-portal-revoked.png) -->
-
----
-
-### Step 6 — Try Another Org
-
-Repeat Steps 1–5 with **DataForge Institute** to see that each org is fully independent:
-
-- DataForge Course Manager: `https://course-manager-ui-certchain-dataforge.${DOMAIN}`
-- Login: `admin@dataforge.demo` / `admin`
-- Student: `student03@dataforge.demo` / `student`
-
-Note that each org's certificates are isolated — a TechPulse registrar cannot see or revoke DataForge certificates.
-
----
-
-## Demo Walkthrough — Resilience & Self-Healing
-
-This walkthrough demonstrates OpenShift and blockchain resilience. Run the scripted version or follow the manual steps.
-
-**Scripted (recommended):**
-
-```bash
-./scripts/resilience-demo.sh
-```
-
-**Manual walkthrough:**
-
-### Part 1 — Pod Self-Healing
-
-**What you show:** Kubernetes automatically restarts failed containers.
-
-1. Open a terminal and watch pods: `oc get pods -n certchain-techpulse -w`
-2. In another terminal, kill TechPulse's CouchDB: `oc delete pod -l app=couchdb -n certchain-techpulse --force`
-3. Watch the first terminal — a new pod is created within seconds
-4. Within 10–30 seconds, the pod is back to `Running 1/1`
-5. **Point to make:** No manual intervention needed. Deployments declare the desired state, OpenShift enforces it.
-
-### Part 2 — Multi-Org Isolation
-
-**What you show:** One org's failure doesn't affect other orgs.
-
-1. Kill TechPulse's cert-admin-api: `oc delete pod -l app=cert-admin-api -n certchain-techpulse --force`
-2. Immediately test DataForge: `curl -sk "https://cert-admin-api-certchain-dataforge.${DOMAIN}/q/health/ready"` → HTTP 200
-3. Also verify NeuralPath: `curl -sk "https://cert-admin-api-certchain-neuralpath.${DOMAIN}/q/health/ready"` → HTTP 200
-4. TechPulse recovers on its own within 30 seconds
-5. **Point to make:** Namespace isolation means one org's outage is invisible to others.
-
-### Part 3 — Blockchain Decentralization
-
-**What you show:** Certificate verification survives central infrastructure failure.
-
-1. Verify a cert via central: `curl -sk "https://verify-api-certchain.${DOMAIN}/api/v1/verify/TP-FSWD-001"` → VALID
-2. **Kill central services:** `oc -n certchain scale deployment orderer0 verify-api --replicas=0`
-3. Central verify-api is now unreachable (503)
-4. Verify the **same cert** via TechPulse's local verify-api: `curl -sk "https://verify-api-certchain-techpulse.${DOMAIN}/api/v1/verify/TP-FSWD-001"` → **Still VALID!**
-5. **Explain why:** Each peer holds a full copy of the ledger. Verification is a read-only query — it doesn't need the orderer. Only write operations (issue/revoke) require consensus.
-6. Restore: `oc -n certchain scale deployment orderer0 verify-api --replicas=1`
-
----
-
-## Demo Walkthrough — Monitoring & Observability
-
-This walkthrough demonstrates the observability stack. Run the scripted version or follow the manual steps.
-
-**Scripted (recommended):**
-
-```bash
-./scripts/demo-monitoring-walkthrough.sh
-```
-
-**Manual walkthrough:**
-
-### Part 1 — Prometheus Metrics from Fabric
-
-1. Exec into a peer pod to see raw Prometheus metrics:
-   ```bash
-   oc exec -n certchain-techpulse deploy/peer0 -- wget -qO- http://localhost:9443/metrics | head -30
-   ```
-2. Look for key Fabric metrics:
-   - `endorser_proposals_received` — proposals this peer has processed
-   - `ledger_blockstorage_commit_time` — block commit latency
-   - `grpc_server_active_streams` — active gRPC connections
-
-3. Same for an orderer:
-   ```bash
-   oc exec -n certchain deploy/orderer0 -- wget -qO- http://localhost:8443/metrics | grep consensus
-   ```
-
-### Part 2 — Quarkus Application Metrics
-
-1. Hit the cert-admin-api metrics endpoint (publicly accessible):
-   ```bash
-   curl -sk "https://cert-admin-api-certchain-techpulse.${DOMAIN}/q/metrics" | grep certificate_
-   ```
-2. You should see custom counters:
-   - `certificate_issued_total` — number of certificates issued
-   - `certificate_revoked_total` — number of certificates revoked
-
-3. Issue a certificate and watch the counter increment:
-   ```bash
-   # Check counter before
-   curl -sk "https://cert-admin-api-certchain-techpulse.${DOMAIN}/q/metrics" | grep certificate_issued
-   # Issue a cert (use the demo-walkthrough or seed script)
-   # Check counter after — should have incremented
-   ```
-
-4. Same for verify-api:
-   ```bash
-   curl -sk "https://verify-api-certchain.${DOMAIN}/q/metrics" | grep certificate_
-   ```
-   - `certificate_verified_total` — successful verifications
-   - `certificate_not_found_total` — lookup misses
-
-### Part 3 — OpenShift Console Metrics
-
-1. Open the OpenShift Console → **Observe → Metrics**
-2. Try these PromQL queries:
-   - `rate(endorser_proposals_received[5m])` — peer endorsement rate
-   - `certificate_issued_total` — certificates issued per org
-   - `rate(http_server_requests_seconds_count{job=~".*cert-admin-api.*"}[5m])` — API request rate
-3. Navigate to **Observe → Targets** — see all ServiceMonitor targets and their scrape health
-
-### Part 4 — Grafana Dashboards
-
-1. Get the Grafana URL:
-   ```bash
-   oc get route -n certchain -l app.kubernetes.io/name=grafana -o jsonpath='{.items[0].spec.host}'
-   ```
-2. Open in browser. Login: `admin` / `certchain`
-3. Navigate to **Dashboards** and explore the three pre-configured dashboards:
-   - **CertChain — Fabric Network:** Peer endorsement rates, block commit latency, orderer consensus, gRPC connections
-   - **CertChain — Application APIs:** Certificate operation counters (issued/revoked/verified), HTTP request rates and p99 latency, JVM heap and GC metrics
-   - **CertChain — Infrastructure Health:** Pod CPU/memory usage, PVC capacity, restart counts, network I/O
-4. **Generate activity** by running `./scripts/seed-demo-certificates.sh` and watch the dashboards update in real-time
-
-<!-- ![Grafana — Fabric Network Dashboard](media/screenshots/grafana-fabric.png) -->
-
----
-
-## Admin & Management Guide
-
-This section is for platform operators and demo administrators. All steps are manual.
-
-### Check Cluster Health
-
-```bash
-# Are all pods running?
-for ns in certchain certchain-techpulse certchain-dataforge certchain-neuralpath; do
-  echo "=== $ns ==="
-  oc get pods -n $ns
-  echo
-done
-```
-
-Every pod should show `1/1 Running`. If any pod shows `0/1` or `CrashLoopBackOff`, check its logs:
-
-```bash
-oc logs <pod-name> -n <namespace>
-```
-
-### Check Routes & URLs
-
-```bash
-DOMAIN=$(oc get ingresses.config cluster -o jsonpath='{.spec.domain}')
-echo "CertChain Portal:       https://cert-portal-certchain.${DOMAIN}"
-echo "Verify API (Swagger):   https://verify-api-certchain.${DOMAIN}/q/swagger-ui"
-echo "Central Keycloak:       https://keycloak-certchain.${DOMAIN}"
-echo ""
-echo "TechPulse Course Mgr:   https://course-manager-ui-certchain-techpulse.${DOMAIN}"
-echo "TechPulse Admin API:    https://cert-admin-api-certchain-techpulse.${DOMAIN}/q/swagger-ui"
-echo "TechPulse Keycloak:     https://keycloak-certchain-techpulse.${DOMAIN}"
-```
-
-Open each URL in a browser. All should load without errors.
-
-### ArgoCD Console
-
-| URL | Username | Password |
-|---|---|---|
-| `https://openshift-gitops-server-openshift-gitops.${DOMAIN}` | `admin` | `admin` |
-
-You can also click **Log in via OpenShift** — cluster-admin users are auto-mapped to ArgoCD admin role.
-
-### Keycloak Admin Consoles
-
-| Instance | URL | Username | Password |
-|---|---|---|---|
-| Central | `https://keycloak-certchain.${DOMAIN}` | admin | admin |
-| TechPulse | `https://keycloak-certchain-techpulse.${DOMAIN}` | admin | admin |
-| DataForge | `https://keycloak-certchain-dataforge.${DOMAIN}` | admin | admin |
-| NeuralPath | `https://keycloak-certchain-neuralpath.${DOMAIN}` | admin | admin |
-
-**What to check in each Keycloak:**
-1. Log into the admin console
-2. Go to **Users** — verify registrar and student accounts exist
-3. Go to **Clients** — verify `course-manager-ui` and `cert-admin-api` clients are configured
-4. In Central KC: go to **Identity Providers** — verify the 3 org IDPs are configured
-5. In Central KC: go to **Organizations** — verify TechPulse, DataForge, NeuralPath orgs exist
-
-### Test the APIs Directly
-
-**Get a Keycloak token:**
-
-```bash
-DOMAIN=$(oc get ingresses.config cluster -o jsonpath='{.spec.domain}')
-
-# Get TechPulse admin token
-TOKEN=$(curl -sk "https://keycloak-certchain-techpulse.${DOMAIN}/realms/techpulse/protocol/openid-connect/token" \
-  -d "client_id=course-manager-ui" \
-  -d "username=admin@techpulse.demo" \
-  -d "password=admin" \
-  -d "grant_type=password" | python3 -c "import sys,json; print(json.load(sys.stdin)['access_token'])")
-```
-
-**Test cert-admin-api (TechPulse):**
-
-```bash
-# View dashboard stats
-curl -sk -H "Authorization: Bearer $TOKEN" \
-  "https://cert-admin-api-certchain-techpulse.${DOMAIN}/api/v1/dashboard/stats" | python3 -m json.tool
-
-# List certificates
-curl -sk -H "Authorization: Bearer $TOKEN" \
-  "https://cert-admin-api-certchain-techpulse.${DOMAIN}/api/v1/certificates" | python3 -m json.tool
-```
-
-**Test verify-api (public, no token needed):**
-
-```bash
-# Verify a seeded certificate (public — no grade/degree in response)
-curl -sk "https://verify-api-certchain.${DOMAIN}/api/v1/verify/TP-FSWD-001" | python3 -m json.tool
-```
-
-Expected: `"status": "ACTIVE"` with student, course, and org details (grade and degree omitted for anonymous requests).
-
-**Test student transcript (requires central Keycloak token):**
-
-```bash
-# Get a student token via central Keycloak (identity brokering)
-STUDENT_TOKEN=$(curl -sk "https://keycloak-certchain.${DOMAIN}/realms/certchain/protocol/openid-connect/token" \
-  -d "client_id=cert-portal" \
-  -d "username=student01@techpulse.demo" \
-  -d "password=student" \
-  -d "grant_type=password" | python3 -c "import sys,json; print(json.load(sys.stdin)['access_token'])")
-
-# View transcript — shows grade/degree only on the student's own certificates
-curl -sk -H "Authorization: Bearer $STUDENT_TOKEN" \
-  "https://verify-api-certchain.${DOMAIN}/api/v1/transcript" | python3 -m json.tool
-```
-
-### Monitoring & Observability
-
-The demo includes a full observability stack using OpenShift's built-in Prometheus and Grafana Operator.
-
-**Metrics sources:**
-
-| Component | Port | Path | Metrics |
-|---|---|---|---|
-| Fabric peers | 9443 | `/metrics` | Endorsements, block commits, gRPC streams |
-| Fabric orderers | 8443 | `/metrics` | Consensus, block cuts, broadcast latency |
-| cert-admin-api | 8080 | `/q/metrics` | `certificate.issued`, `certificate.revoked`, HTTP, JVM |
-| verify-api | 8080 | `/q/metrics` | `certificate.verified`, `certificate.not_found`, HTTP, JVM |
-
-**Grafana dashboards** (3 pre-configured):
-
-| Dashboard | What it shows |
+| Walkthrough | What you do |
 |---|---|
-| **CertChain — Fabric Network** | Peer proposals, block commit latency, orderer consensus, gRPC connections |
-| **CertChain — Application APIs** | Certificate operation counters, HTTP request rates, p99 latency, JVM heap/GC |
-| **CertChain — Infrastructure Health** | Pod CPU/memory, PVC usage, restart counts, network I/O |
+| **Issue Certificates** | Log in as a registrar, issue a certificate to the Fabric ledger |
+| **Verify a Certificate** | Enter a cert ID as an employer — see public info only |
+| **Student Transcript** | Log in as a student — identity brokering auto-routes to your org |
+| **Security & Identity** | Explore Keycloak brokering, RBAC, MSP, and KC Organizations |
+| **Monitoring** | Prometheus metrics, Grafana dashboards, PromQL queries |
+| **Scalability** | Add a new org, scale peers and orderers |
+| **Resilience** | Kill orderers, crash pods, prove BFT consensus works |
+| **API Walkthrough** | curl commands from the terminal: issue, verify, revoke, transcript |
 
-**Access Grafana:**
-
-```bash
-# Get the Grafana URL
-oc get route -n certchain -l app.kubernetes.io/name=grafana -o jsonpath='{.items[0].spec.host}'
-# Login: admin / certchain
-```
-
-**Run the interactive monitoring walkthrough:**
+**Access Showroom:**
 
 ```bash
-./scripts/demo-monitoring-walkthrough.sh
+DOMAIN=$(oc get ingresses.config cluster -o jsonpath='{.spec.domain}')
+echo "https://showroom-showroom.${DOMAIN}"
 ```
 
-This walks through all 3 layers: Fabric metrics, application counters, and Grafana dashboards.
-
-**Query metrics directly in OpenShift Console:**
-
-Navigate to **Observe → Metrics** and try:
-- `rate(endorser_proposals_received[5m])` — peer endorsement rate
-- `certificate_issued_total` — certificates issued per org
-- `http_server_requests_seconds_count{job=~".*cert-admin-api.*"}` — API request counts
-
-**Check Fabric peer and orderer health:**
-
-```bash
-# Peer pods (one per org)
-oc get pods -l app=peer -n certchain-techpulse
-oc get pods -l app=peer -n certchain-dataforge
-oc get pods -l app=peer -n certchain-neuralpath
-
-# Chaincode pods (per-org CcaaS instances)
-oc get pods -l app=certcontract -n certchain-techpulse
-
-# ServiceMonitors
-oc get servicemonitors -n certchain
-oc get servicemonitors -n certchain-techpulse
-```
-
-### Scale and Resilience Testing
-
-Run the full interactive resilience demo:
-
-```bash
-./scripts/resilience-demo.sh
-```
-
-This covers 3 scenarios automatically. You can also run them manually:
-
-**Scenario 1 — Pod Self-Healing:**
-
-```bash
-# Kill the TechPulse CouchDB pod
-oc delete pod -l app=couchdb -n certchain-techpulse --grace-period=0 --force
-
-# Watch Kubernetes auto-restart it (usually 10-30 seconds)
-oc get pods -n certchain-techpulse -w
-```
-
-**Scenario 2 — Multi-Org Isolation:**
-
-```bash
-# Kill TechPulse's cert-admin-api
-oc delete pod -l app=cert-admin-api -n certchain-techpulse --grace-period=0 --force
-
-# DataForge should be completely unaffected
-curl -sk "https://cert-admin-api-certchain-dataforge.${DOMAIN}/q/health/ready"
-# → HTTP 200 (DataForge still works while TechPulse recovers)
-```
-
-**Scenario 3 — Blockchain Decentralization (Chain Resilience):**
-
-This demonstrates the core blockchain value: certificate verification works even when central services are offline, because each peer holds a full copy of the ledger.
-
-```bash
-# Stop central orderer and verify-api
-oc -n certchain scale deployment orderer0 --replicas=0
-oc -n certchain scale deployment verify-api --replicas=0
-
-# Central verify-api is now DOWN
-curl -sk "https://verify-api-certchain.${DOMAIN}/api/v1/verify/TP-FSWD-001"
-# → Connection refused / 503
-
-# But TechPulse's local verify-api STILL WORKS (reads from local peer)
-curl -sk "https://verify-api-certchain-techpulse.${DOMAIN}/api/v1/verify/TP-FSWD-001" | python3 -m json.tool
-# → HTTP 200, "status": "VALID"
-
-# Restore central services
-oc -n certchain scale deployment orderer0 --replicas=1
-oc -n certchain scale deployment verify-api --replicas=1
-```
-
-Key takeaways:
-- Only **write** operations (issue/revoke) need the orderer
-- **Read** operations (verify) work from any org's local peer
-- Each namespace is independently recoverable
-
-### Swagger UI
-
-Both APIs expose interactive Swagger UI for direct testing:
-
-- **cert-admin-api:** `https://cert-admin-api-certchain-techpulse.${DOMAIN}/q/swagger-ui` (requires Bearer token)
-- **verify-api:** `https://verify-api-certchain.${DOMAIN}/q/swagger-ui` (public endpoints, no auth)
-
-To use secured endpoints in Swagger UI: click **Authorize**, paste the Bearer token from the curl command above.
-
-### Teardown
-
-Remove the entire demo from the cluster:
+**Teardown** (removes everything from the cluster):
 
 ```bash
 ./scripts/teardown-all.sh
 ```
-
-This deletes all 4 namespaces and their resources.
 
 ---
 
@@ -1104,8 +470,8 @@ This deletes all 4 namespaces and their resources.
 
 | Script | Purpose |
 |---|---|
-| `scripts/setup-all.sh` | Full bootstrap (detect domain, check prereqs, create namespace, enable monitoring) |
-| `scripts/deploy-to-openshift.sh` | Deploy all services to OpenShift (7 steps) |
+| `scripts/install.sh` | BYO cluster installer (`--repo-url` or `--gitea`) |
+| `scripts/deploy-to-openshift.sh` | Imperative deploy for local development (7 steps) |
 | `scripts/setup-fabric-channel.sh` | Create Fabric channel, deploy chaincode, run lifecycle (install/approve/commit) |
 | `scripts/setup-central-fabric.sh` | Enroll central Fabric CA identities and generate crypto |
 | `scripts/setup-org-fabric.sh` | Enroll per-org identities (peer, orderer, admin) |

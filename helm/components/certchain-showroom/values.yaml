@@ -31,3 +31,10 @@ showroom:
 demo:
   centralNamespace: certchain
   appName: certchain
+
+# --- Gitea (injected by bootstrap chart) ------------------------------------
+gitea:
+  enabled: false
+  url: ""
+  orgName: certchain
+  repoName: hyperledger-on-openshift-demo

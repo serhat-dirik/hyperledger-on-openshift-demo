@@ -1,0 +1,77 @@
+# =============================================================================
+# CertChain Bootstrap — Phase 1 Values
+# =============================================================================
+# RHDP injects deployer.domain and deployer.apiUrl at order time.
+# Everything else is either hardcoded or computed.
+# =============================================================================
+
+# --- RHDP-injected values (set by platform, do not hardcode) ----------------
+deployer:
+  domain: ""       # Injected: apps.cluster-xyz.example.com
+  apiUrl: ""       # Injected: https://api.cluster-xyz.example.com:6443
+
+# --- Source repository (public GitHub — to mirror into Gitea) ---------------
+sourceRepo:
+  url: "https://github.com/serhat-dirik/hyperledger-on-openshift-demo.git"
+  revision: "main"
+
+# --- Gitea (local git server) -----------------------------------------------
+gitea:
+  enabled: true
+  namespace: showroom
+  image: "quay.io/gpte-devops-automation/gitea:1.21"
+  adminUser: gitea
+  adminPassword: openshift
+  orgName: certchain
+  repoName: hyperledger-on-openshift-demo
+  storage: 5Gi
+
+# --- ArgoCD settings --------------------------------------------------------
+argocd:
+  namespace: openshift-gitops
+  project: default
+
+# --- Central namespace ------------------------------------------------------
+central:
+  namespace: certchain
+
+# --- Image registry ---------------------------------------------------------
+images:
+  registry: image-registry.openshift-image-registry.svc:5000/certchain
+  tag: latest
+  buildEnabled: true
+
+# --- Component toggles + org-specific config --------------------------------
+components:
+  central:
+    enabled: true
+
+  techpulse:
+    enabled: true
+    org:
+      name: techpulse
+      displayName: TechPulse Academy
+      mspId: TechPulseMSP
+      primaryColor: "#2563eb"
+
+  dataforge:
+    enabled: true
+    org:
+      name: dataforge
+      displayName: DataForge Institute
+      mspId: DataForgeMSP
+      primaryColor: "#059669"
+
+  neuralpath:
+    enabled: true
+    org:
+      name: neuralpath
+      displayName: NeuralPath Labs
+      mspId: NeuralPathMSP
+      primaryColor: "#7c3aed"
+
+  showroom:
+    enabled: true
+    namespace: showroom
+    terminal:
+      enabled: true

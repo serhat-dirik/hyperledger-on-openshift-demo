@@ -32,3 +32,18 @@ ui:
             - id: console
               title: OpenShift Console
               url_key: openshift_console_url
+            - id: gitea
+              title: Git Repository
+              url_key: gitea_url
+            - id: argocd
+              title: ArgoCD
+              url_key: argocd_url
+            - id: cert-portal
+              title: Cert Portal
+              url_key: cert_portal_url
+            - id: course-manager
+              title: Course Manager
+              url_key: techpulse_course_manager_url
+            - id: grafana
+              title: Grafana
+              url_key: grafana_url

@@ -1,0 +1,123 @@
+{{- if .Values.gitea.enabled }}
+# =============================================================================
+# Mirror Job — Clone GitHub → Push to Gitea (Wave 1)
+# =============================================================================
+# Waits for Gitea to be ready, creates admin user + org + repo via API,
+# then mirrors the public GitHub repo into the local Gitea instance.
+# =============================================================================
+apiVersion: batch/v1
+kind: Job
+metadata:
+  name: gitea-mirror
+  namespace: {{ .Values.gitea.namespace }}
+  annotations:
+    argocd.argoproj.io/sync-wave: "1"
+    argocd.argoproj.io/hook: Sync
+    argocd.argoproj.io/hook-delete-policy: BeforeHookCreation
+  labels:
+    app.kubernetes.io/name: gitea-mirror
+    app.kubernetes.io/part-of: certchain
+spec:
+  backoffLimit: 3
+  template:
+    metadata:
+      labels:
+        app.kubernetes.io/name: gitea-mirror
+    spec:
+      restartPolicy: OnFailure
+      containers:
+        - name: mirror
+          image: "quay.io/rhpds/git-cloner:v1.1.2"
+          command: ["/bin/sh", "-c"]
+          args:
+            - |
+              set -e
+
+              GITEA_URL="http://gitea.{{ .Values.gitea.namespace }}.svc.cluster.local:3000"
+              GITEA_ADMIN="{{ .Values.gitea.adminUser }}"
+              GITEA_PASS="{{ .Values.gitea.adminPassword }}"
+              ORG_NAME="{{ .Values.gitea.orgName }}"
+              REPO_NAME="{{ .Values.gitea.repoName }}"
+              SOURCE_URL="{{ .Values.sourceRepo.url }}"
+              SOURCE_REV="{{ .Values.sourceRepo.revision }}"
+
+              echo "=== Waiting for Gitea to be ready ==="
+              for i in $(seq 1 60); do
+                if curl -sf "${GITEA_URL}/api/v1/version" > /dev/null 2>&1; then
+                  echo "Gitea is ready"
+                  break
+                fi
+                echo "  Attempt $i/60 — waiting..."
+                sleep 5
+              done
+              curl -sf "${GITEA_URL}/api/v1/version" || { echo "ERROR: Gitea not ready after 5 minutes"; exit 1; }
+
+              echo "=== Creating admin user (idempotent) ==="
+              # Create admin user via Gitea CLI inside the pod is not possible from here,
+              # so we use the first-run auto-create via API sign-up then promote.
+              # Try to authenticate first — if it works, user already exists.
+              if curl -sf -u "${GITEA_ADMIN}:${GITEA_PASS}" "${GITEA_URL}/api/v1/user" > /dev/null 2>&1; then
+                echo "Admin user already exists"
+              else
+                echo "Creating admin user via sign-up API..."
+                curl -sf -X POST "${GITEA_URL}/api/v1/user/signup" \
+                  -H "Content-Type: application/json" \
+                  -d "{
+                    \"username\": \"${GITEA_ADMIN}\",
+                    \"password\": \"${GITEA_PASS}\",
+                    \"email\": \"${GITEA_ADMIN}@local.demo\",
+                    \"must_change_password\": false
+                  }" || echo "Sign-up failed (may already exist or registration disabled — trying with admin token)"
+              fi
+
+              AUTH="-u ${GITEA_ADMIN}:${GITEA_PASS}"
+
+              echo "=== Creating organization: ${ORG_NAME} ==="
+              if curl -sf ${AUTH} "${GITEA_URL}/api/v1/orgs/${ORG_NAME}" > /dev/null 2>&1; then
+                echo "Organization already exists"
+              else
+                curl -sf ${AUTH} -X POST "${GITEA_URL}/api/v1/orgs" \
+                  -H "Content-Type: application/json" \
+                  -d "{
+                    \"username\": \"${ORG_NAME}\",
+                    \"full_name\": \"CertChain Demo\",
+                    \"visibility\": \"public\"
+                  }"
+                echo "Organization created"
+              fi
+
+              echo "=== Creating repository: ${ORG_NAME}/${REPO_NAME} ==="
+              if curl -sf ${AUTH} "${GITEA_URL}/api/v1/repos/${ORG_NAME}/${REPO_NAME}" > /dev/null 2>&1; then
+                echo "Repository already exists — updating mirror"
+              else
+                curl -sf ${AUTH} -X POST "${GITEA_URL}/api/v1/orgs/${ORG_NAME}/repos" \
+                  -H "Content-Type: application/json" \
+                  -d "{
+                    \"name\": \"${REPO_NAME}\",
+                    \"description\": \"CertChain — Blockchain Credentialing Demo (local mirror)\",
+                    \"private\": false,
+                    \"auto_init\": false
+                  }"
+                echo "Repository created"
+              fi
+
+              echo "=== Cloning from GitHub ==="
+              cd /tmp
+              git clone --bare "${SOURCE_URL}" repo.git
+              cd repo.git
+
+              echo "=== Pushing to Gitea ==="
+              GITEA_REPO_URL="http://${GITEA_ADMIN}:${GITEA_PASS}@gitea.{{ .Values.gitea.namespace }}.svc.cluster.local:3000/${ORG_NAME}/${REPO_NAME}.git"
+              git push --mirror "${GITEA_REPO_URL}"
+
+              echo "=== Mirror complete ==="
+              echo "Source:  ${SOURCE_URL} (${SOURCE_REV})"
+              echo "Target:  ${GITEA_URL}/${ORG_NAME}/${REPO_NAME}"
+          resources:
+            requests:
+              cpu: 200m
+              memory: 256Mi
+            limits:
+              cpu: 500m
+              memory: 512Mi
+{{- end }}

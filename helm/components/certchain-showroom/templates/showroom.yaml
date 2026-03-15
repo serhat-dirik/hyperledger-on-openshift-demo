@@ -101,6 +101,10 @@ data:
     dataforge_cert_admin_api_url: https://cert-admin-api-{{ .Values.demo.centralNamespace }}-dataforge.{{ .Values.global.domain }}
     neuralpath_cert_admin_api_url: https://cert-admin-api-{{ .Values.demo.centralNamespace }}-neuralpath.{{ .Values.global.domain }}
     argocd_url: https://openshift-gitops-server-openshift-gitops.{{ .Values.global.domain }}
+    openshift_console_url: https://console-openshift-console.{{ .Values.global.domain }}
+    {{- if .Values.gitea.enabled }}
+    gitea_url: {{ .Values.gitea.url }}
+    {{- end }}
 
 ---
 # --- Terminal PVC ---
@@ -202,6 +206,33 @@ spec:
             - mountPath: /showroom/www
               name: showroom-files
               subPath: www
+        {{- if and .Values.showroom.terminal.enabled .Values.gitea.enabled }}
+        - name: terminal-clone
+          image: "quay.io/rhpds/git-cloner:v1.1.2"
+          command: ["/bin/sh", "-c"]
+          args:
+            - |
+              REPO_URL="{{ .Values.gitea.url }}/{{ .Values.gitea.orgName }}/{{ .Values.gitea.repoName }}.git"
+              DEST="/home/lab-user/{{ .Values.gitea.repoName }}"
+              if [ -d "${DEST}/.git" ]; then
+                echo "Repo already cloned at ${DEST}, pulling latest..."
+                cd "${DEST}" && git pull || true
+              else
+                echo "Cloning ${REPO_URL} to ${DEST}..."
+                for i in $(seq 1 30); do
+                  git clone "${REPO_URL}" "${DEST}" && break
+                  echo "  Attempt $i/30 — Gitea may not be ready, retrying..."
+                  sleep 10
+                done
+              fi
+              # Configure git for the lab user
+              cd "${DEST}" 2>/dev/null && \
+                git config user.name "Lab User" && \
+                git config user.email "lab-user@local.demo" || true
+          volumeMounts:
+            - name: terminal-lab-user-home
+              mountPath: /home/lab-user
+        {{- end }}
       containers:
         - name: nginx
           image: "quay.io/rhpds/nginx:1.25"
