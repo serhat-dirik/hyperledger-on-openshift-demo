@@ -1,68 +1,123 @@
 = Scalability
 
-[NOTE]
-====
-This section uses `oc` commands. If you haven't already, log in from the *Terminal* tab — see xref:11-reference.adoc#_openshift_cli_access[OpenShift CLI Access].
-====
+CertChain is designed for horizontal scalability at multiple layers — from scaling individual components to adding entirely new organizations.
 
-CertChain is designed for horizontal scalability at multiple layers — from adding new organizations to scaling individual components.
+This section includes hands-on exercises. You'll use the *Terminal* tab and the *Git Repository* (Gitea) to make changes and observe ArgoCD syncing them to the cluster.
 
-== Adding a New Organization
+== Prerequisites
 
-The App-of-Apps Helm structure makes adding a 4th (or 5th, 6th...) organization straightforward. Each org is a parameterized instance of the same `certchain-org` Helm chart.
-
-=== What It Takes
-
-To add a new organization called "QuantumLeap":
-
-. *Add org config to `helm/values.yaml`*:
-+
-[source,yaml]
-----
-components:
-  orgs:
-    - name: quantumleap
-      displayName: "QuantumLeap Labs"
-      mspId: QuantumLeapMSP
-      adminEmail: admin@quantumleap.demo
-----
-
-. *Create a values override file* at `helm/components/certchain-org/values-quantumleap.yaml` with org-specific settings (Keycloak realm name, display name, peer/orderer identity references).
-
-. *Push to git* — ArgoCD detects the change and auto-generates a new `certchain-quantumleap` Application.
-
-. *Update Fabric config* — The `configtx.yaml` needs the new org's MSP definition, and a channel configuration update transaction must be submitted.
-
-=== What Gets Auto-Generated
-
-The App-of-Apps template in `helm/templates/applications.yaml` iterates over the org list and generates one ArgoCD Application per org. Each org Application deploys:
-
-* Peer + CouchDB + Orderer (blockchain nodes)
-* cert-admin-api + course-manager-ui (application layer)
-* Keycloak + Postgres (identity)
-* RBAC, ExternalName services, enrollment jobs
-
-== Horizontal Scaling
-
-Fabric peers and orderers are deployed as standard Kubernetes Deployments, so scaling them is as simple as increasing the replica count. The database (CouchDB) is paired 1:1 with each peer and does *not* need independent scaling.
-
-=== Scaling Peers
-
-Each organization runs a single peer in this demo. In production, you can add peer replicas to increase endorsement capacity and query throughput:
+First, log in to OpenShift from the *Terminal* tab:
 
 [.console-input]
 [source,bash,subs="attributes"]
 ----
-# Scale TechPulse peers to 2 replicas
+oc login {openshift_api_url} -u admin
+----
+
+When prompted, enter the password from your lab provisioning email (RHDP) or the one you set during installation.
+
+Verify the CertChain namespaces are healthy:
+
+[.console-input]
+[source,bash,subs="attributes"]
+----
+for ns in certchain certchain-techpulse certchain-dataforge certchain-neuralpath; do
+  echo "=== $ns ==="
+  oc get pods -n $ns --no-headers | grep -v Completed | awk '{print $1, $3}'
+done
+----
+
+Next, clone the project from Gitea so you can make GitOps-driven changes:
+
+[.console-input]
+[source,bash,subs="attributes"]
+----
+cd ~
+git clone {gitea_url}/certchain/hyperledger-on-openshift-demo.git certchain-repo
+cd certchain-repo
+git config user.name "Lab User"
+git config user.email "lab-user@local.demo"
+----
+
+== Horizontal Scaling
+
+Fabric peers and orderers are standard Kubernetes Deployments, so scaling them is as simple as changing the replica count. Let's try it.
+
+=== Scaling Application Services (Quick Demo)
+
+The API and UI services are stateless and scale freely. Scale the `verify-api` to handle more read traffic:
+
+[.console-input]
+[source,bash,subs="attributes"]
+----
+oc scale deployment verify-api -n {central_namespace} --replicas=3
+----
+
+Watch the new pods come up:
+
+[.console-input]
+[source,bash,subs="attributes"]
+----
+oc get pods -n {central_namespace} -l app.kubernetes.io/name=verify-api -w
+----
+
+Press `Ctrl+C` once all 3 pods show `Running`. The OpenShift Service automatically load-balances incoming requests across all replicas.
+
+Scale it back to 1 when done:
+
+[.console-input]
+[source,bash,subs="attributes"]
+----
+oc scale deployment verify-api -n {central_namespace} --replicas=1
+----
+
+[cols="1,2"]
+|===
+| Component | Scaling Notes
+
+| *verify-api*
+| Stateless — each replica connects to the same peer. OpenShift Service load-balances.
+
+| *cert-admin-api*
+| Each replica submits transactions independently to its org's peer.
+
+| *cert-portal / course-manager-ui*
+| Static frontends — scale freely, no backend state.
+
+| *Chaincode (CcaaS)*
+| Deployed as a Kubernetes Deployment — scale replicas for concurrent endorsement execution.
+|===
+
+=== Scaling Peers
+
+Each organization runs a single peer in this demo. Scale TechPulse to 2 peers:
+
+[.console-input]
+[source,bash,subs="attributes"]
+----
 oc scale deployment peer-deployment -n {central_namespace}-techpulse --replicas=2
+----
+
+[.console-input]
+[source,bash,subs="attributes"]
+----
+oc get pods -n {central_namespace}-techpulse -l app.kubernetes.io/name=peer0 -w
 ----
 
 Each peer replica:
 
 * Maintains a full copy of the ledger via gossip sync
-* Has its own CouchDB sidecar for state queries — no shared database needed
+* Has its own CouchDB sidecar for state queries
 * Can independently endorse transactions and serve read queries
 * Is load-balanced by the Kubernetes Service for incoming gRPC connections
+
+Scale back to 1 when done:
+
+[.console-input]
+[source,bash,subs="attributes"]
+----
+oc scale deployment peer-deployment -n {central_namespace}-techpulse --replicas=1
+----
 
 === Scaling Orderers
 
@@ -87,39 +142,151 @@ The orderer cluster uses SmartBFT consensus with 4 nodes (tolerating 1 Byzantine
 
 Adding orderers increases *fault tolerance* (more Byzantine faults survived), but does not increase throughput linearly — consensus round-trips grow with the number of nodes.
 
-=== Scaling Application Services
-
-The API and UI services are stateless and scale freely:
-
-[.console-input]
-[source,bash,subs="attributes"]
-----
-# Scale verify-api for higher read throughput
-oc scale deployment verify-api -n {central_namespace} --replicas=3
-
-# Scale cert-admin-api for higher write throughput
-oc scale deployment cert-admin-api -n {central_namespace}-techpulse --replicas=2
-----
-
-[cols="1,2"]
-|===
-| Component | Scaling Notes
-
-| *verify-api*
-| Stateless — each replica connects to the same peer. OpenShift Service load-balances.
-
-| *cert-admin-api*
-| Each replica submits transactions independently to its org's peer.
-
-| *cert-portal / course-manager-ui*
-| Static frontends — scale freely, no backend state.
-
-| *Chaincode (CcaaS)*
-| Deployed as a Kubernetes Deployment — scale replicas for concurrent endorsement execution.
-|===
-
 === What Does NOT Need Scaling
 
 * *CouchDB* — Paired 1:1 with each peer. Scaling peers automatically creates new CouchDB instances.
 * *Fabric CA* — Only used during enrollment (startup). Not in the transaction path.
 * *Keycloak / Postgres* — Identity layer operates independently from blockchain throughput.
+
+== GitOps-Driven Scaling (ArgoCD)
+
+The previous examples used `oc scale` for quick, imperative changes. In production, you'd make these changes in Git and let ArgoCD sync them. Let's do exactly that.
+
+=== Exercise: Scale cert-admin-api via Git Push
+
+Edit the cert-admin-api Deployment to scale from 1 to 2 replicas:
+
+[.console-input]
+[source,bash,subs="attributes"]
+----
+cd ~/certchain-repo
+sed -i 's/replicas: 1/replicas: 2/' helm/components/certchain-org/templates/cert-admin-api/deployment.yaml
+----
+
+Verify the change looks correct:
+
+[.console-input]
+[source,bash,subs="attributes"]
+----
+grep -n replicas helm/components/certchain-org/templates/cert-admin-api/deployment.yaml
+----
+
+Commit and push to Gitea:
+
+[.console-input]
+[source,bash,subs="attributes"]
+----
+cd ~/certchain-repo
+git add helm/components/certchain-org/templates/cert-admin-api/deployment.yaml
+git commit -m "feat: scale cert-admin-api to 2 replicas"
+git push origin main
+----
+
+[TIP]
+====
+Gitea credentials: username `gitea`, password `openshift`.
+====
+
+Now open the *ArgoCD* tab (or click: {argocd_url}[ArgoCD Dashboard^]) and log in with `admin` / `admin`.
+
+What to observe in ArgoCD:
+
+. Click the **certchain-techpulse** Application tile
+. Within ~3 minutes, ArgoCD detects the Git change and starts syncing
+. The `cert-admin-api` Deployment will show **OutOfSync** → **Syncing** → **Synced**
+. A second `cert-admin-api` pod will appear
+
+You can also watch from the Terminal:
+
+[.console-input]
+[source,bash,subs="attributes"]
+----
+oc get pods -n {central_namespace}-techpulse -l app.kubernetes.io/name=cert-admin-api -w
+----
+
+[NOTE]
+====
+Since the org chart is shared across all 3 organizations, this change also scales cert-admin-api in DataForge and NeuralPath. In a real deployment, you'd use per-org values overrides to control this independently.
+====
+
+To revert the change:
+
+[.console-input]
+[source,bash,subs="attributes"]
+----
+cd ~/certchain-repo
+git revert HEAD --no-edit
+git push origin main
+----
+
+== Adding a New Organization
+
+The App-of-Apps Helm structure makes adding a 4th (or 5th, 6th...) organization straightforward. Each org is a parameterized instance of the same `certchain-org` Helm chart.
+
+=== Architecture: How Orgs Are Created
+
+The bootstrap chart at `helm/bootstrap/templates/applications.yaml` contains a loop that generates one ArgoCD Application per organization:
+
+[source,yaml]
+----
+{{- $orgs := list "techpulse" "dataforge" "neuralpath" }}
+{{- range $orgKey := $orgs }}
+  # Creates: certchain-techpulse, certchain-dataforge, certchain-neuralpath
+{{- end }}
+----
+
+Each org's config lives in `helm/bootstrap/values.yaml`:
+
+[source,yaml]
+----
+components:
+  techpulse:
+    enabled: true
+    org:
+      name: techpulse
+      displayName: TechPulse Academy
+      mspId: TechPulseMSP
+      primaryColor: "#2563eb"
+----
+
+=== What It Takes to Add "QuantumLeap"
+
+To add a 4th organization called QuantumLeap, you would:
+
+[arabic]
+. *Add org config* to `helm/bootstrap/values.yaml`:
++
+[source,yaml]
+----
+  quantumleap:
+    enabled: true
+    org:
+      name: quantumleap
+      displayName: "QuantumLeap Labs"
+      mspId: QuantumLeapMSP
+      primaryColor: "#dc2626"
+----
+
+. *Add org to the loop* in `helm/bootstrap/templates/applications.yaml`:
++
+[source,yaml]
+----
+{{- $orgs := list "techpulse" "dataforge" "neuralpath" "quantumleap" }}
+----
+
+. *Create org values override* at `helm/components/certchain-org/values-quantumleap.yaml`
+
+. *Push to git* — ArgoCD detects the change and creates a new `certchain-quantumleap` Application
+
+. *Update Fabric config* — The `configtx.yaml` needs the new org's MSP definition, and a channel configuration update transaction must be submitted to add it to the consortium
+
+=== What Gets Auto-Generated
+
+Each new org Application automatically deploys a full stack:
+
+* **Blockchain**: Peer + CouchDB + Orderer (BFT node)
+* **Application**: cert-admin-api + course-manager-ui
+* **Identity**: Keycloak + Postgres
+* **Infrastructure**: RBAC, ExternalName services, enrollment jobs
+
+All in a dedicated `certchain-quantumleap` namespace — completely isolated from existing orgs.
