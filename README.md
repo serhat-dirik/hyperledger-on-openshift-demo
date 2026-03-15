@@ -293,44 +293,51 @@ The verification endpoint is anonymous and public. In a production deployment, y
 
 ---
 
-## Repository Structure
+<details>
+<summary><strong>📂 Repository Structure</strong></summary>
 
 ```
 helm/
 ├── bootstrap/                     ← Phase 1: Bootstrap chart (RHDP / install.sh entry point)
-│   ├── Chart.yaml
-│   ├── values.yaml                ← deployer config, Gitea toggle, org definitions
+│   ├── values.yaml                ← Deployer config, Gitea toggle, org definitions
 │   └── templates/
 │       ├── gitea.yaml             ← Local Gitea git server (wave 0)
 │       ├── mirror-job.yaml        ← Clone GitHub → Gitea (wave 1)
 │       └── applications.yaml      ← Creates 5 ArgoCD Applications (wave 2)
 │
 └── components/                    ← Phase 2: Deployed by ArgoCD from Gitea (or your fork)
-    ├── certchain-central/         ← Central services (Fabric CA, orderer0, Keycloak, verify-api, cert-portal, Grafana)
-    ├── certchain-org/             ← Per-org services — deployed 3× (peer, orderer, CouchDB, APIs, UI)
-    │   └── values-{org}.yaml      ← Org-specific overrides (identity, branding)
-    └── certchain-showroom/        ← Lab guide (Antora + terminal + 8 browser tabs)
+    ├── certchain-central/         ← Central: Fabric CA, orderer0, Keycloak, verify-api, cert-portal, Grafana
+    ├── certchain-org/             ← Per-org (deployed 3×): peer, orderer, CouchDB, APIs, UI, Keycloak
+    └── certchain-showroom/        ← Lab guide: Antora + terminal + 8 browser tabs
 
-apps/                              ← Application source code
-├── cert-admin-api/                ← Quarkus API (per-org certificate CRUD)
-├── verify-api/                    ← Quarkus API (central verification)
-├── course-manager-ui/             ← React + Express (registrar dashboard)
-└── cert-portal/                   ← React + Express (verification portal)
+apps/
+├── cert-admin-api/                ← Quarkus (Java 21) — per-org certificate CRUD
+├── verify-api/                    ← Quarkus (Java 21) — central verification + transcripts
+├── course-manager-ui/             ← React + Vite + Express — registrar dashboard
+└── cert-portal/                   ← React + Vite + Express — verification portal + QR scanner
+
+fabric/
+├── chaincode/certcontract/        ← Go smart contract (CcaaS)
+├── configtx.yaml                  ← BFT channel config (4 orderers, 3 orgs)
+├── jobs/                          ← K8s Jobs: channel setup, chaincode lifecycle
+└── scripts/                       ← In-cluster Fabric setup scripts
 
 showroom/                          ← Antora lab guide (AsciiDoc)
-├── site.yml                       ← Antora playbook + tab configuration
-└── content/modules/ROOT/pages/    ← Lab guide pages
-
-fabric/                            ← Fabric blockchain configuration
-├── chaincode/certcontract/        ← Go smart contract (CcaaS)
-├── configtx.yaml                  ← Channel configuration (BFT, 4 orderers)
-├── jobs/                          ← K8s Jobs for channel setup and chaincode lifecycle
-└── scripts/                       ← In-cluster setup scripts
+├── site.yml                       ← Playbook + 8 browser tabs config
+└── content/modules/ROOT/pages/    ← Walkthrough pages
 
 scripts/                           ← Deployment and management scripts
 ├── install.sh                     ← BYO cluster installer (--repo-url or --gitea)
+├── deploy-to-openshift.sh         ← Imperative deploy (dev/debug)
+├── setup-fabric-channel.sh        ← Channel + chaincode lifecycle
+├── configure-identity-brokering.sh
+├── seed-demo-certificates.sh
+└── teardown-all.sh
+
 keycloak/                          ← Realm JSON exports (per-org + central)
 ```
+
+</details>
 
 ---
 
