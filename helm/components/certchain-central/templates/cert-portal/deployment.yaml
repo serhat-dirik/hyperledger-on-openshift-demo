@@ -12,6 +12,8 @@ metadata:
   annotations:
     argocd.argoproj.io/sync-wave: "5"
     app.openshift.io/connects-to: '["verify-api"]'
+    app.openshift.io/vcs-uri: {{ .Values.gitops.repoUrl }}
+    app.openshift.io/vcs-ref: {{ .Values.gitops.revision }}
 spec:
   replicas: 1
   selector:
