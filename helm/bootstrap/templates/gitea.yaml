@@ -26,6 +26,41 @@ spec:
       storage: {{ .Values.gitea.storage }}
 
 ---
+# --- ConfigMap (app.ini) ---
+apiVersion: v1
+kind: ConfigMap
+metadata:
+  name: gitea-config
+  namespace: {{ .Values.gitea.namespace }}
+  annotations:
+    argocd.argoproj.io/sync-wave: "0"
+  labels:
+    app.kubernetes.io/name: gitea
+    app.kubernetes.io/part-of: certchain
+data:
+  app.ini: |
+    APP_NAME = Gitea: Git with a cup of tea
+    RUN_MODE = prod
+
+    [server]
+    ROOT_URL  = https://gitea-{{ .Values.gitea.namespace }}.{{ .Values.deployer.domain }}
+    HTTP_PORT = 3000
+    SSH_PORT  = 2222
+
+    [database]
+    DB_TYPE = sqlite3
+    PATH    = /home/gitea/data/gitea.db
+
+    [security]
+    INSTALL_LOCK = true
+
+    [service]
+    DISABLE_REGISTRATION = false
+
+    [repository]
+    ROOT = /home/gitea/data/gitea-repositories
+
+---
 # --- Deployment ---
 apiVersion: apps/v1
 kind: Deployment
@@ -57,20 +92,11 @@ spec:
               name: http
             - containerPort: 2222
               name: ssh
-          env:
-            - name: GITEA__server__ROOT_URL
-              value: "https://gitea-{{ .Values.gitea.namespace }}.{{ .Values.deployer.domain }}"
-            - name: GITEA__server__HTTP_PORT
-              value: "3000"
-            - name: GITEA__database__DB_TYPE
-              value: sqlite3
-            - name: GITEA__security__INSTALL_LOCK
-              value: "true"
-            - name: GITEA__service__DISABLE_REGISTRATION
-              value: "false"
           volumeMounts:
             - name: gitea-data
-              mountPath: /data
+              mountPath: /home/gitea/data
+            - name: gitea-config
+              mountPath: /home/gitea/conf
           resources:
             requests:
               cpu: 200m
@@ -79,14 +105,12 @@ spec:
               cpu: "1"
               memory: 1Gi
           readinessProbe:
-            httpGet:
-              path: /api/v1/version
+            tcpSocket:
               port: 3000
             initialDelaySeconds: 10
             periodSeconds: 5
           livenessProbe:
-            httpGet:
-              path: /api/v1/version
+            tcpSocket:
               port: 3000
             initialDelaySeconds: 30
             periodSeconds: 10
@@ -94,6 +118,9 @@ spec:
         - name: gitea-data
           persistentVolumeClaim:
             claimName: gitea-data
+        - name: gitea-config
+          configMap:
+            name: gitea-config
 
 ---
 # --- Service ---
