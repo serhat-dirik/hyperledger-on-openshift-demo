@@ -52,25 +52,17 @@ spec:
               done
               curl -sf "${GITEA_URL}/api/v1/version" || { echo "ERROR: Gitea not ready after 5 minutes"; exit 1; }
 
-              echo "=== Creating admin user (idempotent) ==="
-              # Create admin user via Gitea CLI inside the pod is not possible from here,
-              # so we use the first-run auto-create via API sign-up then promote.
-              # Try to authenticate first — if it works, user already exists.
-              if curl -sf -u "${GITEA_ADMIN}:${GITEA_PASS}" "${GITEA_URL}/api/v1/user" > /dev/null 2>&1; then
-                echo "Admin user already exists"
-              else
-                echo "Creating admin user via sign-up API..."
-                curl -sf -X POST "${GITEA_URL}/api/v1/user/signup" \
-                  -H "Content-Type: application/json" \
-                  -d "{
-                    \"username\": \"${GITEA_ADMIN}\",
-                    \"password\": \"${GITEA_PASS}\",
-                    \"email\": \"${GITEA_ADMIN}@local.demo\",
-                    \"must_change_password\": false
-                  }" || echo "Sign-up failed (may already exist or registration disabled — trying with admin token)"
-              fi
-
+              echo "=== Verifying admin user ==="
+              # Admin user is created by the Gitea startup script via CLI.
+              # Just verify authentication works.
               AUTH="-u ${GITEA_ADMIN}:${GITEA_PASS}"
+              if curl -sf ${AUTH} "${GITEA_URL}/api/v1/user" > /dev/null 2>&1; then
+                echo "Admin user authenticated OK"
+              else
+                echo "WARNING: Admin auth failed — retrying in 10s..."
+                sleep 10
+                curl -sf ${AUTH} "${GITEA_URL}/api/v1/user" > /dev/null 2>&1 || { echo "ERROR: Cannot authenticate as admin"; exit 1; }
+              fi
 
               echo "=== Creating organization: ${ORG_NAME} ==="
               if curl -sf ${AUTH} "${GITEA_URL}/api/v1/orgs/${ORG_NAME}" > /dev/null 2>&1; then

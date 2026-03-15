@@ -59,6 +59,21 @@ data:
 
     [repository]
     ROOT = /home/gitea/data/gitea-repositories
+  start.sh: |
+    #!/bin/sh
+    set -e
+    # Migrate DB schema (idempotent — needed before admin user create)
+    /home/gitea/gitea migrate --config /home/gitea/conf/app.ini
+    # Create admin user (idempotent — exits 0 if already exists)
+    /home/gitea/gitea admin user create \
+      --config /home/gitea/conf/app.ini \
+      --admin \
+      --username "{{ .Values.gitea.adminUser }}" \
+      --password "{{ .Values.gitea.adminPassword }}" \
+      --email "{{ .Values.gitea.adminUser }}@local.demo" \
+      --must-change-password=false 2>/dev/null || true
+    # Start Gitea
+    exec /home/gitea/gitea web --config /home/gitea/conf/app.ini
 
 ---
 # --- Deployment ---
@@ -87,7 +102,7 @@ spec:
       initContainers:
         - name: init-config
           image: {{ .Values.gitea.image }}
-          command: ["sh", "-c", "cp /etc/gitea/app.ini /home/gitea/conf/app.ini"]
+          command: ["sh", "-c", "cp /etc/gitea/app.ini /home/gitea/conf/app.ini && cp /etc/gitea/start.sh /home/gitea/conf/start.sh && chmod +x /home/gitea/conf/start.sh"]
           volumeMounts:
             - name: gitea-config-src
               mountPath: /etc/gitea
@@ -96,6 +111,7 @@ spec:
       containers:
         - name: gitea
           image: {{ .Values.gitea.image }}
+          command: ["/bin/sh", "/home/gitea/conf/start.sh"]
           ports:
             - containerPort: 3000
               name: http
