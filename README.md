@@ -11,14 +11,11 @@ This project demonstrates how to deploy and operate a [Hyperledger Fabric](https
 
 - **Hyperledger Fabric 3.1** multi-org network with 4 BFT orderers, 3 peers, and CouchDB state databases
 - **Per-org namespace isolation** — each organization gets its own Keycloak, APIs, UI, and blockchain peer
-- **Identity brokering** — students log in once and are auto-routed to their institute's identity provider
-- **Certificate ownership privacy** — grade and degree visible only to the certificate owner; public verification shows status and basic info only
-- **Role-based access control** — admin dashboards enforce `org-admin` role; students see "Access Denied"
-- **GitOps deployment** — Helm App-of-Apps pattern deployed via ArgoCD (RHDP-ready)
 - **Observability** — Prometheus metrics from Fabric and Quarkus, Grafana dashboards
 - **Resilience** — pod self-healing, multi-org isolation, blockchain decentralization
+- **Certificate ownership privacy** — grade and degree visible only to the certificate owner; public verification shows status and basic info only
 
-### The Sample Scenario
+### The Demo Scenario
 
 Three fictional training institutes issue tamper-proof course certificates on a shared blockchain ledger:
 
@@ -34,7 +31,7 @@ Three types of users interact with the system:
 |---|---|---|
 | **Registrar** (org staff) | Issues and revokes certificates via a branded dashboard (requires `org-admin` role) | Yes — org-specific login |
 | **Employer** | Verifies a certificate by entering its ID or scanning a QR code (sees public info only — no grade/degree) | No — fully anonymous |
-| **Student** | Views their full transcript across all institutes (sees grade/degree only on their own certificates) | Yes — auto-routed to their institute's login |
+| **Student** | Views their full transcript (sees grade/degree only on their own certificates) | Yes — auto-routed to their institute's login |
 
 ### The Flow
 
@@ -68,50 +65,51 @@ Three types of users interact with the system:
 Each institute gets its own isolated namespace with its own identity provider, dashboard, and blockchain peer. Central services handle cross-org verification and student identity brokering.
 
 ```
-                          ┌─────────────────────────────────────────────┐
-                          │            certchain  (central)             │
-                          │                                             │
-                          │  ┌─────────────┐    ┌──────────────────┐   │
-                          │  │  Keycloak    │    │   cert-portal    │   │
-                          │  │  (central)   │    │   (React PWA)    │   │
-                          │  │  • ID broker │    │   • Verify certs │   │
-                          │  │  • Org route │    │   • QR scanner   │   │
-                          │  └──────┬───┬──┘    │   • Transcripts  │   │
-                          │         │   │       └────────┬─────────┘   │
-                          │         │   │                │              │
-                          │  ┌──────┴───┴──┐    ┌───────┴──────────┐   │
-                          │  │  orderer0   │    │   verify-api     │   │
-                          │  │  (BFT)      │    │   (Quarkus)      │   │
-                          │  └─────────────┘    └──────────────────┘   │
-                          │  ┌─────────────┐    ┌──────────────────┐   │
-                          │  │  fabric-ca  │    │  certcontract    │   │
-                          │  │  (PKI)      │    │  (Go chaincode)  │   │
-                          │  └─────────────┘    └──────────────────┘   │
-                          └─────────────────────────────────────────────┘
-                                    ▲           ▲           ▲
-                          ┌─────────┘     ┌─────┘     ┌─────┘
-                          ▼               ▼           ▼
-          ┌──────────────────┐  ┌──────────────────┐  ┌──────────────────┐
-          │ certchain-       │  │ certchain-       │  │ certchain-       │
-          │ techpulse        │  │ dataforge        │  │ neuralpath       │
-          │                  │  │                  │  │                  │
-          │ ┌──────────────┐ │  │ ┌──────────────┐ │  │ ┌──────────────┐ │
-          │ │ Keycloak     │ │  │ │ Keycloak     │ │  │ │ Keycloak     │ │
-          │ │ (org-local)  │ │  │ │ (org-local)  │ │  │ │ (org-local)  │ │
-          │ ├──────────────┤ │  │ ├──────────────┤ │  │ ├──────────────┤ │
-          │ │ course-      │ │  │ │ course-      │ │  │ │ course-      │ │
-          │ │ manager-ui   │ │  │ │ manager-ui   │ │  │ │ manager-ui   │ │
-          │ ├──────────────┤ │  │ ├──────────────┤ │  │ ├──────────────┤ │
-          │ │ cert-admin-  │ │  │ │ cert-admin-  │ │  │ │ cert-admin-  │ │
-          │ │ api          │ │  │ │ api          │ │  │ │ api          │ │
-          │ ├──────────────┤ │  │ ├──────────────┤ │  │ ├──────────────┤ │
-          │ │ peer0 +      │ │  │ │ peer0 +      │ │  │ │ peer0 +      │ │
-          │ │ CouchDB      │ │  │ │ CouchDB      │ │  │ │ CouchDB      │ │
-          │ ├──────────────┤ │  │ ├──────────────┤ │  │ ├──────────────┤ │
-          │ │ orderer1     │ │  │ │ orderer2     │ │  │ │ orderer3     │ │
-          │ │ (BFT member) │ │  │ │ (BFT member) │ │  │ │ (BFT member) │ │
-          │ └──────────────┘ │  │ └──────────────┘ │  │ └──────────────┘ │
-          └──────────────────┘  └──────────────────┘  └──────────────────┘
+                     ┌───────────────────────────────────────────┐
+                     │         certchain  (central)              │
+                     │                                           │
+                     │  ┌──────────────┐   ┌─────────────────┐   │
+                     │  │ Keycloak     │   │ cert-portal     │   │
+                     │  │ (central)    │   │ (React PWA)     │   │
+                     │  │ • ID broker  │   │ • Verify certs  │   │
+                     │  │ • Org route  │   │ • QR scanner    │   │
+                     │  └──────┬───┬───┘   │ • Transcripts   │   │
+                     │         │   │       └───────┬─────────┘   │
+                     │         │   │               │             │
+                     │  ┌──────┴───┴───┐   ┌──────┴──────────┐   │
+                     │  │ orderer0     │   │ verify-api      │   │
+                     │  │ (BFT)        │   │ (Quarkus)       │   │
+                     │  └──────────────┘   └─────────────────┘   │
+                     │  ┌──────────────┐                         │
+                     │  │ fabric-ca    │   Consortium operator   │
+                     │  │ (PKI)        │   (not a Fabric org)    │
+                     │  └──────────────┘                         │
+                     └───────────────────────────────────────────┘
+                               ▲           ▲           ▲
+                     ┌─────────┘     ┌─────┘     ┌─────┘
+                     ▼               ▼           ▼
+     ┌────────────────────┐ ┌────────────────────┐ ┌────────────────────┐
+     │ certchain-         │ │ certchain-         │ │ certchain-         │
+     │ techpulse          │ │ dataforge          │ │ neuralpath         │
+     │                    │ │                    │ │                    │
+     │ ┌────────────────┐ │ │ ┌────────────────┐ │ │ ┌────────────────┐ │
+     │ │ Keycloak       │ │ │ │ Keycloak       │ │ │ │ Keycloak       │ │
+     │ │ (org-local)    │ │ │ │ (org-local)    │ │ │ │ (org-local)    │ │
+     │ ├────────────────┤ │ │ ├────────────────┤ │ │ ├────────────────┤ │
+     │ │ course-        │ │ │ │ course-        │ │ │ │ course-        │ │
+     │ │ manager-ui     │ │ │ │ manager-ui     │ │ │ │ manager-ui     │ │
+     │ ├────────────────┤ │ │ ├────────────────┤ │ │ ├────────────────┤ │
+     │ │ cert-admin-api │ │ │ │ cert-admin-api │ │ │ │ cert-admin-api │ │
+     │ ├────────────────┤ │ │ ├────────────────┤ │ │ ├────────────────┤ │
+     │ │ certcontract   │ │ │ │ certcontract   │ │ │ │ certcontract   │ │
+     │ │ (CcaaS)        │ │ │ │ (CcaaS)        │ │ │ │ (CcaaS)        │ │
+     │ ├────────────────┤ │ │ ├────────────────┤ │ │ ├────────────────┤ │
+     │ │ peer0 + CouchDB│ │ │ │ peer0 + CouchDB│ │ │ │ peer0 + CouchDB│ │
+     │ ├────────────────┤ │ │ ├────────────────┤ │ │ ├────────────────┤ │
+     │ │ orderer1       │ │ │ │ orderer2       │ │ │ │ orderer3       │ │
+     │ │ (BFT member)   │ │ │ │ (BFT member)   │ │ │ │ (BFT member)   │ │
+     │ └────────────────┘ │ │ └────────────────┘ │ │ └────────────────┘ │
+     └────────────────────┘ └────────────────────┘ └────────────────────┘
 ```
 
 | Layer | What | Technology |
@@ -119,7 +117,7 @@ Each institute gets its own isolated namespace with its own identity provider, d
 | **Frontend** | Per-org registrar dashboard + central verification portal | React 19, Vite, TailwindCSS, Express |
 | **API** | Per-org certificate CRUD + central verification | Quarkus (Java 21) |
 | **Identity** | Per-org auth + cross-org student login | Keycloak 26 with Identity Brokering |
-| **Blockchain** | Immutable certificate ledger | Hyperledger Fabric 3.1 (4 BFT orderers, 3 peers, CouchDB) |
+| **Blockchain** | Immutable certificate ledger | Hyperledger Fabric 3.1 (4 BFT orderers, 3 peers, CouchDB, per-org CcaaS) |
 | **Monitoring** | Metrics collection + dashboards | Prometheus (OpenShift built-in), Grafana Operator |
 | **Deployment** | GitOps-driven, multi-namespace | ArgoCD App-of-Apps, Helm, OpenShift |
 
@@ -146,47 +144,45 @@ Each institute gets its own isolated namespace with its own identity provider, d
 This diagram shows **only the Fabric blockchain layer** — no application servers, UIs, or identity providers.
 
 ```
-                    ┌────────────────────────────────────────────────┐
-                    │              BFT Consensus Cluster              │
-                    │                                                │
-                    │   orderer0        orderer1        orderer2     │
-                    │   (central)       (TechPulse)     (DataForge)  │
-                    │       │               │               │        │
-                    │       │    orderer3    │               │        │
-                    │       │  (NeuralPath)  │               │        │
-                    │       └───────┼───────┘               │        │
-                    │               │                       │        │
-                    │       ┌───────┴───────────────────────┘        │
-                    │       │     Ordered blocks broadcast           │
-                    └───────┼────────────────────────────────────────┘
-                            │
-            ┌───────────────┼───────────────────────────┐
-            │               │                           │
-            ▼               ▼                           ▼
-   ┌─────────────┐  ┌─────────────┐            ┌─────────────┐
-   │   peer0     │  │   peer0     │            │   peer0     │
-   │  TechPulse  │  │  DataForge  │            │ NeuralPath  │
-   │             │  │             │            │             │
-   │ ┌─────────┐ │  │ ┌─────────┐ │            │ ┌─────────┐ │
-   │ │ Ledger  │ │  │ │ Ledger  │ │            │ │ Ledger  │ │
-   │ │ (full   │ │  │ │ (full   │ │            │ │ (full   │ │
-   │ │  copy)  │ │  │ │  copy)  │ │            │ │  copy)  │ │
-   │ └─────────┘ │  │ └─────────┘ │            │ └─────────┘ │
-   │ ┌─────────┐ │  │ ┌─────────┐ │            │ ┌─────────┐ │
-   │ │CouchDB  │ │  │ │CouchDB  │ │            │ │CouchDB  │ │
-   │ │(state)  │ │  │ │(state)  │ │            │ │(state)  │ │
-   │ └─────────┘ │  │ └─────────┘ │            │ └─────────┘ │
-   └──────┬──────┘  └──────┬──────┘            └──────┬──────┘
-          │                │                          │
-          └────────────────┼──────────────────────────┘
-                           │
-                  ┌────────┴────────┐
-                  │  certcontract   │
-                  │  (Go chaincode) │  ← Chaincode-as-a-Service
-                  │                 │     (CcaaS)
-                  └────────┬────────┘
-                           │
-                  ┌────────┴────────┐
+                  ┌──────────────────────────────────────────────┐
+                  │             BFT Consensus Cluster            │
+                  │                                              │
+                  │  orderer0       orderer1       orderer2      │
+                  │  (central)      (TechPulse)    (DataForge)   │
+                  │      │              │              │         │
+                  │      │  orderer3    │              │         │
+                  │      │ (NeuralPath) │              │         │
+                  │      └──────┼───────┘              │         │
+                  │             │                      │         │
+                  │      ┌──────┴──────────────────────┘         │
+                  │      │    Ordered blocks broadcast           │
+                  └──────┼───────────────────────────────────────┘
+                         │
+           ┌─────────────┼──────────────────────────┐
+           │             │                          │
+           ▼             ▼                          ▼
+   ┌──────────────┐ ┌──────────────┐ ┌──────────────┐
+   │  TechPulse   │ │  DataForge   │ │  NeuralPath  │
+   │              │ │              │ │              │
+   │ ┌──────────┐ │ │ ┌──────────┐ │ │ ┌──────────┐ │
+   │ │ peer0    │ │ │ │ peer0    │ │ │ │ peer0    │ │
+   │ │ Ledger   │ │ │ │ Ledger   │ │ │ │ Ledger   │ │
+   │ │ (full)   │ │ │ │ (full)   │ │ │ │ (full)   │ │
+   │ ├──────────┤ │ │ ├──────────┤ │ │ ├──────────┤ │
+   │ │ CouchDB  │ │ │ │ CouchDB  │ │ │ │ CouchDB  │ │
+   │ │ (state)  │ │ │ │ (state)  │ │ │ │ (state)  │ │
+   │ ├──────────┤ │ │ ├──────────┤ │ │ ├──────────┤ │
+   │ │certcon-  │ │ │ │certcon-  │ │ │ │certcon-  │ │
+   │ │tract     │ │ │ │tract     │ │ │ │tract     │ │
+   │ │(CcaaS)   │ │ │ │(CcaaS)   │ │ │ │(CcaaS)   │ │
+   │ └──────────┘ │ │ └──────────┘ │ │ └──────────┘ │
+   └──────────────┘ └──────────────┘ └──────────────┘
+
+         Each org runs its own chaincode instance.
+         All instances use the same sealed image
+         for deterministic endorsement.
+
+                  ┌─────────────────┐
                   │   Fabric CA     │  ← Enrolls identities for
                   │   (shared)      │     peers, orderers, admins
                   └─────────────────┘
@@ -403,10 +399,10 @@ This runs 7 steps:
 3. Generates the genesis block locally via `configtxgen` (downloads Fabric binaries if needed)
 4. Creates ConfigMaps for channel setup scripts
 5. Runs the channel-setup job (joins 4 orderers and 3 peers to `certchannel`)
-6. Builds and deploys the chaincode container (CcaaS pattern — `certcontract` at port 7052)
+6. Builds the chaincode container image (CcaaS pattern — `certcontract` at port 7052)
 7. Runs the chaincode-lifecycle job (install, approve, commit across all 3 orgs)
 
-> **Note:** The chaincode uses the **Chaincode-as-a-Service (CcaaS)** pattern — it runs as a standalone gRPC service that peers connect to, rather than being managed by the peer process. This enables independent scaling and zero-downtime upgrades.
+> **Note:** The chaincode uses the **Chaincode-as-a-Service (CcaaS)** pattern — it runs as a standalone gRPC service in each org's namespace that the local peer connects to, rather than being managed by the peer process. All orgs run the same sealed image for deterministic endorsement.
 
 ### Step 5 — Configure Identity Brokering
 
@@ -557,7 +553,6 @@ Passed: 25  Failed: 0  Skipped: 1
 ```
 === certchain (central) ===
 cert-portal          1/1   Running
-certcontract         1/1   Running     ← Go chaincode (CcaaS)
 fabric-ca            1/1   Running
 grafana              1/1   Running
 grafana-operator     1/1   Running
@@ -568,6 +563,7 @@ verify-api           1/1   Running
 
 === certchain-techpulse ===
 cert-admin-api       1/1   Running
+certcontract         1/1   Running     ← Go chaincode (CcaaS, per-org)
 couchdb              1/1   Running     ← Peer state database
 course-manager-ui    1/1   Running
 keycloak             1/1   Running     ← Org-local identity provider
@@ -592,7 +588,7 @@ postgres             1/1   Running
 | Identity brokering not working | Central KC admin console → Identity Providers | Run `./scripts/configure-identity-brokering.sh` again. |
 | Seed data fails | Script output shows HTTP codes | Keycloak or API pods may not be ready. Wait and retry. |
 | Channel setup job fails | `oc logs job/fabric-channel-setup -n certchain` | Orderers/peers may not be ready. Delete job and re-run. |
-| Chaincode `CORE_CHAINCODE_ID_NAME` error | `oc logs deploy/certcontract -n certchain` | Check ConfigMap `chaincode-id` exists: `oc get cm chaincode-id -n certchain` |
+| Chaincode `CORE_CHAINCODE_ID_NAME` error | `oc logs deploy/certcontract -n certchain-techpulse` | Check ConfigMap `chaincode-id` exists: `oc get cm chaincode-id -n certchain-techpulse` |
 | verify-api TLS handshake fails | `oc logs deploy/verify-api -n certchain` | Use FQDN for `FABRIC_PEER_ENDPOINT` (e.g., `peer0.certchain-techpulse.svc.cluster.local:7051`) |
 | Grafana Operator not installing | `oc get csv -n certchain` | Install Grafana Operator via OLM: `oc apply -f helm/components/certchain-central/templates/grafana/` |
 
@@ -1017,8 +1013,8 @@ oc get pods -l app=peer -n certchain-techpulse
 oc get pods -l app=peer -n certchain-dataforge
 oc get pods -l app=peer -n certchain-neuralpath
 
-# Chaincode pod (runs the smart contract)
-oc get pods -l app=certcontract -n certchain
+# Chaincode pods (per-org CcaaS instances)
+oc get pods -l app=certcontract -n certchain-techpulse
 
 # ServiceMonitors
 oc get servicemonitors -n certchain
