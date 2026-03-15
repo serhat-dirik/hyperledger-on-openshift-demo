@@ -73,10 +73,9 @@ Each institute gets its own isolated namespace with its own identity provider, d
                      │  │ (central)    │   │ (React PWA)     │   │
                      │  │ • ID broker  │   │ • Verify certs  │   │
                      │  │ • Org route  │   │ • QR scanner    │   │
-                     │  └──────┬───┬───┘   │ • Transcripts   │   │
-                     │         │   │       └───────┬─────────┘   │
-                     │         │   │               │             │
-                     │  ┌──────┴───┴───┐   ┌──────┴──────────┐   │
+                     │  └──────────────┘   │ • Transcripts   │   │
+                     │                     └───────┬─────────┘   │
+                     │  ┌──────────────┐   ┌──────┴──────────┐   │
                      │  │ orderer0     │   │ verify-api      │   │
                      │  │ (BFT)        │   │ (Quarkus)       │   │
                      │  └──────────────┘   └─────────────────┘   │
@@ -123,7 +122,8 @@ Each institute gets its own isolated namespace with its own identity provider, d
 
 ---
 
-## Hyperledger Fabric Concepts
+<details>
+<summary><strong>📖 Hyperledger Fabric Concepts</strong></summary>
 
 [Hyperledger Fabric](https://www.hyperledger.org/projects/fabric) is a **permissioned blockchain** — unlike Bitcoin or Ethereum, only authorized organizations can join and write data. This makes it suitable for enterprise use cases where participants are known and governed.
 
@@ -197,9 +197,10 @@ This diagram shows **only the Fabric blockchain layer** — no application serve
 
 With **BFT (Byzantine Fault Tolerant) consensus** and 4 orderers (f=1), the network tolerates 1 malicious or unavailable orderer. Read-only queries (like certificate verification) go directly to a peer's local ledger copy — no orderer involvement needed.
 
----
+</details>
 
-## Keycloak Identity Architecture
+<details>
+<summary><strong>🔐 Keycloak Identity Architecture</strong></summary>
 
 This demo uses [Keycloak](https://www.keycloak.org/) for identity management across multiple organizations. Each org gets full auth isolation, while students get seamless cross-org login via identity brokering.
 
@@ -269,6 +270,8 @@ This demo uses [Keycloak](https://www.keycloak.org/) for identity management acr
 
 **Why this design?** Each org controls its own user directory — a TechPulse admin never exists in DataForge's Keycloak. Students get a single login experience: they enter their email, and Keycloak automatically routes them to the right org. No manual IDP selection menu.
 
+</details>
+
 ---
 
 <details>
@@ -329,6 +332,10 @@ scripts/                           ← Deployment and management scripts
 keycloak/                          ← Realm JSON exports (per-org + central)
 ```
 
+---
+
+## Installation on OpenShift
+
 **How deployment works (two phases):**
 
 The bootstrap chart installs a local Gitea server, mirrors this GitHub repo into it, then creates ArgoCD Applications that deploy CertChain from the local Gitea. This gives workshop participants a writable repo — they can push changes (like adding a new org) and ArgoCD auto-syncs.
@@ -337,10 +344,6 @@ The bootstrap chart installs a local Gitea server, mirrors this GitHub repo into
 Phase 1 (from GitHub):  bootstrap → Gitea + mirror + ArgoCD Applications
 Phase 2 (from Gitea):   certchain-central, 3× org, showroom
 ```
-
----
-
-## Installation on OpenShift
 
 ### Option A — Red Hat Demo Platform (RHDP)
 
@@ -489,13 +492,20 @@ echo "https://showroom-showroom.${DOMAIN}"
 
 ---
 
-## Version Management
+## Customizing Org Names
 
-All versions are centralized in `env.sh`. Update a variable, rebuild, and ArgoCD auto-rolls the deployment.
+Organization names and the base namespace are defined in `env.sh`:
+
+```bash
+PROJECT_NAMESPACE="certchain"        # Base namespace (orgs become certchain-techpulse, etc.)
+FABRIC_CHANNEL_NAME="certchannel"    # Hyperledger Fabric channel name
+```
+
+The three training organizations (TechPulse, DataForge, NeuralPath) are configured in `helm/bootstrap/values.yaml` under `components`. Each org defines its display name, Fabric MSP ID, and theme color. To rename or add organizations, update both `env.sh` (for imperative scripts) and the bootstrap values (for ArgoCD).
 
 ## Resource Requirements
 
-Demo-sized: ~6 vCPU, ~7 GB RAM total across all components. See `env.sh` for per-component limits.
+Demo-sized: ~6 vCPU, ~7 GB RAM total across all components. Per-component resource limits are defined in each Helm chart's `values.yaml`.
 
 ## License
 
