@@ -43,9 +43,11 @@ data:
     RUN_MODE = prod
 
     [server]
-    ROOT_URL  = https://gitea-{{ .Values.gitea.namespace }}.{{ .Values.deployer.domain }}
-    HTTP_PORT = 3000
-    SSH_PORT  = 2222
+    ROOT_URL         = https://gitea-{{ .Values.gitea.namespace }}.{{ .Values.deployer.domain }}
+    HTTP_PORT        = 3000
+    DISABLE_SSH      = true
+    START_SSH_SERVER = false
+    SSH_PORT         = 2222
 
     [database]
     DB_TYPE = sqlite3
@@ -115,8 +117,6 @@ spec:
           ports:
             - containerPort: 3000
               name: http
-            - containerPort: 2222
-              name: ssh
           volumeMounts:
             - name: gitea-data
               mountPath: /home/gitea/data
