@@ -154,10 +154,19 @@ if [ -z "$PACKAGE_ID" ]; then
 fi
 
 # Save package ID to ConfigMap for chaincode deployment
+# Central namespace (for reference / idempotency check)
 $K create configmap chaincode-id \
   --from-literal=package-id="$PACKAGE_ID" \
   -n certchain --dry-run=client -o yaml | $K apply -f -
-echo "Package ID saved to ConfigMap chaincode-id"
+echo "Package ID saved to ConfigMap chaincode-id (central)"
+
+# Per-org namespaces (each org's CcaaS deployment reads this)
+for ORG in techpulse dataforge neuralpath; do
+  $K create configmap chaincode-id \
+    --from-literal=package-id="$PACKAGE_ID" \
+    -n certchain-${ORG} --dry-run=client -o yaml | $K apply -f -
+  echo "Package ID saved to ConfigMap chaincode-id (certchain-${ORG})"
+done
 
 # =================================================================
 # Step 3: Approve chaincode for each org

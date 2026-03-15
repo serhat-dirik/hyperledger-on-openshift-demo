@@ -2,6 +2,7 @@
 * Understanding CertChain
 ** xref:01-overview.adoc[Business Context]
 ** xref:01a-architecture.adoc[Technical Architecture]
+** xref:01b-production-architecture.adoc[Production Architecture Guide]
 * Business Scenario
 ** xref:02-admin-issue.adoc[Cert Admin: Issue Certificates]
 ** xref:03-employer-verify.adoc[Employer: Verify a Certificate]

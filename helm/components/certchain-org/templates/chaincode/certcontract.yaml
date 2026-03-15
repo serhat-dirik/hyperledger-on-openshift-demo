@@ -1,4 +1,6 @@
-# Chaincode as a Service (CcaaS) — certcontract gRPC server
+# Chaincode as a Service (CcaaS) — per-org certcontract gRPC server
+# Each org runs its own instance for resilience. All instances run the
+# same deterministic image so endorsement results always match.
 apiVersion: apps/v1
 kind: Deployment
 metadata:
@@ -6,10 +8,10 @@ metadata:
   labels:
     app: certcontract
     app.kubernetes.io/name: certcontract
-    {{- include "certchain-central.labels" . | nindent 4 }}
+    {{- include "certchain-org.labels" . | nindent 4 }}
     app.kubernetes.io/component: chaincode
   annotations:
-    argocd.argoproj.io/sync-wave: "12"
+    argocd.argoproj.io/sync-wave: "5"
 spec:
   replicas: 1
   selector:
@@ -20,7 +22,7 @@ spec:
       labels:
         app: certcontract
         app.kubernetes.io/name: certcontract
-        {{- include "certchain-central.labels" . | nindent 8 }}
+        {{- include "certchain-org.labels" . | nindent 8 }}
         app.kubernetes.io/component: chaincode
     spec:
       containers:
@@ -51,7 +53,7 @@ metadata:
   name: certcontract
   labels:
     app: certcontract
-    {{- include "certchain-central.labels" . | nindent 4 }}
+    {{- include "certchain-org.labels" . | nindent 4 }}
 spec:
   selector:
     app: certcontract

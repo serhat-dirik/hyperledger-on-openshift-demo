@@ -13,16 +13,16 @@ image::arch-network-topology.svg[Network Topology,width=100%]
 | Namespace | Components
 
 | `{central_namespace}`
-| Fabric CA, orderer0, cert-portal, verify-api, central Keycloak, Postgres, Grafana, certcontract (chaincode)
+| Fabric CA, orderer0, cert-portal, verify-api, central Keycloak, Postgres, Grafana
 
 | `{central_namespace}-techpulse`
-| peer0, orderer1, CouchDB, Postgres, org Keycloak, cert-admin-api, course-manager-ui
+| peer0, orderer1, CouchDB, certcontract (CcaaS), Postgres, org Keycloak, cert-admin-api, course-manager-ui
 
 | `{central_namespace}-dataforge`
-| peer0, orderer2, CouchDB, Postgres, org Keycloak, cert-admin-api, course-manager-ui
+| peer0, orderer2, CouchDB, certcontract (CcaaS), Postgres, org Keycloak, cert-admin-api, course-manager-ui
 
 | `{central_namespace}-neuralpath`
-| peer0, orderer3, CouchDB, Postgres, org Keycloak, cert-admin-api, course-manager-ui
+| peer0, orderer3, CouchDB, certcontract (CcaaS), Postgres, org Keycloak, cert-admin-api, course-manager-ui
 |===
 
 === Technology Stack
@@ -148,4 +148,4 @@ Each organization has its own MSP with X.509 certificates:
 * *peer0-msp / peer0-tls* — Peer node identity and TLS certificates
 * *orderer-msp / orderer-tls* — Orderer node identity and TLS certificates
 
-The Fabric CA in the central namespace issues all certificates. Each organization's MSP defines which identities are authorized to submit transactions on behalf of that organization.
+The Fabric CA in the central namespace issues all certificates for this demo. In a production deployment, each organization would run its own CA for full PKI independence. Each organization's MSP defines which identities are authorized to submit transactions on behalf of that organization.

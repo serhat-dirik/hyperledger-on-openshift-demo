@@ -1,0 +1,176 @@
+= Production Architecture Guide
+
+This guide explains the architectural decisions in CertChain, what is simplified for the demo, and how each component would change in a production multi-cluster deployment.
+
+== Consortium Deployment Model
+
+CertChain demonstrates a *consortium operational model* — three independent organizations (TechPulse Academy, DataForge Institute, NeuralPath Labs) collaborate through a shared blockchain network, with a central consortium operator providing shared infrastructure.
+
+=== What Is the "Central" Namespace?
+
+The `{central_namespace}` namespace represents the *consortium operator* — a neutral party (such as an industry body, trade association, or SaaS provider) that runs shared services on behalf of the member organizations. It is *not* a Fabric organization — it has no MSP, no peer, and no membership in the channel.
+
+[cols="1,2,1"]
+|===
+| Central Component | Purpose | Production Owner
+
+| *Fabric CA*
+| Issues X.509 certificates for all orgs
+| Each org runs their own CA (see <<pki-model>>)
+
+| *orderer0*
+| One node in the 4-node BFT consensus cluster
+| Consortium operator or assigned to an org
+
+| *verify-api + cert-portal*
+| Public certificate verification endpoint
+| Consortium operator
+
+| *Central Keycloak*
+| Identity federation broker (org routing)
+| Consortium operator
+
+| *Grafana*
+| Network-wide monitoring dashboards
+| Consortium operator or each org monitors independently
+|===
+
+=== Do You Need a Central Namespace?
+
+*No.* Hyperledger Fabric has no concept of a "central org." Production networks typically follow one of two models:
+
+*Model 1 — Fully Decentralized:* Each org runs all infrastructure on its own cluster. One org (or a rotating responsibility) hosts the public verification endpoint. This is how most production Fabric networks operate.
+
+*Model 2 — Consortium Operator (this demo):* A neutral party runs shared public-facing services and monitoring. Member orgs run their blockchain nodes and applications independently. Examples include industry consortiums where a trade association hosts the shared layer.
+
+== Chaincode as a Service (CcaaS)
+
+=== Why Per-Org Deployment
+
+CertChain deploys the `certcontract` chaincode as a *Chaincode as a Service (CcaaS)* instance in each organization's namespace. This is an architectural requirement, not just a best practice:
+
+* *Resilience* — If one org's namespace goes down, other orgs can still execute chaincode transactions
+* *Sovereignty* — Each org controls their own chaincode runtime
+* *Multi-cluster ready* — In production, each org runs on a separate OpenShift cluster where cross-cluster DNS does not work
+
+=== How CcaaS Works
+
+Unlike traditional Fabric where chaincode runs *inside* the peer container, CcaaS runs the chaincode as an *external gRPC server*. The peer connects *out* to the chaincode:
+
+. *Package* — A CcaaS package contains only a `connection.json` (address of the gRPC server), not the actual code
+. *Install* — The same package is installed on every peer, producing the same *Package ID* (SHA-256 hash)
+. *Deploy* — Each org runs the same container image as a Kubernetes Deployment
+. *Connect* — The peer resolves `certcontract:7052` to the local Service in the same namespace
+
+=== Why the Same Image Everywhere
+
+Fabric's endorsement model depends on *determinism*. When multiple peers execute the same chaincode independently, their results must byte-for-byte match. If results differ, the transaction is rejected as an endorsement mismatch.
+
+This means:
+
+* All orgs must run the *exact same container image*
+* The *Package ID* (hash of the CcaaS package) must match across all orgs
+* Each org independently approves the same Package ID during the lifecycle — this is Fabric's decentralized governance
+
+[NOTE]
+====
+The chaincode image is built once (in the central namespace via OpenShift BuildConfig) and pulled from the shared image registry by all orgs. In a multi-cluster production setup, the image would be pushed to a shared container registry accessible to all clusters.
+====
+
+[[pki-model]]
+== PKI and Certificate Authority Model
+
+=== Demo: Single Root CA
+
+This demo uses a single Fabric CA in the central namespace that issues certificates for all organizations. This simplifies deployment but means:
+
+* All orgs depend on the central CA for identity enrollment
+* Central CA compromise affects the entire network's PKI
+* Orgs cannot independently revoke or re-enroll identities
+
+=== Production: Per-Org CAs
+
+In production, each organization runs its own Fabric CA with its own root certificate:
+
+[cols="1,2"]
+|===
+| Aspect | How It Works
+
+| *Trust establishment*
+| Each org's CA root certificate is embedded in the channel configuration (genesis block). All peers receive all orgs' root certs. Trust is explicit and per-org — *no shared root is needed*.
+
+| *Identity enrollment*
+| Each org independently enrolls peers, orderers, and admins using their own CA. No dependency on any other org's infrastructure.
+
+| *CA compromise*
+| Only the compromised org is affected. Other orgs revoke trust by submitting a channel configuration update that removes the compromised CA root cert.
+
+| *Adding a new org*
+| The new org generates their own CA, shares their root cert with the consortium, and a channel config update adds their MSP definition.
+
+| *Certificate exchange*
+| Orgs exchange CA root certificates out-of-band (secure transfer) during network bootstrap. After that, the channel configuration is the source of trust.
+|===
+
+The demo's single CA is a deployment shortcut, but the MSP separation is real — each org has its own MSP ID, admin identity, and endorsement identity. The functional behavior is identical to per-org CAs.
+
+== Demo vs Production Summary
+
+[cols="1,2,2"]
+|===
+| Component | Demo (This Setup) | Production
+
+| *Chaincode (CcaaS)*
+| Per-org deployment (each org namespace)
+| Per-org (same — each cluster runs its own)
+
+| *Fabric CA*
+| Single CA in central namespace
+| Per-org CA (each org issues own certs)
+
+| *Orderer cluster*
+| 4 nodes: orderer0 (central) + orderer1-3 (per-org)
+| 7+ nodes for f=2 fault tolerance, distributed across clusters
+
+| *Peer nodes*
+| 1 per org
+| 2+ per org for endorsement availability
+
+| *verify-api*
+| Central, queries TechPulse peer
+| Central with failover across org peers
+
+| *Networking*
+| ExternalName Services (single cluster)
+| TLS Routes or Service Mesh (cross-cluster)
+
+| *Image registry*
+| OpenShift internal registry (shared)
+| Shared container registry (e.g., Quay, ECR)
+
+| *Identity brokering*
+| Central Keycloak with KC Organizations
+| Same model — central broker is appropriate
+
+| *Monitoring*
+| Central Grafana with Prometheus
+| Per-org + federated dashboards
+|===
+
+== Moving to Multi-Cluster
+
+For organizations considering a production deployment across multiple OpenShift clusters:
+
+. *Each org deploys independently* — The `certchain-org` Helm chart is designed for this. Set `global.domain` and `global.centralNamespace` per cluster.
+
+. *Cross-cluster networking* — Replace ExternalName Services with TLS Routes or a Service Mesh for orderer-to-orderer and peer-to-peer communication.
+
+. *Shared image registry* — Push the certcontract image to a registry accessible from all clusters (e.g., Quay.io, Amazon ECR, or a private registry).
+
+. *Per-org Fabric CA* — Each org runs their own CA. Exchange root certificates during bootstrap, embed them in the genesis block.
+
+. *Channel configuration* — The `configtx.yaml` references each org's MSP directory containing their CA root cert. Generate the genesis block collaboratively.
+
+. *Chaincode lifecycle* — Each org installs the CcaaS package on their peer independently. Approval is per-org. One org submits the commit transaction once enough approvals are collected.
+
+The Helm chart structure already supports this — each org chart is independently deployable with different values. The App-of-Apps pattern demonstrated here would be replaced by per-org ArgoCD instances on each cluster.

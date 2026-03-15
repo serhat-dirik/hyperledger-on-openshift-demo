@@ -1,4 +1,4 @@
-# Cross-namespace ExternalName services — orderer cluster + chaincode in org NS
+# Cross-namespace ExternalName services — orderer cluster in org NS
 {{- $centralNS := .Values.global.centralNamespace }}
 {{- $orgNS := include "certchain-org.namespace" . }}
 {{- $localOrderer := include "certchain-org.localOrderer" . }}
@@ -35,21 +35,3 @@ spec:
       protocol: TCP
 {{- end }}
 {{- end }}
----
-# Chaincode service (CcaaS lives in central namespace)
-apiVersion: v1
-kind: Service
-metadata:
-  name: certcontract
-  labels:
-    {{- include "certchain-org.labels" . | nindent 4 }}
-    certchain/service-type: cross-namespace
-  annotations:
-    argocd.argoproj.io/sync-wave: "0"
-spec:
-  type: ExternalName
-  externalName: certcontract.{{ $centralNS }}.svc.cluster.local
-  ports:
-    - name: chaincode
-      port: 7052
-      protocol: TCP
