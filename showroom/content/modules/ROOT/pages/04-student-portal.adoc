@@ -16,14 +16,14 @@ Notice the *Student Login* button in the top-right corner.
 
 . Click *Student Login*.
 . You are redirected to the *Central Keycloak* login page.
-. Enter a student email: `student01@techpulse.demo`
-. Keycloak detects the `@techpulse.demo` domain and redirects you to the *TechPulse Keycloak* for authentication (this is identity brokering in action).
-. Enter password: `student`
+. You'll see buttons for each organization: *TechPulse Academy*, *DataForge Institute*, *NeuralPath Labs*.
+. Click *TechPulse Academy* to log in as a TechPulse student.
+. You are redirected to the *TechPulse Keycloak*. Enter credentials: `student01@techpulse.demo` / `student`
 . After successful login, you are returned to the Cert Portal — now authenticated.
 
 [NOTE]
 ====
-The redirect from Central Keycloak to TechPulse Keycloak happens through *identity brokering*. The central Keycloak acts as a federation hub — it knows which organization's Keycloak should handle authentication based on the user's email domain. See xref:05-security-identity.adoc[Security & Identity] for details.
+The Central Keycloak acts as a federation hub with OIDC *identity brokering*. Each organization button is a registered Identity Provider that redirects authentication to the corresponding org's Keycloak. This means the central portal never stores user passwords. See xref:05-security-identity.adoc[Security & Identity] for details.
 ====
 
 == Step 3: View Your Transcript
@@ -100,8 +100,8 @@ This means:
 When you clicked "Student Login", here's what happened behind the scenes:
 
 . *cert-portal* redirected to Central Keycloak (`{central_namespace}` namespace)
-. Central Keycloak showed the organization picker (or auto-detected from email domain)
-. You were redirected to *TechPulse Keycloak* (`{central_namespace}-techpulse` namespace)
+. Central Keycloak displayed the organization buttons (TechPulse, DataForge, NeuralPath)
+. You clicked your organization and were redirected to *TechPulse Keycloak* (`{central_namespace}-techpulse` namespace)
 . TechPulse Keycloak authenticated you against its local user store
 . A token was issued and returned to cert-portal via the Central Keycloak broker
 

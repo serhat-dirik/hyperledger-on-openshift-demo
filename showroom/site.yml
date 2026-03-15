@@ -17,3 +17,26 @@ ui:
   bundle:
     url: https://github.com/rhpds/rhdp_showroom_theme/releases/download/rh-summit-connect-2025/ui-bundle.zip
     snapshot: true
+  supplemental_files:
+    - path: css/custom.css
+      contents: |
+        /* Override event-specific branding to plain Red Hat */
+        .header-logo .event-name,
+        .header-logo .event-text,
+        .navbar-brand .event-name,
+        .summit-connect-logo-text,
+        .rh-event-name {
+          display: none !important;
+        }
+        /* Hide any event subtitle text */
+        .header-logo span:not(.rh-logo):not(:first-child),
+        .navbar-brand span:not(.rh-logo):not(:first-child) {
+          display: none !important;
+        }
+    - path: partials/header-content.hbs
+      contents: |
+        <div class="header-logo">
+          <a href="https://www.redhat.com" target="_blank" rel="noopener">
+            <img src="{{uiRootPath}}/img/Logo-Red_Hat-A-Reverse-RGB.svg" alt="Red Hat" class="rh-logo" style="height:36px">
+          </a>
+        </div>

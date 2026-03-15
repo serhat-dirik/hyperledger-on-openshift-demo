@@ -43,9 +43,22 @@ git config user.email "lab-user@local.demo"
 
 Fabric peers and orderers are standard Kubernetes Deployments, so scaling them is as simple as changing the replica count. Let's try it.
 
-=== Scaling Application Services (Quick Demo)
+=== Important: ArgoCD Auto-Sync
 
-The API and UI services are stateless and scale freely. Scale the `verify-api` to handle more read traffic:
+CertChain's ArgoCD Applications have *automated sync* enabled. If you scale a deployment imperatively with `oc scale`, ArgoCD will detect the drift and revert it within minutes. To demonstrate manual scaling, you must first *pause auto-sync* on the target application.
+
+=== Exercise: Scale verify-api (Stateless Service)
+
+First, pause ArgoCD auto-sync so your manual changes stick:
+
+[.console-input]
+[source,bash,subs="attributes"]
+----
+oc patch application certchain-central -n openshift-gitops --type=merge \
+  -p '{"spec":{"syncPolicy":{"automated":null}}}'
+----
+
+Now scale verify-api to 3 replicas:
 
 [.console-input]
 [source,bash,subs="attributes"]
@@ -53,7 +66,7 @@ The API and UI services are stateless and scale freely. Scale the `verify-api` t
 oc scale deployment verify-api -n {central_namespace} --replicas=3
 ----
 
-Watch the new pods come up:
+Watch the pods come up:
 
 [.console-input]
 [source,bash,subs="attributes"]
@@ -61,14 +74,16 @@ Watch the new pods come up:
 oc get pods -n {central_namespace} -l app.kubernetes.io/name=verify-api -w
 ----
 
-Press `Ctrl+C` once all 3 pods show `Running`. The OpenShift Service automatically load-balances incoming requests across all replicas.
+Press `Ctrl+C` once all 3 pods show `Running`. Open the *ArgoCD* tab — the `certchain-central` app now shows *OutOfSync* because the live replica count differs from Git.
 
-Scale it back to 1 when done:
+Scale back and re-enable auto-sync:
 
 [.console-input]
 [source,bash,subs="attributes"]
 ----
 oc scale deployment verify-api -n {central_namespace} --replicas=1
+oc patch application certchain-central -n openshift-gitops --type=merge \
+  -p '{"spec":{"syncPolicy":{"automated":{"prune":true,"selfHeal":true}}}}'
 ----
 
 [cols="1,2"]
@@ -88,14 +103,21 @@ oc scale deployment verify-api -n {central_namespace} --replicas=1
 | Deployed as a Kubernetes Deployment — scale replicas for concurrent endorsement execution.
 |===
 
-=== Scaling Peers
+=== Exercise: Scale a Peer
 
-Each organization runs a single peer in this demo. Scale TechPulse to 2 peers:
+Each organization runs a single peer. Pause ArgoCD and scale TechPulse to 2 peers:
 
 [.console-input]
 [source,bash,subs="attributes"]
 ----
-oc scale deployment peer-deployment -n {central_namespace}-techpulse --replicas=2
+oc patch application certchain-techpulse -n openshift-gitops --type=merge \
+  -p '{"spec":{"syncPolicy":{"automated":null}}}'
+----
+
+[.console-input]
+[source,bash,subs="attributes"]
+----
+oc scale deployment peer0 -n {central_namespace}-techpulse --replicas=2
 ----
 
 [.console-input]
@@ -104,28 +126,25 @@ oc scale deployment peer-deployment -n {central_namespace}-techpulse --replicas=
 oc get pods -n {central_namespace}-techpulse -l app.kubernetes.io/name=peer0 -w
 ----
 
-Each peer replica:
+Each peer replica maintains a full copy of the ledger via gossip sync, can independently endorse transactions, and is load-balanced by the Kubernetes Service.
 
-* Maintains a full copy of the ledger via gossip sync
-* Has its own CouchDB sidecar for state queries
-* Can independently endorse transactions and serve read queries
-* Is load-balanced by the Kubernetes Service for incoming gRPC connections
-
-Scale back to 1 when done:
+Scale back and re-enable auto-sync:
 
 [.console-input]
 [source,bash,subs="attributes"]
 ----
-oc scale deployment peer-deployment -n {central_namespace}-techpulse --replicas=1
+oc scale deployment peer0 -n {central_namespace}-techpulse --replicas=1
+oc patch application certchain-techpulse -n openshift-gitops --type=merge \
+  -p '{"spec":{"syncPolicy":{"automated":{"prune":true,"selfHeal":true}}}}'
 ----
 
 === Scaling Orderers
 
-The orderer cluster uses SmartBFT consensus with 4 nodes (tolerating 1 Byzantine fault). You can add orderers to increase fault tolerance:
+The orderer cluster uses SmartBFT consensus with 4 nodes (tolerating 1 Byzantine fault). Adding orderers requires channel configuration updates — it's not a simple replica scale:
 
 [cols="1,1,1"]
 |===
-| Orderers | Faults Tolerated | How to Add
+| Orderers | Faults Tolerated | Notes
 
 | 4 (this demo)
 | 1
@@ -133,37 +152,36 @@ The orderer cluster uses SmartBFT consensus with 4 nodes (tolerating 1 Byzantine
 
 | 7
 | 2
-| Add 3 orderers across orgs, update `configtx.yaml` consenter set
+| Add 3 orderers, update `configtx.yaml` consenter set
 
 | 10
 | 3
 | Add 6 orderers, requires channel config update transaction
 |===
 
-Adding orderers increases *fault tolerance* (more Byzantine faults survived), but does not increase throughput linearly — consensus round-trips grow with the number of nodes.
-
-=== What Does NOT Need Scaling
-
-* *CouchDB* — Paired 1:1 with each peer. Scaling peers automatically creates new CouchDB instances.
-* *Fabric CA* — Only used during enrollment (startup). Not in the transaction path.
-* *Keycloak / Postgres* — Identity layer operates independently from blockchain throughput.
-
 == GitOps-Driven Scaling (ArgoCD)
 
-The previous examples used `oc scale` for quick, imperative changes. In production, you'd make these changes in Git and let ArgoCD sync them. Let's do exactly that.
+The imperative approach above is great for learning. In production, you'd make changes in Git and let ArgoCD sync them — this is the GitOps way.
 
 === Exercise: Scale cert-admin-api via Git Push
+
+Clone the repo from Gitea (if not done yet) and make a Git-driven change:
+
+[.console-input]
+[source,bash,subs="attributes"]
+----
+cd ~/certchain-repo
+----
 
 Edit the cert-admin-api Deployment to scale from 1 to 2 replicas:
 
 [.console-input]
 [source,bash,subs="attributes"]
 ----
-cd ~/certchain-repo
 sed -i 's/replicas: 1/replicas: 2/' helm/components/certchain-org/templates/cert-admin-api/deployment.yaml
 ----
 
-Verify the change looks correct:
+Verify the change:
 
 [.console-input]
 [source,bash,subs="attributes"]
@@ -176,7 +194,6 @@ Commit and push to Gitea:
 [.console-input]
 [source,bash,subs="attributes"]
 ----
-cd ~/certchain-repo
 git add helm/components/certchain-org/templates/cert-admin-api/deployment.yaml
 git commit -m "feat: scale cert-admin-api to 2 replicas"
 git push origin main
@@ -187,16 +204,14 @@ git push origin main
 Gitea credentials: username `gitea`, password `openshift`.
 ====
 
-Now open the *ArgoCD* tab (or click: {argocd_url}[ArgoCD Dashboard^]) and log in with `admin` / `admin`.
-
-What to observe in ArgoCD:
+Now open the *ArgoCD* tab ({argocd_url}[ArgoCD Dashboard^]) and observe:
 
 . Click the **certchain-techpulse** Application tile
 . Within ~3 minutes, ArgoCD detects the Git change and starts syncing
-. The `cert-admin-api` Deployment will show **OutOfSync** → **Syncing** → **Synced**
-. A second `cert-admin-api` pod will appear
+. The `cert-admin-api` Deployment shows **OutOfSync** → **Syncing** → **Synced**
+. A second `cert-admin-api` pod appears
 
-You can also watch from the Terminal:
+Watch from the terminal:
 
 [.console-input]
 [source,bash,subs="attributes"]
@@ -206,10 +221,10 @@ oc get pods -n {central_namespace}-techpulse -l app.kubernetes.io/name=cert-admi
 
 [NOTE]
 ====
-Since the org chart is shared across all 3 organizations, this change also scales cert-admin-api in DataForge and NeuralPath. In a real deployment, you'd use per-org values overrides to control this independently.
+Since the org chart is shared across all 3 organizations, this change scales cert-admin-api in DataForge and NeuralPath too. In a real deployment, you'd use per-org values overrides.
 ====
 
-To revert the change:
+Revert the change:
 
 [.console-input]
 [source,bash,subs="attributes"]

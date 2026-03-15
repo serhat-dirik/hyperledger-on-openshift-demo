@@ -18,3 +18,7 @@ data:
 {{ .Files.Get "scripts/channel-setup.sh" | indent 4 }}
   chaincode-lifecycle.sh: |
 {{ .Files.Get "scripts/chaincode-lifecycle.sh" | indent 4 }}
+  configure-identity-brokering.sh: |
+{{ .Files.Get "scripts/configure-identity-brokering.sh" | indent 4 }}
+  seed-demo-data.sh: |
+{{ .Files.Get "scripts/seed-demo-data.sh" | indent 4 }}

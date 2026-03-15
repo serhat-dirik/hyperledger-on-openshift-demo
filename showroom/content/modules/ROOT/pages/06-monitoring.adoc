@@ -53,31 +53,47 @@ Grafana is configured with *anonymous access* — no login required.
 
 Select *CertChain — Fabric Network* from the dashboard list.
 
-This dashboard provides deep visibility into the Hyperledger Fabric blockchain network:
+Key things to look for:
 
-*Summary Row:*
-
-* *Fabric Version* — The running Fabric version across peers and orderers
-* *Ledger Height* — Current block count on the ledger
-* *Endorsement Success %* — Ratio of successful proposals to total proposals
-* *Proposals Received* — Total endorsement proposals received by peers
-* *BFT Leader* — Current SmartBFT consensus leader
-* *Gossip Peers* — Number of known gossip peers in the network
-
-*Detail Sections:*
-
-* *Endorsement* — Success/failure timeline, proposals rate per peer, endorsement duration p99
-* *Ledger & State DB* — Block commit latency, CouchDB commit and query latency (all p99)
-* *SmartBFT Consensus* — Consensus view table, committed block progress, batch latency, pool sizes
-* *Chaincode & gRPC* — Chaincode execution duration, launch metrics, gRPC stream activity
+* *Ledger Height* — Current block count. All peers and orderers should show the same value.
+* *BFT Leader + Network Nodes table* — Shows which orderer is the current consensus leader. The node mapping table tells you who each node ID belongs to (e.g., node 0 = orderer0 in central, node 1 = orderer in techpulse).
+* *Gossip Peers (per Org)* — Each peer should see 2 remote peers (the other 2 orgs). If any org shows 0, gossip is broken.
+* *Endorsement Success %* — Should be 100% in normal operation. Any failures appear in the timeline chart.
+* *SmartBFT Consensus section* — The Consensus View table shows all orderers agreeing on the same view number and leader.
 
 image::06-grafana-fabric.png[Grafana Fabric Network dashboard showing ledger height endorsement metrics and BFT consensus status]
 
 == Generating Traffic
 
-To see the dashboards come alive with real data, repeat the certificate issuance and verification steps from the previous sections. Each operation generates metrics that appear in the dashboards within 30 seconds.
+The dashboards are more interesting with live data. Run this script to issue and verify certificates rapidly across all three organizations:
 
-[TIP]
-====
-For rapid traffic generation, use the terminal to run `curl` commands from the xref:09-api.adoc[API Walkthrough]. Issue and verify several certificates in quick succession to see endorsement rates, latency distributions, and consensus metrics in real time.
-====
+[.console-input]
+[source,bash,subs="attributes"]
+----
+# Generate traffic across all 3 orgs
+for ORG in techpulse dataforge neuralpath; do
+  KC_URL="https://keycloak-{central_namespace}-$ORG.{openshift_domain}"
+  API_URL="https://cert-admin-api-{central_namespace}-$ORG.{openshift_domain}"
+
+  TOKEN=$(curl -sk -X POST "$KC_URL/realms/$ORG/protocol/openid-connect/token" \
+    -d "grant_type=password" -d "client_id=course-manager-ui" \
+    -d "username=admin@$ORG.demo" -d "password=admin" \
+    | python3 -c "import sys,json; print(json.load(sys.stdin)['access_token'])")
+
+  for i in $(seq 1 5); do
+    CERT_ID="TRAFFIC-$ORG-$(date +%s)-$i"
+    curl -sk -X POST "$API_URL/api/v1/certificates" \
+      -H "Authorization: Bearer $TOKEN" \
+      -H "Content-Type: application/json" \
+      -d "{\"certID\":\"$CERT_ID\",\"studentID\":\"student01@$ORG.demo\",\"studentName\":\"Traffic Test\",\"courseID\":\"LOAD-101\",\"courseName\":\"Load Test\",\"issueDate\":\"2026-03-16\",\"expiryDate\":\"2027-03-16\"}" \
+      -o /dev/null -w "  $ORG cert $i: HTTP %{http_code}\n"
+  done
+done
+echo "Done! Check Grafana — metrics appear within 30 seconds."
+----
+
+After running, switch to the Grafana dashboard and watch:
+
+* *Endorsement Success/Failure* timeline shows a burst of green
+* *Proposals Received Rate* per peer shows spikes across all 3 organizations
+* *SmartBFT Batch Processing Latency* shows the consensus overhead per block

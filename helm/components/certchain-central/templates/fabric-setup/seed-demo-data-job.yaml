@@ -1,0 +1,37 @@
+# Seed Demo Data Job — populates certificates via cert-admin-api
+apiVersion: batch/v1
+kind: Job
+metadata:
+  name: seed-demo-data
+  labels:
+    {{- include "certchain-central.labels" . | nindent 4 }}
+  annotations:
+    argocd.argoproj.io/sync-wave: "13"
+spec:
+  backoffLimit: 3
+  ttlSecondsAfterFinished: 600
+  template:
+    spec:
+      serviceAccountName: fabric-setup
+      restartPolicy: Never
+      containers:
+        - name: seed
+          image: registry.access.redhat.com/ubi9/ubi:latest
+          command: ["/bin/bash", "/scripts/seed-demo-data.sh"]
+          args:
+            - "{{ .Values.global.domain }}"
+          volumeMounts:
+            - name: scripts
+              mountPath: /scripts
+          resources:
+            requests:
+              cpu: 100m
+              memory: 128Mi
+            limits:
+              cpu: 500m
+              memory: 256Mi
+      volumes:
+        - name: scripts
+          configMap:
+            name: fabric-setup-scripts
+            defaultMode: 0755

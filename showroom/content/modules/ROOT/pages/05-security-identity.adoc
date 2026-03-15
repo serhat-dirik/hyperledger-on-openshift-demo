@@ -31,17 +31,18 @@ The demo runs *4 Keycloak instances* — one central broker and one per organiza
 
 The Central Keycloak uses *Organizations* and *Identity Providers (OIDC)* to route authentication to the correct org:
 
-. Central Keycloak defines three organizations: TechPulse, DataForge, NeuralPath
-. Each organization has a corresponding OIDC Identity Provider pointing to the org's Keycloak
-. When a user logs in, Central Keycloak detects the email domain and redirects to the appropriate org Keycloak
+. Central Keycloak has three OIDC Identity Providers: TechPulse, DataForge, NeuralPath
+. Each Identity Provider points to the corresponding org's Keycloak instance
+. When a user clicks *Student Login* on the Cert Portal, Central Keycloak shows org buttons
+. The user clicks their organization and is redirected to that org's Keycloak for authentication
 . The org Keycloak authenticates the user and returns a token through the broker
 
 You can explore this configuration:
 
 . Open Central Keycloak: {central_keycloak_url}[Open^]
 . Log in with `admin` / `admin`
-. Navigate to *Organizations* — you'll see TechPulse, DataForge, NeuralPath
 . Navigate to *Identity Providers* — you'll see the OIDC providers for each org
+. Navigate to *Organizations* — you'll see TechPulse, DataForge, NeuralPath with their email domains
 
 image::05-kc-organizations.png[Keycloak Organizations showing the three CertChain orgs with their email domains]
 

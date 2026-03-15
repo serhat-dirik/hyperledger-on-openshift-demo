@@ -133,15 +133,15 @@ spec:
           "options": { "graphMode": "none", "textMode": "value", "reduceOptions": { "calcs": ["lastNotNull"] }, "colorMode": "value" }
         },
         {
-          "title": "Gossip Peers",
-          "description": "Known peers via gossip protocol (expected: 2 per org in 3-org setup)",
+          "title": "Gossip Peers (per Org)",
+          "description": "Known gossip peers per organization — each peer discovers 2 remote peers in a 3-org network",
           "type": "stat",
           "gridPos": { "h": 3, "w": 4, "x": 20, "y": 0 },
           "targets": [
             {
               "datasource": { "type": "prometheus", "uid": "prometheus" },
-              "expr": "sum(gossip_membership_total_peers_known{job=~\".*peer.*\"})",
-              "legendFormat": "total"
+              "expr": "gossip_membership_total_peers_known{job=~\".*peer.*\"}",
+              "legendFormat": "{{`{{namespace}}`}}"
             }
           ],
           "fieldConfig": {
@@ -151,20 +151,59 @@ spec:
                 "mode": "absolute",
                 "steps": [
                   { "color": "red", "value": null },
-                  { "color": "yellow", "value": 2 },
-                  { "color": "green", "value": 6 }
+                  { "color": "yellow", "value": 1 },
+                  { "color": "green", "value": 2 }
                 ]
               }
             }
           },
-          "options": { "graphMode": "none", "textMode": "value", "reduceOptions": { "calcs": ["lastNotNull"] }, "colorMode": "value" }
+          "options": { "graphMode": "none", "textMode": "auto", "reduceOptions": { "calcs": ["lastNotNull"] }, "colorMode": "value" }
+        },
+        {
+          "title": "Network Nodes",
+          "description": "Orderer pods and their namespaces — node IDs are assigned by consenter order in configtx.yaml (0=orderer0/central, 1=orderer/techpulse, 2=orderer/dataforge, 3=orderer/neuralpath)",
+          "type": "table",
+          "gridPos": { "h": 4, "w": 12, "x": 0, "y": 3 },
+          "targets": [
+            {
+              "datasource": { "type": "prometheus", "uid": "prometheus" },
+              "expr": "consensus_smartbft_cluster_size{job=~\".*orderer.*\"}",
+              "legendFormat": "",
+              "format": "table",
+              "instant": true,
+              "refId": "nodes"
+            }
+          ],
+          "transformations": [
+            {
+              "id": "organize",
+              "options": {
+                "excludeByName": { "Time": true, "__name__": true, "channel": true, "container": true, "endpoint": true, "instance": true, "job": true, "service": true, "Value": true },
+                "renameByName": { "pod": "Orderer Pod", "namespace": "Namespace" },
+                "indexByName": { "namespace": 0, "pod": 1 }
+              }
+            }
+          ],
+          "fieldConfig": {
+            "defaults": { "unit": "short", "decimals": 0 },
+            "overrides": [
+              {
+                "matcher": { "id": "byName", "options": "Orderer Pod" },
+                "properties": [{ "id": "custom.width", "value": 250 }]
+              },
+              {
+                "matcher": { "id": "byName", "options": "Namespace" },
+                "properties": [{ "id": "custom.width", "value": 250 }]
+              }
+            ]
+          }
         },
 
         {
           "title": "Endorsement Success / Failure",
           "description": "Successful (green) vs failed (red) endorsement proposals over time — a healthy network shows green only",
           "type": "timeseries",
-          "gridPos": { "h": 6, "w": 24, "x": 0, "y": 3 },
+          "gridPos": { "h": 6, "w": 12, "x": 12, "y": 3 },
           "targets": [
             {
               "datasource": { "type": "prometheus", "uid": "prometheus" },
