@@ -84,6 +84,15 @@ spec:
       labels:
         app.kubernetes.io/name: gitea
     spec:
+      initContainers:
+        - name: init-config
+          image: {{ .Values.gitea.image }}
+          command: ["sh", "-c", "cp /etc/gitea/app.ini /home/gitea/conf/app.ini"]
+          volumeMounts:
+            - name: gitea-config-src
+              mountPath: /etc/gitea
+            - name: gitea-conf
+              mountPath: /home/gitea/conf
       containers:
         - name: gitea
           image: {{ .Values.gitea.image }}
@@ -95,7 +104,7 @@ spec:
           volumeMounts:
             - name: gitea-data
               mountPath: /home/gitea/data
-            - name: gitea-config
+            - name: gitea-conf
               mountPath: /home/gitea/conf
           resources:
             requests:
@@ -118,9 +127,11 @@ spec:
         - name: gitea-data
           persistentVolumeClaim:
             claimName: gitea-data
-        - name: gitea-config
+        - name: gitea-config-src
           configMap:
             name: gitea-config
+        - name: gitea-conf
+          emptyDir: {}
 
 ---
 # --- Service ---
