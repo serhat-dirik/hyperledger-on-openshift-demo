@@ -38,7 +38,7 @@ echo "  [OK] Logged in as: $(oc whoami)"
 if ! oc get deployment -n openshift-gitops openshift-gitops-server &>/dev/null 2>&1; then
     if ! oc get csv -n openshift-operators 2>/dev/null | grep -q gitops; then
         echo "  [FAIL] OpenShift GitOps not installed."
-        echo "         Install with: make install-argocd"
+        echo "         Install with: ./scripts/install-gitops-operator.sh"
         exit 1
     fi
 fi
@@ -246,8 +246,9 @@ done
 
 echo ""
 echo "  Next steps:"
-echo "    1. make validate          — Run validation + timing report"
-echo "    2. make configure-kc      — Configure identity brokering"
+echo "    1. ./scripts/validate-deployment.sh              — Run validation + timing report"
+echo "    2. ./scripts/configure-identity-brokering.sh   — Configure identity brokering"
+echo "    3. ./scripts/seed-demo-certificates.sh         — Load demo certificates"
 echo ""
 echo "  URLs:"
 echo "    ArgoCD:    https://openshift-gitops-server-${ARGOCD_NS}.${DOMAIN_SUFFIX}"

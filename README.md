@@ -425,10 +425,10 @@ The three training organizations (TechPulse, DataForge, NeuralPath) are configur
 
 ```bash
 ./scripts/configure-identity-brokering.sh    # Cross-org student login
-./scripts/setup-enable-user-workload-monitoring.sh  # Prometheus scraping
-./scripts/setup-grafana-datasource.sh        # Grafana → Thanos connection
 ./scripts/seed-demo-certificates.sh          # 15 sample certificates
 ```
+
+> **Note:** Monitoring (Prometheus ServiceMonitors + Grafana) is deployed automatically by the ArgoCD Helm charts. No manual setup needed.
 
 ### Validation
 
@@ -521,21 +521,18 @@ oc get applications -n openshift-gitops | grep certchain
 
 | Script | Purpose |
 |---|---|
+| `scripts/check-prerequisites.sh` | Pre-flight cluster readiness check (tools, version, permissions, capacity) |
 | `scripts/install.sh` | BYO cluster installer (`--repo-url` or `--gitea`) |
-| `scripts/deploy-to-openshift.sh` | Imperative deploy for local development (7 steps) |
-| `scripts/setup-fabric-channel.sh` | Create Fabric channel, deploy chaincode, run lifecycle (install/approve/commit) |
-| `scripts/setup-central-fabric.sh` | Enroll central Fabric CA identities and generate crypto |
-| `scripts/setup-org-fabric.sh` | Enroll per-org identities (peer, orderer, admin) |
-| `scripts/check-prerequisites.sh` | Verify cluster readiness |
-| `scripts/configure-identity-brokering.sh` | Set up cross-org login via Keycloak |
-| `scripts/seed-demo-certificates.sh` | Issue 15 sample certificates |
-| `scripts/setup-enable-user-workload-monitoring.sh` | Enable OpenShift user workload monitoring |
-| `scripts/setup-grafana-datasource.sh` | Configure Grafana's Prometheus datasource |
-| `scripts/demo-monitoring-walkthrough.sh` | Interactive monitoring demo (7 steps) |
-| `scripts/demo-walkthrough.sh` | Interactive end-to-end demo (7 steps: issue, verify, privacy, revoke) |
-| `scripts/resilience-demo.sh` | Pod self-healing and failover demo |
-| `scripts/test-end-to-end.sh` | Multi-org E2E tests (10 tests: auth, CRUD, cross-org, admin role, ownership privacy) |
-| `scripts/e2e-full-validation.sh` | Automated E2E validation (25+ checks across 4 phases) |
+| `scripts/install-gitops-operator.sh` | Install OpenShift GitOps (ArgoCD) operator |
+| `scripts/deploy-argocd.sh` | Deploy root ArgoCD Application (used by install.sh) |
+| `scripts/validate-deployment.sh` | Validate deployment health across all namespaces |
+| `scripts/configure-identity-brokering.sh` | Set up cross-org student login via Keycloak |
+| `scripts/seed-demo-certificates.sh` | Issue 15 sample certificates across 3 orgs |
+| `scripts/demo-walkthrough.sh` | Interactive end-to-end demo (issue, verify, privacy, revoke) |
+| `scripts/demo-monitoring-walkthrough.sh` | Interactive monitoring demo (Prometheus, Grafana) |
+| `scripts/resilience-demo.sh` | Pod self-healing, multi-org isolation, orderer resilience |
+| `scripts/test-end-to-end.sh` | Multi-org E2E tests (10 tests: auth, CRUD, cross-org, privacy) |
+| `scripts/e2e-full-validation.sh` | Full E2E validation (bootstrap → deploy → test → report) |
 | `scripts/teardown-all.sh` | Remove everything from the cluster |
 
 ## Resource Requirements

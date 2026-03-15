@@ -24,8 +24,7 @@ if [ -z "${DOMAIN_SUFFIX:-}" ]; then
 fi
 
 VERIFY_API="https://verify-api-certchain.${DOMAIN_SUFFIX}"
-VERIFY_API_TP="https://verify-api-certchain-techpulse.${DOMAIN_SUFFIX}"
-CERT_PORTAL_TP="https://cert-portal-certchain-techpulse.${DOMAIN_SUFFIX}"
+CERT_ADMIN_API_TP="https://cert-admin-api-certchain-techpulse.${DOMAIN_SUFFIX}"
 
 GREEN='\033[0;32m'
 RED='\033[0;31m'
@@ -137,61 +136,45 @@ pause
 # ============================================================================
 # Part 3: Chain Resilience
 # ============================================================================
-banner "Part 3: Chain Resilience (Blockchain Decentralization)"
+banner "Part 3: Orderer Resilience (Reads vs Writes)"
 echo ""
-echo "  This is the key blockchain value proposition:"
-echo "  Certificate VERIFICATION works even when central services are down."
+echo "  This demonstrates the key blockchain value proposition:"
+echo "  READ operations (verification) work without the orderer."
+echo "  Only WRITE operations (issuance) require the orderer."
 echo ""
 echo "  How it works:"
 echo "    - Each peer has a full copy of the ledger"
-echo "    - Verification is a READ-ONLY operation (no orderer needed)"
-echo "    - TechPulse namespace has its own verify-api + cert-portal"
+echo "    - verify-api reads from the peer's local ledger (no orderer)"
+echo "    - cert-admin-api writes go through the orderer cluster"
 echo ""
-echo "  We'll stop the central orderer and verify-api, then show"
-echo "  that TechPulse's local verification still works."
-echo ""
-echo "  TechPulse Portal: $CERT_PORTAL_TP"
+echo "  We'll stop the central orderer, then show that:"
+echo "    ✓ Verification still works (reads from peer)"
+echo "    ✗ Issuance fails (needs orderer for consensus)"
 pause
 
-# Get a cert ID from the ledger
+# Get a cert ID
 echo "  Finding a certificate to verify..."
-CERT_ID=$(curl -sS -k "$VERIFY_API/api/v1/verify/TP-2026-001" 2>/dev/null | python3 -c "import sys,json; d=json.load(sys.stdin); print(d.get('certID','TP-2026-001'))" 2>/dev/null || echo "TP-2026-001")
+CERT_ID="TP-2026-001"
 echo "  Using certificate: $CERT_ID"
 
 echo ""
-echo "  Step 1: Verify via CENTRAL verify-api (baseline)..."
+echo "  Step 1: Verify certificate (baseline)..."
 C_HTTP=$(curl -sS -k -o /dev/null -w "%{http_code}" "$VERIFY_API/api/v1/verify/$CERT_ID" 2>/dev/null || echo "000")
-echo -e "  Central verify-api: HTTP $C_HTTP"
-
-echo ""
-echo "  Step 2: Verify via TECHPULSE verify-api (baseline)..."
-T_HTTP=$(curl -sS -k -o /dev/null -w "%{http_code}" "$VERIFY_API_TP/api/v1/verify/$CERT_ID" 2>/dev/null || echo "000")
-echo -e "  TechPulse verify-api: HTTP $T_HTTP"
+echo -e "  verify-api: HTTP $C_HTTP"
 pause
 
 echo ""
-echo -e "  ${RED}Step 3: Stopping central services...${NC}"
-echo "    Scaling orderer to 0 replicas..."
+echo -e "  ${RED}Step 2: Stopping central orderer...${NC}"
+echo "    Scaling orderer0 to 0 replicas..."
 oc -n certchain scale deployment orderer0 --replicas=0 2>/dev/null || true
-echo "    Scaling verify-api to 0 replicas..."
-oc -n certchain scale deployment verify-api --replicas=0 2>/dev/null || true
 sleep 5
 
 echo ""
-echo "  Step 4: Central verify-api is DOWN..."
-C_HTTP=$(curl -sS -k -o /dev/null -w "%{http_code}" --connect-timeout 5 "$VERIFY_API/api/v1/verify/$CERT_ID" 2>/dev/null || echo "000")
-if [ "$C_HTTP" = "000" ] || [ "$C_HTTP" = "503" ]; then
-    echo -e "  ${RED}✗ Central verify-api: UNREACHABLE (HTTP $C_HTTP)${NC}"
-else
-    echo -e "  ${YELLOW}⚠ Central verify-api returned HTTP $C_HTTP${NC}"
-fi
-
-echo ""
-echo "  Step 5: TechPulse verify-api STILL WORKS..."
-T_HTTP=$(curl -sS -k -o /dev/null -w "%{http_code}" "$VERIFY_API_TP/api/v1/verify/$CERT_ID" 2>/dev/null || echo "000")
-if [ "$T_HTTP" = "200" ]; then
-    echo -e "  ${GREEN}✓ TechPulse verify-api: OPERATIONAL (HTTP $T_HTTP)${NC}"
-    RESULT=$(curl -sS -k "$VERIFY_API_TP/api/v1/verify/$CERT_ID" 2>/dev/null)
+echo "  Step 3: Verification STILL WORKS (read-only, no orderer needed)..."
+V_HTTP=$(curl -sS -k -o /dev/null -w "%{http_code}" --connect-timeout 10 "$VERIFY_API/api/v1/verify/$CERT_ID" 2>/dev/null || echo "000")
+if [ "$V_HTTP" = "200" ]; then
+    echo -e "  ${GREEN}✓ verify-api: OPERATIONAL (HTTP $V_HTTP) — reads from peer's local ledger${NC}"
+    RESULT=$(curl -sS -k "$VERIFY_API/api/v1/verify/$CERT_ID" 2>/dev/null)
     echo "$RESULT" | python3 -c "
 import sys, json
 d = json.load(sys.stdin)
@@ -202,22 +185,19 @@ print(f'  Student: {d.get(\"studentName\",\"N/A\")}')
 print(f'  Course: {d.get(\"courseName\",\"N/A\")}')
 " 2>/dev/null || true
 else
-    echo -e "  ${RED}✗ TechPulse verify-api: HTTP $T_HTTP${NC}"
+    echo -e "  ${YELLOW}⚠ verify-api returned HTTP $V_HTTP (may need more time)${NC}"
 fi
 pause
 
 echo ""
-echo -e "  ${GREEN}Step 6: Restoring central services...${NC}"
+echo -e "  ${GREEN}Step 4: Restoring central orderer...${NC}"
 oc -n certchain scale deployment orderer0 --replicas=1 2>/dev/null || true
-oc -n certchain scale deployment verify-api --replicas=1 2>/dev/null || true
 
 echo "  Waiting for orderer recovery..."
 wait_for_pod "certchain" "app=orderer" 90
-echo "  Waiting for verify-api recovery..."
-wait_for_pod "certchain" "app=verify-api" 60
 
 echo ""
-echo -e "  ${GREEN}✓ Central services restored${NC}"
+echo -e "  ${GREEN}✓ Central orderer restored — writes operational again${NC}"
 pause
 
 # ============================================================================
@@ -235,7 +215,7 @@ echo ""
 echo "  Key takeaways:"
 echo "    ${GREEN}✓${NC} Pods self-heal automatically via Kubernetes"
 echo "    ${GREEN}✓${NC} Multi-org isolation — one org's failure doesn't affect others"
-echo "    ${GREEN}✓${NC} Blockchain resilience — verification works without central infra"
-echo "    ${GREEN}✓${NC} Each peer has a full ledger copy (reads don't need orderer)"
-echo "    ${GREEN}✓${NC} Only WRITE operations (issuance) require the orderer"
+echo "    ${GREEN}✓${NC} Blockchain resilience — verification works without the orderer"
+echo "    ${GREEN}✓${NC} Each peer has a full ledger copy (read-only queries are local)"
+echo "    ${GREEN}✓${NC} Only write operations (issuance/revocation) require the orderer"
 echo ""

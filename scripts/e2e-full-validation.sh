@@ -128,27 +128,27 @@ if [ "$CLEAN" = true ]; then
     fi
 
     # ============================================================================
-    # Phase 1: Setup
+    # Phase 1: Bootstrap via ArgoCD
     # ============================================================================
-    banner "Phase 1: Setup & Bootstrap"
+    banner "Phase 1: Bootstrap via ArgoCD"
 
-    echo "  Running setup-all.sh..."
-    if bash "$SCRIPT_DIR/setup-all.sh" 2>&1 | sed 's/^/    /'; then
-        record_pass "setup-all.sh completed"
+    echo "  Running install.sh --gitea..."
+    if bash "$SCRIPT_DIR/install.sh" --gitea 2>&1 | sed 's/^/    /'; then
+        record_pass "Bootstrap installation completed"
     else
-        record_fail "setup-all.sh failed"
+        record_fail "Bootstrap installation failed"
     fi
 
     # ============================================================================
-    # Phase 2: Deploy
+    # Phase 2: Wait for ArgoCD sync
     # ============================================================================
-    banner "Phase 2: Deploy to OpenShift"
+    banner "Phase 2: Validate ArgoCD Deployment"
 
-    echo "  Running deploy-to-openshift.sh..."
-    if bash "$SCRIPT_DIR/deploy-to-openshift.sh" 2>&1 | sed 's/^/    /'; then
-        record_pass "deploy-to-openshift.sh completed"
+    echo "  Running validate-deployment.sh..."
+    if bash "$SCRIPT_DIR/validate-deployment.sh" 2>&1 | sed 's/^/    /'; then
+        record_pass "Deployment validation passed"
     else
-        record_fail "deploy-to-openshift.sh failed"
+        record_fail "Deployment validation failed"
     fi
 
     # ============================================================================
@@ -168,30 +168,23 @@ if [ "$CLEAN" = true ]; then
     fi
 
     # ============================================================================
-    # Phase 4: Enable Monitoring
+    # Phase 4: Verify Monitoring
     # ============================================================================
-    banner "Phase 4: Enable Monitoring"
+    banner "Phase 4: Verify Monitoring"
 
-    if [ -f "$SCRIPT_DIR/setup-enable-user-workload-monitoring.sh" ]; then
-        echo "  Enabling user workload monitoring..."
-        if bash "$SCRIPT_DIR/setup-enable-user-workload-monitoring.sh" 2>&1 | sed 's/^/    /'; then
-            record_pass "User workload monitoring enabled"
-        else
-            record_fail "User workload monitoring setup failed"
-        fi
+    echo "  Checking Grafana operator..."
+    if oc get deployment -n certchain -l app.kubernetes.io/name=grafana-operator &>/dev/null 2>&1; then
+        record_pass "Grafana operator deployed"
     else
-        record_skip "setup-enable-user-workload-monitoring.sh not found"
+        record_skip "Grafana operator not found (deployed by ArgoCD)"
     fi
 
-    if [ -f "$SCRIPT_DIR/setup-grafana-datasource.sh" ]; then
-        echo "  Configuring Grafana datasource..."
-        if bash "$SCRIPT_DIR/setup-grafana-datasource.sh" 2>&1 | sed 's/^/    /'; then
-            record_pass "Grafana datasource configured"
-        else
-            record_fail "Grafana datasource setup failed"
-        fi
+    echo "  Checking ServiceMonitors..."
+    SM_COUNT=$(oc get servicemonitors -n certchain --no-headers 2>/dev/null | wc -l | tr -d ' ')
+    if [ "$SM_COUNT" -gt 0 ]; then
+        record_pass "$SM_COUNT ServiceMonitor(s) found in certchain"
     else
-        record_skip "setup-grafana-datasource.sh not found"
+        record_skip "No ServiceMonitors found yet (ArgoCD may still be syncing)"
     fi
 
     # ============================================================================
