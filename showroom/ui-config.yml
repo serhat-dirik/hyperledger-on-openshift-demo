@@ -1,0 +1,47 @@
+---
+type: showroom
+default_width: 30
+persist_url_state: true
+antora:
+  name: certchain
+  modules:
+    - name: index
+    - name: 01-overview
+    - name: 01a-architecture
+    - name: 01b-production-architecture
+    - name: 02-admin-issue
+    - name: 03-employer-verify
+    - name: 04-student-portal
+    - name: 05-security-identity
+    - name: 06-monitoring
+    - name: 07-scalability
+    - name: 08-resilience
+    - name: 09-api
+    - name: 10-troubleshooting
+
+tabs:
+  - name: Terminal
+    path: /terminal/
+    port: 443
+
+  - name: OCP Console
+    url: 'https://console-openshift-console.${DOMAIN}'
+    external: true
+
+  - name: Git Repository
+    url: 'https://gitea-certchain-showroom.${DOMAIN}'
+
+  - name: ArgoCD
+    url: 'https://openshift-gitops-server-openshift-gitops.${DOMAIN}'
+    external: true
+
+  - name: Cert Portal
+    url: 'https://cert-portal-certchain.${DOMAIN}'
+
+  - name: Course Manager
+    url: 'https://course-manager-ui-certchain-techpulse.${DOMAIN}'
+    external: true
+
+  - name: Grafana
+    url: 'https://certchain-grafana-route-certchain.${DOMAIN}'
+    external: true

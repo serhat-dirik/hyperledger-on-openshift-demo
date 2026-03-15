@@ -52,11 +52,13 @@ data:
         listen 8080;
         absolute_redirect off;
         location / {
-          root /showroom/www;
-          index index.html;
-          try_files $uri $uri/ $uri.html /index.html;
+          proxy_pass http://127.0.0.1:8000;
           expires off;
-          add_header Cache-Control "no-cache, no-store, must-revalidate";
+          proxy_cache off;
+          proxy_pass_request_headers on;
+          proxy_set_header Accept-Encoding "gzip";
+          proxy_set_header X-Forwarded-For $proxy_add_x_forwarded_for;
+          proxy_set_header X-Forwarded-Proto $scheme;
         }
         {{- if .Values.showroom.terminal.enabled }}
         location /terminal/ {
@@ -183,6 +185,7 @@ spec:
             - |
               ln -sf /showroom/repo/showroom/content /showroom/repo/content
               ln -sf /showroom/repo/showroom/site.yml /showroom/repo/site.yml
+              ln -sf /showroom/repo/showroom/ui-config.yml /showroom/repo/ui-config.yml
               echo "Symlinks created"
           volumeMounts:
             - mountPath: /showroom/repo
@@ -229,6 +232,12 @@ spec:
               cd "${DEST}" 2>/dev/null && \
                 git config user.name "Lab User" && \
                 git config user.email "lab-user@local.demo" || true
+              # Add login hint and custom prompt to .bashrc
+              cat >> /home/lab-user/.bashrc << 'BASHEOF'
+              # CertChain Demo — to log in as cluster admin run:
+              #   oc login $(oc whoami --show-server) -u admin -p <password>
+              export PS1='[\u@certchain \W]\$ '
+              BASHEOF
           volumeMounts:
             - name: terminal-lab-user-home
               mountPath: /home/lab-user
@@ -248,17 +257,86 @@ spec:
               name: nginx-cache
             - mountPath: /var/run
               name: nginx-pid
+        - name: content
+          image: {{ .Values.showroom.content.image | quote }}
+          imagePullPolicy: IfNotPresent
+          env:
+            - name: GIT_REPO_URL
+              value: {{ .Values.showroom.content.repoUrl | quote }}
+            - name: GIT_REPO_REF
+              value: {{ .Values.showroom.content.repoRef | quote }}
+            - name: ANTORA_PLAYBOOK
+              value: {{ .Values.showroom.content.antoraPlaybook | quote }}
+            - name: DOMAIN
+              value: {{ .Values.global.domain | quote }}
+            - name: ZT_UI_ENABLED
+              value: "true"
+            - name: ZT_BUNDLE
+              value: {{ .Values.showroom.content.nookbagBundle | quote }}
+            - name: SHOWROOM_UI_CONFIG
+              value: |
+                ---
+                type: showroom
+                default_width: 30
+                persist_url_state: true
+                antora:
+                  name: certchain
+                  modules:
+                    - name: index
+                    - name: 01-overview
+                    - name: 01a-architecture
+                    - name: 01b-production-architecture
+                    - name: 02-admin-issue
+                    - name: 03-employer-verify
+                    - name: 04-student-portal
+                    - name: 05-security-identity
+                    - name: 06-monitoring
+                    - name: 07-scalability
+                    - name: 08-resilience
+                    - name: 09-api
+                    - name: 10-troubleshooting
+                tabs:
+                  - name: Terminal
+                    path: /terminal/
+                    port: 443
+                  - name: OCP Console
+                    url: https://console-openshift-console.{{ .Values.global.domain }}
+                    external: true
+                  {{- if .Values.gitea.enabled }}
+                  - name: Git Repository
+                    url: {{ .Values.gitea.url }}
+                  {{- end }}
+                  - name: ArgoCD
+                    url: https://openshift-gitops-server-openshift-gitops.{{ .Values.global.domain }}
+                    external: true
+                  - name: Cert Portal
+                    url: https://cert-portal-{{ .Values.demo.centralNamespace }}.{{ .Values.global.domain }}
+                  - name: Course Manager
+                    url: https://course-manager-ui-{{ .Values.demo.centralNamespace }}-techpulse.{{ .Values.global.domain }}
+                    external: true
+                  - name: Grafana
+                    url: https://certchain-grafana-route-{{ .Values.demo.centralNamespace }}.{{ .Values.global.domain }}
+                    external: true
+          volumeMounts:
+            - name: user-data
+              mountPath: /user_data/
+            - mountPath: /showroom/repo
+              name: showroom-files
+              subPath: repo
             - mountPath: /showroom/www
               name: showroom-files
               subPath: www
+          ports:
+            - containerPort: 8000
+              protocol: TCP
           livenessProbe:
             httpGet:
               path: /
-              port: 8080
+              port: 8000
           readinessProbe:
             httpGet:
               path: /
-              port: 8080
+              port: 8000
         {{- if .Values.showroom.terminal.enabled }}
         - name: terminal
           image: {{ .Values.showroom.terminal.image | quote }}
