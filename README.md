@@ -394,6 +394,17 @@ Fork this repo to your own GitHub/GitLab, then:
 
 ArgoCD deploys directly from your fork. You can push changes and ArgoCD auto-syncs.
 
+**Customizing org names and namespaces:**
+
+Organization names and the base namespace are defined in `env.sh`:
+
+```bash
+PROJECT_NAMESPACE="certchain"        # Base namespace (orgs become certchain-techpulse, etc.)
+FABRIC_CHANNEL_NAME="certchannel"    # Hyperledger Fabric channel name
+```
+
+The three training organizations (TechPulse, DataForge, NeuralPath) are configured in `helm/bootstrap/values.yaml` under `components`. Each org defines its display name, Fabric MSP ID, and theme color. To rename or add organizations, update both `env.sh` (for imperative scripts) and the bootstrap values (for ArgoCD).
+
 **What the install script does:**
 
 1. Verifies prerequisites (oc login, cluster-admin, OpenShift 4.16+)
@@ -468,11 +479,35 @@ DOMAIN=$(oc get ingresses.config cluster -o jsonpath='{.spec.domain}')
 echo "https://showroom-showroom.${DOMAIN}"
 ```
 
-**Teardown** (removes everything from the cluster):
+---
+
+## Uninstall
+
+To completely remove CertChain from your cluster:
 
 ```bash
 ./scripts/teardown-all.sh
 ```
+
+This script:
+1. Deletes all ArgoCD Applications (`certchain-bootstrap` and children)
+2. Uninstalls Helm releases from all namespaces
+3. Deletes the 4 project namespaces (`certchain`, `certchain-techpulse`, `certchain-dataforge`, `certchain-neuralpath`)
+4. Removes the Showroom namespace
+5. Waits for namespace cleanup to complete
+
+**Verify cleanup:**
+
+```bash
+# All CertChain namespaces should be gone
+oc get projects | grep certchain
+oc get projects | grep showroom
+
+# ArgoCD applications should be gone
+oc get applications -n openshift-gitops | grep certchain
+```
+
+> **Note:** The script does not remove the OpenShift GitOps (ArgoCD) operator — it may be shared with other workloads. To remove it: `oc delete subscription openshift-gitops-operator -n openshift-operators`.
 
 ---
 
@@ -496,19 +531,6 @@ echo "https://showroom-showroom.${DOMAIN}"
 | `scripts/test-end-to-end.sh` | Multi-org E2E tests (10 tests: auth, CRUD, cross-org, admin role, ownership privacy) |
 | `scripts/e2e-full-validation.sh` | Automated E2E validation (25+ checks across 4 phases) |
 | `scripts/teardown-all.sh` | Remove everything from the cluster |
-
----
-
-## Customizing Org Names
-
-Organization names and the base namespace are defined in `env.sh`:
-
-```bash
-PROJECT_NAMESPACE="certchain"        # Base namespace (orgs become certchain-techpulse, etc.)
-FABRIC_CHANNEL_NAME="certchannel"    # Hyperledger Fabric channel name
-```
-
-The three training organizations (TechPulse, DataForge, NeuralPath) are configured in `helm/bootstrap/values.yaml` under `components`. Each org defines its display name, Fabric MSP ID, and theme color. To rename or add organizations, update both `env.sh` (for imperative scripts) and the bootstrap values (for ArgoCD).
 
 ## Resource Requirements
 
