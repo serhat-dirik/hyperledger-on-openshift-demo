@@ -17,7 +17,7 @@ fail() { echo "  [FAIL] $1"; FAIL=$((FAIL + 1)); }
 DOMAIN_SUFFIX=$(oc get ingresses.config/cluster -o jsonpath='{.spec.domain}' 2>/dev/null)
 CENTRAL_NS="$PROJECT_NAMESPACE"
 ARGOCD_NS="openshift-gitops"
-ALL_NS=("$CENTRAL_NS" "${CENTRAL_NS}-techpulse" "${CENTRAL_NS}-dataforge" "${CENTRAL_NS}-neuralpath" "showroom")
+ALL_NS=("$CENTRAL_NS" "${CENTRAL_NS}-techpulse" "${CENTRAL_NS}-dataforge" "${CENTRAL_NS}-neuralpath" "${CENTRAL_NS}-showroom")
 
 echo "=============================================="
 echo " CertChain — Deployment Validation"
@@ -151,7 +151,7 @@ else
 fi
 
 # Showroom
-SHOWROOM_URL="https://showroom-showroom.${DOMAIN_SUFFIX}"
+SHOWROOM_URL="https://showroom-certchain-showroom.${DOMAIN_SUFFIX}"
 HTTP_CODE=$(curl -sk -o /dev/null -w '%{http_code}' "$SHOWROOM_URL" 2>/dev/null || echo "000")
 if [ "$HTTP_CODE" = "200" ]; then
     pass "Showroom ($HTTP_CODE): $SHOWROOM_URL"

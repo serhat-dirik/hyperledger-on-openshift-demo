@@ -136,7 +136,7 @@ spec:
           centralNamespace: {{ .Values.central.namespace }}
   destination:
     server: https://kubernetes.default.svc
-    namespace: {{ .Values.components.showroom.namespace | default "showroom" }}
+    namespace: {{ .Values.components.showroom.namespace | default "certchain-showroom" }}
   syncPolicy:
     automated:
       prune: true

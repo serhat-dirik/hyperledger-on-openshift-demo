@@ -161,7 +161,7 @@ if [[ "$USE_GITEA" == "true" ]]; then
   TARGET_REPO="(Gitea — will be provisioned by bootstrap)"
   echo -e "  Mode: ${GREEN}Gitea (local mirror)${NC}"
   echo -e "  Source: ${SOURCE_REPO}"
-  echo -e "  Gitea will be available at: https://gitea-showroom.${DOMAIN}"
+  echo -e "  Gitea will be available at: https://gitea-certchain-showroom.${DOMAIN}"
 else
   TARGET_REPO="${REPO_URL}"
   echo -e "  Mode: ${GREEN}External repo (your fork)${NC}"
@@ -251,10 +251,10 @@ echo -e "    ArgoCD:    ${GREEN}https://openshift-gitops-server-openshift-gitops
 echo -e "               (admin / admin  or  Log in via OpenShift)"
 echo ""
 echo -e "  After deployment completes:"
-echo -e "    Showroom:  ${GREEN}https://showroom-showroom.${DOMAIN}${NC}"
+echo -e "    Showroom:  ${GREEN}https://showroom-certchain-showroom.${DOMAIN}${NC}"
 echo -e "    Portal:    ${GREEN}https://cert-portal-certchain.${DOMAIN}${NC}"
 if [[ "$USE_GITEA" == "true" ]]; then
-echo -e "    Gitea:     ${GREEN}https://gitea-showroom.${DOMAIN}${NC}"
+echo -e "    Gitea:     ${GREEN}https://gitea-certchain-showroom.${DOMAIN}${NC}"
 echo -e "               (gitea / openshift)"
 fi
 echo ""

@@ -451,7 +451,7 @@ Expected: a JSON object with `"status": "ACTIVE"`.
 | Channel setup job fails | `oc logs job/fabric-channel-setup -n certchain` | Orderers/peers may not be ready. Delete job and re-run. |
 | Chaincode `CORE_CHAINCODE_ID_NAME` error | `oc logs deploy/certcontract -n certchain-techpulse` | Check ConfigMap `chaincode-id`: `oc get cm chaincode-id -n certchain-techpulse` |
 | ArgoCD sync stuck | ArgoCD UI → Application → Sync Status | Terminate operation → delete stuck Job → force refresh |
-| Gitea mirror job failed | `oc logs job/gitea-mirror -n showroom` | Check Gitea pod is running: `oc get pods -n showroom -l app.kubernetes.io/name=gitea` |
+| Gitea mirror job failed | `oc logs job/gitea-mirror -n certchain-showroom` | Check Gitea pod is running: `oc get pods -n certchain-showroom -l app.kubernetes.io/name=gitea` |
 
 ---
 
@@ -476,7 +476,7 @@ Interactive demo walkthroughs are available in the **Showroom** lab guide, which
 
 ```bash
 DOMAIN=$(oc get ingresses.config cluster -o jsonpath='{.spec.domain}')
-echo "https://showroom-showroom.${DOMAIN}"
+echo "https://showroom-certchain-showroom.${DOMAIN}"
 ```
 
 ---
@@ -492,8 +492,7 @@ To completely remove CertChain from your cluster:
 This script:
 1. Deletes all ArgoCD Applications (`certchain-bootstrap` and children)
 2. Uninstalls Helm releases from all namespaces
-3. Deletes the 4 project namespaces (`certchain`, `certchain-techpulse`, `certchain-dataforge`, `certchain-neuralpath`)
-4. Removes the Showroom namespace
+3. Deletes all 5 project namespaces (`certchain`, `certchain-techpulse`, `certchain-dataforge`, `certchain-neuralpath`, `certchain-showroom`)
 5. Waits for namespace cleanup to complete
 
 **Verify cleanup:**
@@ -501,7 +500,6 @@ This script:
 ```bash
 # All CertChain namespaces should be gone
 oc get projects | grep certchain
-oc get projects | grep showroom
 
 # ArgoCD applications should be gone
 oc get applications -n openshift-gitops | grep certchain

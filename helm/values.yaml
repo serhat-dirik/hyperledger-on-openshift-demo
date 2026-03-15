@@ -65,7 +65,7 @@ components:
 
   showroom:
     enabled: true
-    namespace: showroom
+    namespace: certchain-showroom
     content:
       repoUrl: ""    # Defaults to gitops.repoUrl at deploy time
       repoRef: "main"
