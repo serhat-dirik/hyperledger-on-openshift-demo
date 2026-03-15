@@ -19,7 +19,7 @@ sourceRepo:
 gitea:
   enabled: true
   namespace: certchain-showroom
-  image: "quay.io/gpte-devops-automation/gitea:1.21"
+  image: "quay.io/rhpds/gitea:latest"
   adminUser: gitea
   adminPassword: openshift
   orgName: certchain
