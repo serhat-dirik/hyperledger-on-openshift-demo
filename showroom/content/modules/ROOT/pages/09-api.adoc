@@ -20,26 +20,30 @@ echo "Token: ${TOKEN:0:20}..."
 
 == Issue a Certificate
 
-Submit a certificate issuance request to the cert-admin-api:
+Generate a unique certificate ID and submit an issuance request:
 
 [.console-input]
 [source,bash,subs="attributes"]
 ----
+# Generate a unique cert ID using timestamp
+CERT_ID="API-$(date +%s)"
+
 curl -sk -X POST \
   "{techpulse_cert_admin_api_url}/api/v1/certificates" \
   -H "Authorization: Bearer $TOKEN" \
   -H "Content-Type: application/json" \
-  -d '{
-    "certID": "API-TEST-001",
-    "studentID": "student01@techpulse.demo",
-    "studentName": "Jane Doe",
-    "courseID": "FSWD-101",
-    "courseName": "Full-Stack Web Dev",
-    "issueDate": "2026-03-01",
-    "expiryDate": "2028-12-31",
-    "grade": "A",
-    "degree": "Professional Certificate"
-  }' | python3 -m json.tool
+  -d "{
+    \"certID\": \"$CERT_ID\",
+    \"studentID\": \"student01@techpulse.demo\",
+    \"studentName\": \"Jane Doe\",
+    \"courseID\": \"FSWD-101\",
+    \"courseName\": \"Full-Stack Web Dev\",
+    \"issueDate\": \"2026-03-01\",
+    \"expiryDate\": \"2028-12-31\",
+    \"grade\": \"A\",
+    \"degree\": \"Professional Certificate\"
+  }" | python3 -m json.tool
+echo "Issued certificate: $CERT_ID"
 ----
 
 Expected: HTTP 200 with the full certificate JSON including `status: "ACTIVE"`.
@@ -51,7 +55,7 @@ Query the public verify-api — no authentication needed:
 [.console-input]
 [source,bash,subs="attributes"]
 ----
-curl -sk "{verify_api_url}/api/v1/verify/API-TEST-001" | python3 -m json.tool
+curl -sk "{verify_api_url}/api/v1/verify/$CERT_ID" | python3 -m json.tool
 ----
 
 The response includes status, student name, course, organization, and dates — but *not* grade or degree.
@@ -63,7 +67,7 @@ Verify several certificates in a single request:
 [.console-input]
 [source,bash,subs="attributes"]
 ----
-curl -sk "{verify_api_url}/api/v1/verify/batch?ids=API-TEST-001,FAKE-CERT-123" \
+curl -sk "{verify_api_url}/api/v1/verify/batch?ids=$CERT_ID,FAKE-CERT-123" \
   | python3 -m json.tool
 ----
 
@@ -101,7 +105,7 @@ In the browser, students log in via Cert Portal which uses Central Keycloak's id
 [source,bash,subs="attributes"]
 ----
 curl -sk -H "Authorization: Bearer $STUDENT_TOKEN" \
-  "{verify_api_url}/api/v1/transcript/API-TEST-001" | python3 -m json.tool
+  "{verify_api_url}/api/v1/transcript/$CERT_ID" | python3 -m json.tool
 ----
 
 Compare this response to the anonymous verification — grade and degree are now visible.
@@ -140,7 +144,7 @@ Update mutable fields on an existing certificate:
 [source,bash,subs="attributes"]
 ----
 curl -sk -X PUT \
-  "{techpulse_cert_admin_api_url}/api/v1/certificates/API-TEST-001" \
+  "{techpulse_cert_admin_api_url}/api/v1/certificates/$CERT_ID" \
   -H "Authorization: Bearer $TOKEN" \
   -H "Content-Type: application/json" \
   -d '{
@@ -155,7 +159,7 @@ curl -sk -X PUT \
 [source,bash,subs="attributes"]
 ----
 curl -sk -X PUT \
-  "{techpulse_cert_admin_api_url}/api/v1/certificates/API-TEST-001/revoke" \
+  "{techpulse_cert_admin_api_url}/api/v1/certificates/$CERT_ID/revoke" \
   -H "Authorization: Bearer $TOKEN" \
   -H "Content-Type: application/json" \
   -d '{"reason": "Demo revocation test"}' | python3 -m json.tool
@@ -166,7 +170,7 @@ After revocation, re-verify to confirm the status changed:
 [.console-input]
 [source,bash,subs="attributes"]
 ----
-curl -sk "{verify_api_url}/api/v1/verify/API-TEST-001" | python3 -m json.tool
+curl -sk "{verify_api_url}/api/v1/verify/$CERT_ID" | python3 -m json.tool
 ----
 
 Expected: `status: "REVOKED"` with `revokedDate` and `revokedReason` fields.
