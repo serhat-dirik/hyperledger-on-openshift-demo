@@ -27,7 +27,7 @@ image::arch-network-topology.svg[Network Topology,width=100%]
 
 === Technology Stack
 
-image::01-tech-stack.png[Technology Stack,width=70%]
+image::01-tech-stack.png[Technology Stack,width=120%,height=120%]
 
 [cols="1,2"]
 |===

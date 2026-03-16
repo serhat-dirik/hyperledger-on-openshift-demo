@@ -23,7 +23,7 @@ Running a multi-org blockchain network in production demands enterprise-grade in
 * *Prometheus + Grafana* provide built-in monitoring for all Fabric components
 * *BuildConfigs* build chaincode and application images directly on the cluster
 
-image::01-openshift.png[OpenShift,width=80%]
+image::01-openshift.png[OpenShift,width=110%,height=110%]
 
 The result: a complete Hyperledger Fabric network deployed and operational in minutes, not days.
 
@@ -35,7 +35,7 @@ This is a real-world problem for *private course organizations* — professional
 
 == The Solution: Blockchain-Backed Credentials
 
-image::01-credential-fraud.png[Crendential Fraud,width=100%]
+image::01-credential-fraud.png[Crendential Fraud,width=110%,height=110%]
 
 CertChain replaces paper certificates with blockchain-anchored credentials on *Hyperledger Fabric*. Every certificate is a transaction on an immutable distributed ledger — it cannot be altered, backdated, or forged after issuance.
 

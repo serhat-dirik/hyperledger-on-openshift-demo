@@ -60,20 +60,24 @@ TOKEN=$(curl -sk -X POST \
   -d "username=admin@techpulse.demo" \
   -d "password=admin" | python3 -c "import sys,json; print(json.load(sys.stdin)['access_token'])")
 
+# Generate a unique cert ID using timestamp
+CERT_ID="RESIL-$(date +%s)"
+
 # Issue a certificate
 curl -sk -X POST \
   "{techpulse_cert_admin_api_url}/api/v1/certificates" \
   -H "Authorization: Bearer $TOKEN" \
   -H "Content-Type: application/json" \
-  -d '{
-    "certID": "RESIL-TEST-001",
-    "studentID": "student01@techpulse.demo",
-    "studentName": "Resilience Test",
-    "courseID": "TEST-101",
-    "courseName": "BFT Testing",
-    "issueDate": "2026-03-14",
-    "expiryDate": "2027-03-14"
-  }' | python3 -m json.tool
+  -d "{
+    \"certID\": \"$CERT_ID\",
+    \"studentID\": \"student01@techpulse.demo\",
+    \"studentName\": \"Resilience Test\",
+    \"courseID\": \"TEST-101\",
+    \"courseName\": \"BFT Testing\",
+    \"issueDate\": \"2026-03-14\",
+    \"expiryDate\": \"2027-03-14\"
+  }" | python3 -m json.tool
+echo "Issued certificate: $CERT_ID"
 ----
 
 === Step 2: Pause ArgoCD and Scale Down an Orderer
@@ -100,19 +104,23 @@ oc scale deployment orderer -n certchain-dataforge --replicas=0
 [.console-input]
 [source,bash,subs="attributes"]
 ----
+# New unique cert ID — proves transactions work with one orderer down
+CERT_ID2="RESIL-BFT-$(date +%s)"
+
 curl -sk -X POST \
   "{techpulse_cert_admin_api_url}/api/v1/certificates" \
   -H "Authorization: Bearer $TOKEN" \
   -H "Content-Type: application/json" \
-  -d '{
-    "certID": "RESIL-TEST-002",
-    "studentID": "student01@techpulse.demo",
-    "studentName": "Resilience Test 2",
-    "courseID": "TEST-101",
-    "courseName": "BFT Testing",
-    "issueDate": "2026-03-14",
-    "expiryDate": "2027-03-14"
-  }' | python3 -m json.tool
+  -d "{
+    \"certID\": \"$CERT_ID2\",
+    \"studentID\": \"student01@techpulse.demo\",
+    \"studentName\": \"Resilience Test 2\",
+    \"courseID\": \"TEST-101\",
+    \"courseName\": \"BFT Testing\",
+    \"issueDate\": \"2026-03-14\",
+    \"expiryDate\": \"2027-03-14\"
+  }" | python3 -m json.tool
+echo "Issued certificate with orderer down: $CERT_ID2"
 ----
 
 The transaction should *succeed* — 3 out of 4 orderers is sufficient for BFT consensus.
