@@ -176,30 +176,31 @@ Open the *Grafana* dashboard ({grafana_url}[Open^]) during this test — you'll 
 
 == Demo: Peer Recovery
 
-Each organization's peer maintains a full copy of the ledger and the CouchDB state database. This demo proves that when a peer goes down, the blockchain keeps working through other orgs, and the recovered peer syncs missed blocks.
+Each organization's peer maintains a full copy of the ledger and the CouchDB state database. This demo proves that when a peer goes down, the blockchain keeps working through other orgs, and the recovered peer syncs missed blocks automatically via gossip.
 
-=== Step 1: Record current state and take down the peer
+=== Step 1: Record block height and take down the peer
 
-[.console-input]
-[source,bash,subs="attributes"]
-----
-# Record TechPulse cert count before the outage
-echo "=== TechPulse cert count BEFORE peer down ==="
-curl -sk "{techpulse_cert_admin_api_url}/api/v1/dashboard/stats" \
-  -H "Authorization: Bearer $TOKEN" | python3 -m json.tool
-----
-
-Pause ArgoCD and kill the TechPulse peer:
+Record the current ledger height on the TechPulse peer, then take it offline:
 
 [.console-input]
 [source,bash,subs="attributes"]
 ----
+# Record block height BEFORE the outage
+echo "=== TechPulse block height BEFORE peer down ==="
+oc exec deployment/peer0 -n certchain-techpulse -- \
+  peer channel getinfo -c certchannel 2>/dev/null
+
+# Pause ArgoCD auto-sync (it would restore the peer automatically)
 oc patch application certchain-techpulse -n openshift-gitops --type=merge \
   -p '{"spec":{"syncPolicy":{"automated":null}}}'
 
+# Kill the TechPulse peer
 oc scale deployment peer0 -n certchain-techpulse --replicas=0
+echo ""
 echo "TechPulse peer is DOWN"
 ----
+
+Note the `height` value — after recovery, it should be higher.
 
 === Step 2: Issue a certificate through DataForge (while TechPulse is down)
 
@@ -234,7 +235,9 @@ curl -sk -X POST \
 echo "Issued certificate via DataForge: $PEER_TEST_ID"
 ----
 
-=== Step 3: Bring TechPulse peer back and verify sync
+This transaction was endorsed by the DataForge peer and committed to the blockchain — TechPulse's peer missed this block entirely.
+
+=== Step 3: Bring TechPulse peer back and watch it sync
 
 [.console-input]
 [source,bash,subs="attributes"]
@@ -244,32 +247,49 @@ echo "Waiting for peer to start..."
 oc rollout status deployment peer0 -n certchain-techpulse --timeout=60s
 ----
 
-Watch the peer sync missed blocks via gossip:
+Now check the peer logs for block sync activity. The peer will receive missed blocks via the ordering service and commit them:
 
 [.console-input]
 [source,bash,subs="attributes"]
 ----
-oc logs deployment/peer0 -n certchain-techpulse --tail=30 2>/dev/null | grep -i "gossip\|commit.*block\|Committed"
+# Wait for the peer to finish syncing, then show block commit messages
+sleep 5
+echo "=== Peer block sync activity ==="
+oc logs deployment/peer0 -n certchain-techpulse 2>/dev/null \
+  | grep -E "Committed block|Received block|Joining gossip|JoinChan"
 ----
 
-Look for: `Committed block [N]` entries — these are the blocks the peer missed while offline.
+You should see:
 
-=== Step 4: Prove the peer has the new data
+* `Joining gossip network of channel certchannel` — peer rejoined the network
+* `Received block [N] from buffer` — peer received missed blocks
+* `Committed block [N] with X transaction(s)` — peer applied them to its ledger
+
+=== Step 4: Verify block height increased
 
 [.console-input]
 [source,bash,subs="attributes"]
 ----
-# The cert issued through DataForge should now be on ALL peers (including TechPulse)
+echo "=== TechPulse block height AFTER recovery ==="
+oc exec deployment/peer0 -n certchain-techpulse -- \
+  peer channel getinfo -c certchannel 2>/dev/null
+----
+
+The `height` should be higher than the Step 1 value — the peer caught up with blocks committed while it was offline.
+
+=== Step 5: Prove the peer has the new data
+
+The certificate issued through DataForge should now be queryable through TechPulse's peer:
+
+[.console-input]
+[source,bash,subs="attributes"]
+----
+# Verify via the public verify-api (reads from any peer)
 echo "=== Verifying cert issued during TechPulse outage ==="
 curl -sk "{verify_api_url}/api/v1/verify/$PEER_TEST_ID" | python3 -m json.tool
-
-echo ""
-echo "=== TechPulse cert count AFTER recovery ==="
-curl -sk "{techpulse_cert_admin_api_url}/api/v1/dashboard/stats" \
-  -H "Authorization: Bearer $TOKEN" | python3 -m json.tool
 ----
 
-The certificate issued through DataForge is now visible across the entire network — the peer synced the missed block.
+If status is `VALID`, the TechPulse peer successfully synced the block that was committed while it was offline. The certificate issued through DataForge is now visible across the entire network.
 
 Re-enable ArgoCD:
 
