@@ -1,0 +1,6 @@
+# QuantumLeap Academy — org-specific overrides
+org:
+  name: quantumleap
+  displayName: QuantumLeap Academy
+  mspId: QuantumLeapMSP
+  primaryColor: "#2563eb"

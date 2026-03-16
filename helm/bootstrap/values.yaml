@@ -75,3 +75,11 @@ components:
     namespace: certchain-showroom
     terminal:
       enabled: true
+
+  quantumleap:
+    enabled: true
+    org:
+      name: quantumleap
+      displayName: "QuantumLeap Labs"
+      mspId: QuantumLeapMSP
+      primaryColor: "#dc2626"
