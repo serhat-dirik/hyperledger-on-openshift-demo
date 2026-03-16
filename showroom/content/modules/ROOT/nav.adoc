@@ -12,8 +12,8 @@
 ** xref:07-scalability.adoc[Scalability]
 ** xref:08-resilience.adoc[Resilience & Fault Tolerance]
 * Reference
-** xref:12-adding-organizations.adoc[Adding Organizations]
 ** xref:01b-production-architecture.adoc[Production Architecture Guide]
 ** xref:09-api.adoc[API Walkthrough]
 ** xref:10-troubleshooting.adoc[Troubleshooting]
 ** xref:11-reference.adoc[Credentials & URLs]
+** xref:12-adding-organizations.adoc[Adding Organizations]

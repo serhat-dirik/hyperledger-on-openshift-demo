@@ -5,6 +5,25 @@
 Adding a new organization to a running Hyperledger Fabric BFT network is a **multi-phase production operation** that requires genesis block regeneration, orderer restarts, and chaincode lifecycle updates. This guide provides the complete procedure with all commands. **Expect 5-10 minutes of orchestration and ~1-2 minutes of ordering service unavailability** during genesis regeneration.
 ====
 
+[IMPORTANT]
+====
+**Bootstrap App Source Repository** — The bootstrap ArgoCD Application (`certchain-bootstrap`) sources from the **public GitHub repository**, not from Gitea. Changes pushed to Gitea only affect the 5 child Applications (central, 3 orgs, showroom). To add a new org, you must update the bootstrap app's source to point to a repository you control:
+
+[.console-input]
+[source,bash]
+----
+# Option 1: Point bootstrap app to Gitea (recommended for this demo)
+oc patch application certchain-bootstrap -n openshift-gitops --type=merge \
+  -p '{"spec":{"source":{"repoURL":"https://gitea-certchain-showroom.{cluster_domain}/certchain/hyperledger-on-openshift-demo.git"}}}'
+
+# Option 2: Fork the GitHub repo and point bootstrap to your fork
+# oc patch application certchain-bootstrap -n openshift-gitops --type=merge \
+#   -p '{"spec":{"source":{"repoURL":"https://github.com/YOUR-USER/hyperledger-on-openshift-demo.git"}}}'
+----
+
+After this change, pushes to Gitea (or your fork) will trigger ArgoCD to pick up the new org Application definition.
+====
+
 == Architecture Overview
 
 The CertChain demo runs 3 organizations (TechPulse, DataForge, NeuralPath) on a 4-node BFT orderer cluster (1 central + 3 org orderers). Adding a 4th organization ("QuantumLeap") requires:
