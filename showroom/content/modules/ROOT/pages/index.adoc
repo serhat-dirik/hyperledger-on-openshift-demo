@@ -3,7 +3,8 @@
 Welcome to the *CertChain Blockchain Credentialing* demo on Red Hat OpenShift.
 
 This lab guide walks you through a complete blockchain credentialing scenario — from issuing tamper-proof academic certificates on Hyperledger Fabric to verifying them through a public portal, and exploring the platform management capabilities underneath.
-image::00-overview.png[Overview,width=50%]
+
+image::00-overview.png[Overview,width=100%]
 
 == Suggested Demo Paths
 
