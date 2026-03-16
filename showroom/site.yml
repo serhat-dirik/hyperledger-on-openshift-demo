@@ -35,8 +35,20 @@ ui:
         }
     - path: partials/header-content.hbs
       contents: |
-        <div class="header-logo">
-          <a href="https://www.redhat.com" target="_blank" rel="noopener">
-            <img src="{{uiRootPath}}/img/Logo-Red_Hat-A-Reverse-RGB.svg" alt="Red Hat" class="rh-logo" style="height:36px">
-          </a>
-        </div>
+        <header class="header">
+          <nav class="navbar">
+            <div class="navbar-brand">
+              <a class="navbar-item" href="https://www.redhat.com" target="_blank" rel="noopener" style="margin-left: 5%;">
+                <img src="{{uiRootPath}}/img/Logo-Red_Hat-A-Reverse-RGB.svg" alt="Red Hat" style="height:36px">
+              </a>
+              <a class="navbar-item site-title" target="__blank" style="color: #fff !important;" href="{{{or site.url (or siteRootUrl siteRootPath)}}}">{{site.title}}</a>
+            </div>
+            <div id="topbar-nav" class="navbar-menu">
+              <div class="navbar-end">
+                {{#if page.attributes.user}}
+                <div class="navbar-item">You are {{page.attributes.user}}</div>
+                {{/if}}
+              </div>
+            </div>
+          </nav>
+        </header>
