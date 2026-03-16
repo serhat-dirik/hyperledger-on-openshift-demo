@@ -21,6 +21,9 @@ components:
         - name: admin-api
           targetPort: 8080
           exposure: public
+        - name: verify-api
+          targetPort: 8081
+          exposure: public
         - name: course-manager-ui
           targetPort: 5173
           exposure: public
@@ -32,21 +35,21 @@ commands:
   - id: admin-api-build
     exec:
       component: tools
-      commandLine: "cd apps/cert-admin-api && ./mvnw package -DskipTests"
+      commandLine: "cd apps/cert-admin-api && mvn package -DskipTests"
       workingDir: ${PROJECT_SOURCE}
       group:
         kind: build
   - id: admin-api-dev
     exec:
       component: tools
-      commandLine: "cd apps/cert-admin-api && ./mvnw quarkus:dev"
+      commandLine: "cd apps/cert-admin-api && mvn quarkus:dev"
       workingDir: ${PROJECT_SOURCE}
       group:
         kind: run
   - id: admin-api-test
     exec:
       component: tools
-      commandLine: "cd apps/cert-admin-api && ./mvnw test"
+      commandLine: "cd apps/cert-admin-api && mvn test"
       workingDir: ${PROJECT_SOURCE}
       group:
         kind: test
@@ -54,21 +57,21 @@ commands:
   - id: verify-api-build
     exec:
       component: tools
-      commandLine: "cd apps/verify-api && ./mvnw package -DskipTests"
+      commandLine: "cd apps/verify-api && mvn package -DskipTests"
       workingDir: ${PROJECT_SOURCE}
       group:
         kind: build
   - id: verify-api-dev
     exec:
       component: tools
-      commandLine: "cd apps/verify-api && ./mvnw quarkus:dev -Dquarkus.http.port=8081"
+      commandLine: "cd apps/verify-api && mvn quarkus:dev -Dquarkus.http.port=8081"
       workingDir: ${PROJECT_SOURCE}
       group:
         kind: run
   - id: verify-api-test
     exec:
       component: tools
-      commandLine: "cd apps/verify-api && ./mvnw test"
+      commandLine: "cd apps/verify-api && mvn test"
       workingDir: ${PROJECT_SOURCE}
       group:
         kind: test
