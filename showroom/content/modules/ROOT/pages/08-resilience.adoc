@@ -247,44 +247,54 @@ echo "Waiting for peer to start..."
 oc rollout status deployment peer0 -n certchain-techpulse --timeout=60s
 ----
 
-Now check the peer logs for block sync activity. The peer will receive missed blocks via the ordering service and commit them:
+Now wait for the peer to sync and display proof — a polling loop checks for the `Committed block` log entry that confirms the peer caught up:
 
 [.console-input]
 [source,bash,subs="attributes"]
 ----
-# Wait for the peer to finish syncing, then show block commit messages
-sleep 5
-echo "=== Peer block sync activity ==="
-oc logs deployment/peer0 -n certchain-techpulse 2>/dev/null \
-  | grep -E "Committed block|Received block|Joining gossip|JoinChan"
-----
+# Poll until the peer commits the missed block(s)
+echo "Waiting for peer to sync missed blocks..."
+for i in $(seq 1 12); do
+  COMMITTED=$(oc logs deployment/peer0 -n certchain-techpulse 2>/dev/null \
+    | grep "Committed block")
+  if [ -n "$COMMITTED" ]; then
+    echo ""
+    echo "=== Peer block sync proof ==="
+    oc logs deployment/peer0 -n certchain-techpulse 2>/dev/null \
+      | grep -E "Committed block|Received block|Joining gossip"
+    break
+  fi
+  sleep 5
+done
 
-You should see:
-
-* `Joining gossip network of channel certchannel` — peer rejoined the network
-* `Received block [N] from buffer` — peer received missed blocks
-* `Committed block [N] with X transaction(s)` — peer applied them to its ledger
-
-=== Step 4: Verify block height increased
-
-[.console-input]
-[source,bash,subs="attributes"]
-----
-echo "=== TechPulse block height AFTER recovery ==="
+echo ""
+echo "=== Block height AFTER recovery ==="
 oc exec deployment/peer0 -n certchain-techpulse -- \
   peer channel getinfo -c certchannel 2>/dev/null
 ----
 
-The `height` should be higher than the Step 1 value — the peer caught up with blocks committed while it was offline.
+You should see output like:
 
-=== Step 5: Prove the peer has the new data
+[.console-output]
+[source,text]
+----
+Joining gossip network of channel certchannel with 3 organizations   <1>
+Received block [N] from buffer channel=certchannel                   <2>
+Committed block [N] with 1 transaction(s) in 246ms                   <3>
+----
+<1> Peer rejoined the gossip network
+<2> Peer received the missed block from the ordering service
+<3> Peer validated and committed the block to its ledger
+
+Compare the `height` to Step 1 — it should be higher (the peer caught up).
+
+=== Step 4: Prove the peer has the new data
 
 The certificate issued through DataForge should now be queryable through TechPulse's peer:
 
 [.console-input]
 [source,bash,subs="attributes"]
 ----
-# Verify via the public verify-api (reads from any peer)
 echo "=== Verifying cert issued during TechPulse outage ==="
 curl -sk "{verify_api_url}/api/v1/verify/$PEER_TEST_ID" | python3 -m json.tool
 ----
