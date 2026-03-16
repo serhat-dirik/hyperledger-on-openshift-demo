@@ -14,6 +14,7 @@ metadata:
     app.openshift.io/connects-to: '["peer0","keycloak"]'
     app.openshift.io/vcs-uri: {{ .Values.gitops.repoUrl | trimSuffix ".git" }}
     app.openshift.io/vcs-ref: {{ .Values.gitops.revision }}
+    app.openshift.io/vcs-context: /
 spec:
   replicas: 1
   selector:
