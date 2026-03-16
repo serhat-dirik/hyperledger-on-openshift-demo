@@ -125,17 +125,49 @@ echo "Issued certificate with orderer down: $CERT_ID2"
 
 The transaction should *succeed* — 3 out of 4 orderers is sufficient for BFT consensus.
 
-=== Step 4: Restore the Orderer
+=== Step 4: Restore the Orderer and Watch Recovery
 
 [.console-input]
 [source,bash,subs="attributes"]
 ----
 oc scale deployment orderer -n certchain-dataforge --replicas=1
+----
+
+Watch the orderer logs — you'll see it rejoin the BFT cluster and sync missed blocks:
+
+[.console-input]
+[source,bash,subs="attributes"]
+----
+# Wait for the pod to start, then watch SmartBFT recovery
+sleep 5
+oc logs deployment/orderer -n certchain-dataforge 2>/dev/null | grep -i "smartbft\|sequence\|decision\|startView\|commit"
+----
+
+Look for these key log messages:
+
+* `Last proposal with sequence N has been safely committed` — orderer replayed its WAL
+* `Starting view with number 0, sequence N, and decisions M` — orderer rejoined consensus
+* `Changing to follower role, current leader: X` — cluster accepted the returning node
+
+Re-enable ArgoCD:
+
+[.console-input]
+[source,bash,subs="attributes"]
+----
 oc patch application certchain-dataforge -n openshift-gitops --type=merge \
   -p '{"spec":{"syncPolicy":{"automated":{"prune":true,"selfHeal":true}}}}'
 ----
 
-The orderer will catch up automatically through the consensus protocol.
+=== Step 5: Verify the recovered orderer has the new block
+
+[.console-input]
+[source,bash,subs="attributes"]
+----
+# The certificate we issued while the orderer was down should be verifiable
+curl -sk "{verify_api_url}/api/v1/verify/$CERT_ID2" | python3 -m json.tool
+----
+
+If status is `VALID`, the orderer caught up with the block that was committed while it was offline.
 
 [TIP]
 ====
@@ -144,107 +176,100 @@ Open the *Grafana* dashboard ({grafana_url}[Open^]) during this test — you'll 
 
 == Demo: Peer Recovery
 
-Each organization's peer maintains a full copy of the ledger and the CouchDB state database.
+Each organization's peer maintains a full copy of the ledger and the CouchDB state database. This demo proves that when a peer goes down, the blockchain keeps working through other orgs, and the recovered peer syncs missed blocks.
 
-=== Peer Crash and Recovery
+=== Step 1: Record current state and take down the peer
 
-Pause ArgoCD auto-sync and simulate a peer crash:
+[.console-input]
+[source,bash,subs="attributes"]
+----
+# Record TechPulse cert count before the outage
+echo "=== TechPulse cert count BEFORE peer down ==="
+curl -sk "{techpulse_cert_admin_api_url}/api/v1/dashboard/stats" \
+  -H "Authorization: Bearer $TOKEN" | python3 -m json.tool
+----
+
+Pause ArgoCD and kill the TechPulse peer:
 
 [.console-input]
 [source,bash,subs="attributes"]
 ----
 oc patch application certchain-techpulse -n openshift-gitops --type=merge \
   -p '{"spec":{"syncPolicy":{"automated":null}}}'
+
+oc scale deployment peer0 -n certchain-techpulse --replicas=0
+echo "TechPulse peer is DOWN"
 ----
+
+=== Step 2: Issue a certificate through DataForge (while TechPulse is down)
+
+The blockchain doesn't stop — other orgs can still transact:
 
 [.console-input]
 [source,bash,subs="attributes"]
 ----
-# Scale down TechPulse peer
-oc scale deployment peer0 -n certchain-techpulse --replicas=0
+# Get a DataForge token
+DF_TOKEN=$(curl -sk -X POST \
+  "{dataforge_keycloak_url}/realms/dataforge/protocol/openid-connect/token" \
+  -d "grant_type=password" \
+  -d "client_id=course-manager-ui" \
+  -d "username=admin@dataforge.demo" \
+  -d "password=admin" | python3 -c "import sys,json; print(json.load(sys.stdin)['access_token'])")
+
+# Issue a certificate through DataForge while TechPulse peer is offline
+PEER_TEST_ID="PEER-RECOVERY-$(date +%s)"
+curl -sk -X POST \
+  "{dataforge_cert_admin_api_url}/api/v1/certificates" \
+  -H "Authorization: Bearer $DF_TOKEN" \
+  -H "Content-Type: application/json" \
+  -d "{
+    \"certID\": \"$PEER_TEST_ID\",
+    \"studentID\": \"student01@dataforge.demo\",
+    \"studentName\": \"Peer Recovery Test\",
+    \"courseID\": \"DF-101\",
+    \"courseName\": \"DataForge Testing\",
+    \"issueDate\": \"2026-03-14\",
+    \"expiryDate\": \"2027-03-14\"
+  }" | python3 -m json.tool
+echo "Issued certificate via DataForge: $PEER_TEST_ID"
 ----
 
-Wait a few seconds, then bring it back:
+=== Step 3: Bring TechPulse peer back and verify sync
 
 [.console-input]
 [source,bash,subs="attributes"]
 ----
 oc scale deployment peer0 -n certchain-techpulse --replicas=1
+echo "Waiting for peer to start..."
+oc rollout status deployment peer0 -n certchain-techpulse --timeout=60s
 ----
 
-Re-enable ArgoCD auto-sync:
+Watch the peer sync missed blocks via gossip:
 
 [.console-input]
 [source,bash,subs="attributes"]
 ----
-oc patch application certchain-techpulse -n openshift-gitops --type=merge \
-  -p '{"spec":{"syncPolicy":{"automated":{"prune":true,"selfHeal":true}}}}'
+oc logs deployment/peer0 -n certchain-techpulse --tail=30 2>/dev/null | grep -i "gossip\|commit.*block\|Committed"
 ----
 
-When the peer comes back:
+Look for: `Committed block [N]` entries — these are the blocks the peer missed while offline.
 
-* It re-syncs any missed blocks from other peers via gossip
-* CouchDB state is rebuilt from the ledger if needed
-* The peer becomes available for endorsement and queries again
-
-During the outage, *verifications through other orgs' peers still work* — the `verify-api` connects to TechPulse's peer by default, but the blockchain data exists on all peers.
-
-== Demo: CouchDB State Rebuild
-
-CouchDB is the *state database* — a queryable view of the latest ledger state. If CouchDB data is corrupted, it can be rebuilt from the blockchain.
-
-=== Step 1: Record current state
+=== Step 4: Prove the peer has the new data
 
 [.console-input]
 [source,bash,subs="attributes"]
 ----
-# Check current certificate count
+# The cert issued through DataForge should now be on ALL peers (including TechPulse)
+echo "=== Verifying cert issued during TechPulse outage ==="
+curl -sk "{verify_api_url}/api/v1/verify/$PEER_TEST_ID" | python3 -m json.tool
+
+echo ""
+echo "=== TechPulse cert count AFTER recovery ==="
 curl -sk "{techpulse_cert_admin_api_url}/api/v1/dashboard/stats" \
   -H "Authorization: Bearer $TOKEN" | python3 -m json.tool
 ----
 
-=== Step 2: Restart CouchDB to simulate recovery
-
-[.console-input]
-[source,bash,subs="attributes"]
-----
-oc patch application certchain-techpulse -n openshift-gitops --type=merge \
-  -p '{"spec":{"syncPolicy":{"automated":null}}}'
-----
-
-[.console-input]
-[source,bash,subs="attributes"]
-----
-# Restart CouchDB — peer detects state mismatch and rebuilds
-oc rollout restart deployment couchdb -n certchain-techpulse
-----
-
-Watch the recovery:
-
-[.console-input]
-[source,bash,subs="attributes"]
-----
-oc logs deployment/peer0 -n certchain-techpulse --tail=20 -f
-----
-
-Look for log entries showing state reconciliation. Press `Ctrl+C` when done.
-
-=== Step 3: Verify state is intact
-
-[.console-input]
-[source,bash,subs="attributes"]
-----
-# Re-check — same certificate count proves state was rebuilt
-curl -sk "{techpulse_cert_admin_api_url}/api/v1/dashboard/stats" \
-  -H "Authorization: Bearer $TOKEN" | python3 -m json.tool
-----
-
-[.console-input]
-[source,bash,subs="attributes"]
-----
-# Verify a specific certificate still works
-curl -sk "{verify_api_url}/api/v1/verify/TP-FSWD-001" | python3 -m json.tool
-----
+The certificate issued through DataForge is now visible across the entire network — the peer synced the missed block.
 
 Re-enable ArgoCD:
 
@@ -255,7 +280,136 @@ oc patch application certchain-techpulse -n openshift-gitops --type=merge \
   -p '{"spec":{"syncPolicy":{"automated":{"prune":true,"selfHeal":true}}}}'
 ----
 
-This proves that the *blockchain is the source of truth*, and CouchDB is a queryable index that can be rebuilt.
+== Demo: CouchDB State Rebuild
+
+CouchDB is the *state database* — a queryable view of the latest ledger state. The blockchain (ledger) is the *source of truth*; CouchDB is just an index built from it. This demo proves that by *deleting the state database* and watching the peer rebuild it automatically.
+
+=== Step 1: Record current state
+
+First, get a fresh token and record what TechPulse knows:
+
+[.console-input]
+[source,bash,subs="attributes"]
+----
+# Refresh token (may have expired from earlier demos)
+TOKEN=$(curl -sk -X POST \
+  "{techpulse_keycloak_url}/realms/techpulse/protocol/openid-connect/token" \
+  -d "grant_type=password" \
+  -d "client_id=course-manager-ui" \
+  -d "username=admin@techpulse.demo" \
+  -d "password=admin" | python3 -c "import sys,json; print(json.load(sys.stdin)['access_token'])")
+
+echo "=== BEFORE: TechPulse certificate stats ==="
+curl -sk "{techpulse_cert_admin_api_url}/api/v1/dashboard/stats" \
+  -H "Authorization: Bearer $TOKEN" | python3 -m json.tool
+
+echo ""
+echo "=== BEFORE: CouchDB certcontract database ==="
+oc exec deployment/couchdb -n certchain-techpulse -- \
+  curl -s -u admin:adminpw http://localhost:5984/certchannel_certcontract 2>/dev/null \
+  | python3 -c "import sys,json; d=json.load(sys.stdin); print(f'doc_count: {d[\"doc_count\"]}')"
+----
+
+=== Step 2: Delete the CouchDB state database
+
+This simulates data corruption — we drop the chaincode state database entirely:
+
+[.console-input]
+[source,bash,subs="attributes"]
+----
+oc patch application certchain-techpulse -n openshift-gitops --type=merge \
+  -p '{"spec":{"syncPolicy":{"automated":null}}}'
+----
+
+[.console-input]
+[source,bash,subs="attributes"]
+----
+# Delete the certcontract state database from CouchDB
+oc exec deployment/couchdb -n certchain-techpulse -- \
+  curl -s -u admin:adminpw -X DELETE http://localhost:5984/certchannel_certcontract
+echo ""
+
+# Verify it's gone
+echo "=== State database deleted ==="
+oc exec deployment/couchdb -n certchain-techpulse -- \
+  curl -s -u admin:adminpw http://localhost:5984/certchannel_certcontract 2>/dev/null
+----
+
+You should see `{"error":"not_found","reason":"Database does not exist."}`.
+
+=== Step 3: Queries now fail (state is gone)
+
+[.console-input]
+[source,bash,subs="attributes"]
+----
+echo "=== Querying TechPulse API with deleted state DB ==="
+curl -sk "{techpulse_cert_admin_api_url}/api/v1/dashboard/stats" \
+  -H "Authorization: Bearer $TOKEN" 2>/dev/null | python3 -m json.tool || echo "API returned an error (expected)"
+----
+
+The API should fail or return zero counts — the state database is gone.
+
+=== Step 4: Restart the peer to trigger rebuild
+
+The peer rebuilds the CouchDB state by replaying every block from the ledger:
+
+[.console-input]
+[source,bash,subs="attributes"]
+----
+# Restart the peer — it will detect the missing state DB and rebuild
+oc rollout restart deployment peer0 -n certchain-techpulse
+echo "Waiting for peer to restart..."
+oc rollout status deployment peer0 -n certchain-techpulse --timeout=90s
+----
+
+Watch the rebuild in the peer logs:
+
+[.console-input]
+[source,bash,subs="attributes"]
+----
+# Give the peer a few seconds to rebuild, then check logs
+sleep 10
+oc logs deployment/peer0 -n certchain-techpulse --tail=40 2>/dev/null \
+  | grep -i "commit\|couchdb\|state\|rebuild\|block"
+----
+
+Look for `Committed block [N]` messages — the peer is replaying blocks from the ledger into a fresh CouchDB state database.
+
+=== Step 5: Verify full state recovery
+
+[.console-input]
+[source,bash,subs="attributes"]
+----
+echo "=== AFTER: CouchDB certcontract database ==="
+oc exec deployment/couchdb -n certchain-techpulse -- \
+  curl -s -u admin:adminpw http://localhost:5984/certchannel_certcontract 2>/dev/null \
+  | python3 -c "import sys,json; d=json.load(sys.stdin); print(f'doc_count: {d[\"doc_count\"]}')"
+
+echo ""
+echo "=== AFTER: TechPulse certificate stats ==="
+curl -sk "{techpulse_cert_admin_api_url}/api/v1/dashboard/stats" \
+  -H "Authorization: Bearer $TOKEN" | python3 -m json.tool
+
+echo ""
+echo "=== Verify a specific certificate ==="
+curl -sk "{verify_api_url}/api/v1/verify/TP-FSWD-001" | python3 -m json.tool
+----
+
+The doc count and certificate stats should match the *BEFORE* values exactly — the peer rebuilt the entire state from the blockchain ledger.
+
+Re-enable ArgoCD:
+
+[.console-input]
+[source,bash,subs="attributes"]
+----
+oc patch application certchain-techpulse -n openshift-gitops --type=merge \
+  -p '{"spec":{"syncPolicy":{"automated":{"prune":true,"selfHeal":true}}}}'
+----
+
+[IMPORTANT]
+====
+This is a key architectural principle: the blockchain ledger is the *immutable source of truth*. CouchDB (or any state database) is a *derived view* that can be reconstructed at any time by replaying the ledger. This is why Fabric doesn't need traditional database backups — the ledger _is_ the backup.
+====
 
 == Production Considerations
 
