@@ -302,44 +302,44 @@ oc patch application certchain-techpulse -n openshift-gitops --type=merge \
 
 == Demo: CouchDB State Rebuild
 
-CouchDB is the *state database* — a queryable view of the latest ledger state. The blockchain (ledger) is the *source of truth*; CouchDB is just an index built from it. This demo proves that by *deleting the state database* and watching the peer rebuild it automatically.
+CouchDB is the *state database* — a queryable view of the latest ledger state. The blockchain (ledger) is the *source of truth*; CouchDB is just an index built from it.
+
+This demo proves that by *completely destroying the state databases* and using Fabric's `peer node rebuild-dbs` command to reconstruct them from the immutable ledger.
 
 === Step 1: Record current state
 
-First, get a fresh token and record what TechPulse knows:
+Record the CouchDB document count before we destroy it:
 
 [.console-input]
 [source,bash,subs="attributes"]
 ----
-# Refresh token (may have expired from earlier demos)
-TOKEN=$(curl -sk -X POST \
-  "{techpulse_keycloak_url}/realms/techpulse/protocol/openid-connect/token" \
-  -d "grant_type=password" \
-  -d "client_id=course-manager-ui" \
-  -d "username=admin@techpulse.demo" \
-  -d "password=admin" | python3 -c "import sys,json; print(json.load(sys.stdin)['access_token'])")
-
-echo "=== BEFORE: TechPulse certificate stats ==="
-curl -sk "{techpulse_cert_admin_api_url}/api/v1/dashboard/stats" \
-  -H "Authorization: Bearer $TOKEN" | python3 -m json.tool
-
-echo ""
 echo "=== BEFORE: CouchDB certcontract database ==="
 oc exec deployment/couchdb -n certchain-techpulse -- \
   curl -s -u admin:adminpw http://localhost:5984/certchannel_certcontract 2>/dev/null \
   | python3 -c "import sys,json; d=json.load(sys.stdin); print(f'doc_count: {d[\"doc_count\"]}')"
+
+echo ""
+echo "=== BEFORE: Verify a known certificate ==="
+curl -sk "{verify_api_url}/api/v1/verify/TP-FSWD-001" | python3 -m json.tool
 ----
 
-=== Step 2: Delete the CouchDB state database
+Note the `doc_count` — after the rebuild it should match exactly.
 
-This simulates data corruption — we drop the chaincode state database entirely:
+=== Step 2: Pause ArgoCD and scale down the peer
 
 [.console-input]
 [source,bash,subs="attributes"]
 ----
 oc patch application certchain-techpulse -n openshift-gitops --type=merge \
   -p '{"spec":{"syncPolicy":{"automated":null}}}'
+
+oc scale deployment peer0 -n certchain-techpulse --replicas=0
+echo "Peer is DOWN"
 ----
+
+=== Step 3: Delete the CouchDB state database
+
+With the peer stopped, we simulate catastrophic data corruption by dropping the chaincode state database entirely:
 
 [.console-input]
 [source,bash,subs="attributes"]
@@ -357,45 +357,53 @@ oc exec deployment/couchdb -n certchain-techpulse -- \
 
 You should see `{"error":"not_found","reason":"Database does not exist."}`.
 
-=== Step 3: Queries now fail (state is gone)
+=== Step 4: Run rebuild-dbs to mark state for reconstruction
+
+Fabric provides `peer node rebuild-dbs` — it marks all state databases for reconstruction. On next startup, the peer will replay every block from the ledger into fresh CouchDB databases.
+
+The command must run while the peer is *stopped*. We use `oc debug` to create a temporary pod with the peer's volumes mounted:
 
 [.console-input]
 [source,bash,subs="attributes"]
 ----
-echo "=== Querying TechPulse API with deleted state DB ==="
-curl -sk "{techpulse_cert_admin_api_url}/api/v1/dashboard/stats" \
-  -H "Authorization: Bearer $TOKEN" 2>/dev/null | python3 -m json.tool || echo "API returned an error (expected)"
+oc debug deployment/peer0 -n certchain-techpulse -- peer node rebuild-dbs
 ----
 
-The API should fail or return zero counts — the state database is gone.
+You should see:
 
-=== Step 4: Restart the peer to trigger rebuild
+* `Dropping CouchDB application databases` — clears all remaining state DBs
+* `Dropping all contents in StateLevelDB` — clears internal state indexes
+* `DeleteBlockStoreIndex` — clears block index (will be rebuilt too)
 
-The peer rebuilds the CouchDB state by replaying every block from the ledger:
+=== Step 5: Start the peer and watch it rebuild
 
 [.console-input]
 [source,bash,subs="attributes"]
 ----
-# Restart the peer — it will detect the missing state DB and rebuild
-oc rollout restart deployment peer0 -n certchain-techpulse
-echo "Waiting for peer to restart..."
+oc scale deployment peer0 -n certchain-techpulse --replicas=1
+echo "Waiting for peer to start..."
 oc rollout status deployment peer0 -n certchain-techpulse --timeout=90s
 ----
 
-Watch the rebuild in the peer logs:
+Watch the rebuild — the peer recreates every CouchDB database and replays blocks:
 
 [.console-input]
 [source,bash,subs="attributes"]
 ----
-# Give the peer a few seconds to rebuild, then check logs
 sleep 10
-oc logs deployment/peer0 -n certchain-techpulse --tail=40 2>/dev/null \
-  | grep -i "commit\|couchdb\|state\|rebuild\|block"
+echo "=== Peer rebuild activity ==="
+oc logs deployment/peer0 -n certchain-techpulse 2>/dev/null \
+  | grep -E "Created state database|syncIndex|Committed block|Opened ledger"
 ----
 
-Look for `Committed block [N]` messages — the peer is replaying blocks from the ledger into a fresh CouchDB state database.
+You should see:
 
-=== Step 5: Verify full state recovery
+* `Finished building index. Last block indexed [N]` — block index rebuilt from ledger files
+* `Created state database certchannel_certcontract` — CouchDB database recreated
+* `Created state database certchannel_` — system state databases recreated
+* `Opened ledger with id = certchannel` — peer is back online
+
+=== Step 6: Verify full state recovery
 
 [.console-input]
 [source,bash,subs="attributes"]
@@ -406,16 +414,11 @@ oc exec deployment/couchdb -n certchain-techpulse -- \
   | python3 -c "import sys,json; d=json.load(sys.stdin); print(f'doc_count: {d[\"doc_count\"]}')"
 
 echo ""
-echo "=== AFTER: TechPulse certificate stats ==="
-curl -sk "{techpulse_cert_admin_api_url}/api/v1/dashboard/stats" \
-  -H "Authorization: Bearer $TOKEN" | python3 -m json.tool
-
-echo ""
-echo "=== Verify a specific certificate ==="
+echo "=== AFTER: Verify the same certificate ==="
 curl -sk "{verify_api_url}/api/v1/verify/TP-FSWD-001" | python3 -m json.tool
 ----
 
-The doc count and certificate stats should match the *BEFORE* values exactly — the peer rebuilt the entire state from the blockchain ledger.
+The `doc_count` should match the *BEFORE* value exactly, and the certificate should show `status: "VALID"` — the peer rebuilt the entire state from the blockchain ledger.
 
 Re-enable ArgoCD:
 
@@ -428,7 +431,7 @@ oc patch application certchain-techpulse -n openshift-gitops --type=merge \
 
 [IMPORTANT]
 ====
-This is a key architectural principle: the blockchain ledger is the *immutable source of truth*. CouchDB (or any state database) is a *derived view* that can be reconstructed at any time by replaying the ledger. This is why Fabric doesn't need traditional database backups — the ledger _is_ the backup.
+This is a key architectural principle: the blockchain ledger is the *immutable source of truth*. CouchDB (or any state database) is a *derived view* that can be reconstructed at any time by replaying the ledger using `peer node rebuild-dbs`. This is why Fabric doesn't need traditional database backups — the ledger _is_ the backup.
 ====
 
 == Production Considerations
