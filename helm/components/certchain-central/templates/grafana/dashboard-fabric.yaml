@@ -64,32 +64,24 @@ spec:
           "options": { "graphMode": "area", "textMode": "value", "reduceOptions": { "calcs": ["lastNotNull"] } }
         },
         {
-          "title": "Endorsement Success %",
-          "description": "Percentage of proposals successfully endorsed",
+          "title": "Successful Endorsements",
+          "description": "Total successfully endorsed proposals across all peers",
           "type": "stat",
           "gridPos": { "h": 3, "w": 4, "x": 8, "y": 0 },
           "targets": [
             {
               "datasource": { "type": "prometheus", "uid": "prometheus" },
-              "expr": "sum(endorser_successful_proposals{job=~\".*peer.*\"}) / sum(endorser_proposals_received{job=~\".*peer.*\"}) * 100",
-              "legendFormat": ""
+              "expr": "sum(endorser_successful_proposals{job=~\".*peer.*\"})",
+              "legendFormat": "successful"
             }
           ],
           "fieldConfig": {
             "defaults": {
-              "unit": "percent",
-              "decimals": 1,
-              "thresholds": {
-                "mode": "absolute",
-                "steps": [
-                  { "color": "red", "value": null },
-                  { "color": "yellow", "value": 90 },
-                  { "color": "green", "value": 99 }
-                ]
-              }
+              "unit": "short",
+              "color": { "mode": "fixed", "fixedColor": "green" }
             }
           },
-          "options": { "graphMode": "area", "textMode": "value", "reduceOptions": { "calcs": ["lastNotNull"] }, "colorMode": "value" }
+          "options": { "graphMode": "area", "textMode": "value", "reduceOptions": { "calcs": ["lastNotNull"] } }
         },
         {
           "title": "Proposals Received",
@@ -167,7 +159,7 @@ spec:
           "targets": [
             {
               "datasource": { "type": "prometheus", "uid": "prometheus" },
-              "expr": "consensus_smartbft_cluster_size{job=~\".*orderer.*\"}",
+              "expr": "consensus_BFT_cluster_size{job=~\".*orderer.*\"}",
               "legendFormat": "",
               "format": "table",
               "instant": true,
@@ -200,30 +192,30 @@ spec:
         },
 
         {
-          "title": "Endorsement Success / Failure",
-          "description": "Successful (green) vs failed (red) endorsement proposals over time — a healthy network shows green only",
+          "title": "Endorsements: Success vs Failure",
+          "description": "Cumulative count of successful (green) vs failed (red) endorsement proposals — a healthy network shows green growing and red flat",
           "type": "timeseries",
           "gridPos": { "h": 6, "w": 12, "x": 12, "y": 3 },
           "targets": [
             {
               "datasource": { "type": "prometheus", "uid": "prometheus" },
-              "expr": "sum(rate(endorser_successful_proposals{job=~\".*peer.*\"}[5m]))",
+              "expr": "sum(endorser_successful_proposals{job=~\".*peer.*\"})",
               "legendFormat": "Successful"
             },
             {
               "datasource": { "type": "prometheus", "uid": "prometheus" },
-              "expr": "sum(rate(endorser_endorsement_failures{job=~\".*peer.*\"}[5m]))",
+              "expr": "sum(endorser_endorsement_failures{job=~\".*peer.*\"})",
               "legendFormat": "Failed"
             },
             {
               "datasource": { "type": "prometheus", "uid": "prometheus" },
-              "expr": "sum(rate(endorser_proposal_acl_failures{job=~\".*peer.*\"}[5m]))",
+              "expr": "sum(endorser_proposal_acl_failures{job=~\".*peer.*\"})",
               "legendFormat": "ACL Rejected"
             }
           ],
           "fieldConfig": {
             "defaults": {
-              "unit": "ops",
+              "unit": "short",
               "custom": { "drawStyle": "line", "fillOpacity": 20, "lineWidth": 2, "stacking": { "mode": "none" } }
             },
             "overrides": [

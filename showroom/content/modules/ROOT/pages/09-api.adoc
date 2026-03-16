@@ -71,15 +71,15 @@ Each certificate returns its own status — VALID, REVOKED, or NOT_FOUND.
 
 == View Student Transcript (Authenticated)
 
-Get a student token and query the transcript endpoint:
+Get a student token from the org Keycloak and query the transcript endpoint:
 
 [.console-input]
 [source,bash,subs="attributes"]
 ----
 STUDENT_TOKEN=$(curl -sk -X POST \
-  "{central_keycloak_url}/realms/certchain/protocol/openid-connect/token" \
+  "{techpulse_keycloak_url}/realms/techpulse/protocol/openid-connect/token" \
   -d "grant_type=password" \
-  -d "client_id=cert-portal" \
+  -d "client_id=course-manager-ui" \
   -d "username=student01@techpulse.demo" \
   -d "password=student" | python3 -c "import sys,json; print(json.load(sys.stdin)['access_token'])")
 
@@ -89,6 +89,11 @@ curl -sk -H "Authorization: Bearer $STUDENT_TOKEN" \
 ----
 
 The transcript response includes *all certificates issued to this student's email* — with grade and degree visible on the student's own certificates.
+
+[NOTE]
+====
+In the browser, students log in via Cert Portal which uses Central Keycloak's identity brokering. For API testing, we use the org Keycloak directly.
+====
 
 == View a Single Certificate as Student
 

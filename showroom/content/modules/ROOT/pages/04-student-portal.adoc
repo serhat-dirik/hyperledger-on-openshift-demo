@@ -17,6 +17,8 @@ Notice the *Student Login* button in the top-right corner.
 . Click *Student Login*.
 . You are redirected to the *Central Keycloak* login page.
 . You'll see buttons for each organization: *TechPulse Academy*, *DataForge Institute*, *NeuralPath Labs*.
++
+image::04-portal-student-login.png[Student Login,width=50%,align=center]
 . Click *TechPulse Academy* to log in as a TechPulse student.
 . You are redirected to the *TechPulse Keycloak*. Enter credentials: `student01@techpulse.demo` / `student`
 . After successful login, you are returned to the Cert Portal — now authenticated.

@@ -1,0 +1,147 @@
+= Adding a New Organization
+
+The App-of-Apps Helm structure makes adding a 4th (or 5th, 6th...) organization straightforward. Each org is a parameterized instance of the same `certchain-org` Helm chart.
+
+== Architecture: How Orgs Are Created
+
+The bootstrap chart at `helm/bootstrap/templates/applications.yaml` contains a loop that generates one ArgoCD Application per organization:
+
+[source,yaml]
+----
+{{- $orgs := list "techpulse" "dataforge" "neuralpath" }}
+{{- range $orgKey := $orgs }}
+  # Creates: certchain-techpulse, certchain-dataforge, certchain-neuralpath
+{{- end }}
+----
+
+Each org's config lives in `helm/bootstrap/values.yaml`:
+
+[source,yaml]
+----
+components:
+  techpulse:
+    enabled: true
+    org:
+      name: techpulse
+      displayName: TechPulse Academy
+      mspId: TechPulseMSP
+      primaryColor: "#2563eb"
+----
+
+== Exercise: Add "QuantumLeap" Organization
+
+This exercise walks through the Git changes needed to add a 4th organization. Run these commands from the *Terminal* tab.
+
+=== Step 1: Clone the repo (if not done yet)
+
+[.console-input]
+[source,bash,subs="attributes"]
+----
+cd ~ && [ -d certchain-repo ] || git clone {gitea_url}/certchain/hyperledger-on-openshift-demo.git certchain-repo
+cd ~/certchain-repo
+git config user.name "Lab User"
+git config user.email "lab-user@local.demo"
+----
+
+=== Step 2: Add org config to bootstrap values
+
+[.console-input]
+[source,bash]
+----
+cd ~/certchain-repo
+
+# Add quantumleap org config to bootstrap values
+cat >> helm/bootstrap/values.yaml << 'ORGEOF'
+
+  quantumleap:
+    enabled: true
+    org:
+      name: quantumleap
+      displayName: "QuantumLeap Labs"
+      mspId: QuantumLeapMSP
+      primaryColor: "#dc2626"
+ORGEOF
+
+echo "Added quantumleap config to bootstrap values:"
+grep -A5 "quantumleap:" helm/bootstrap/values.yaml
+----
+
+=== Step 3: Add org to the application loop
+
+[.console-input]
+[source,bash]
+----
+cd ~/certchain-repo
+
+# Add quantumleap to the org list in the bootstrap applications template
+sed -i 's/list "techpulse" "dataforge" "neuralpath"/list "techpulse" "dataforge" "neuralpath" "quantumleap"/' \
+  helm/bootstrap/templates/applications.yaml
+
+echo "Updated org list:"
+grep '$orgs' helm/bootstrap/templates/applications.yaml
+----
+
+=== Step 4: Create org values override
+
+[.console-input]
+[source,bash]
+----
+cd ~/certchain-repo
+
+# Copy an existing org's values as a template
+cp helm/components/certchain-org/values-techpulse.yaml \
+   helm/components/certchain-org/values-quantumleap.yaml
+
+# Update the values for the new org
+sed -i 's/techpulse/quantumleap/g; s/TechPulse/QuantumLeap/g; s/TechPulseMSP/QuantumLeapMSP/g' \
+  helm/components/certchain-org/values-quantumleap.yaml
+
+echo "New org values:"
+head -20 helm/components/certchain-org/values-quantumleap.yaml
+----
+
+=== Step 5: Review and push
+
+[.console-input]
+[source,bash]
+----
+cd ~/certchain-repo
+git diff --stat
+git add -A
+git commit -m "feat: add quantumleap organization"
+git push origin main
+----
+
+[TIP]
+====
+Gitea credentials: username `gitea`, password `openshift`.
+====
+
+=== What happens next
+
+After pushing to Gitea, ArgoCD will:
+
+. Detect the change in the bootstrap chart
+. Create a new `certchain-quantumleap` ArgoCD Application
+. Deploy a full stack in the `certchain-quantumleap` namespace:
+  * **Blockchain**: Peer + CouchDB + Orderer (BFT node)
+  * **Application**: cert-admin-api + course-manager-ui
+  * **Identity**: Keycloak + Postgres
+  * **Infrastructure**: RBAC, ExternalName services, enrollment jobs
+
+[WARNING]
+====
+The new org's orderer won't join the BFT consensus automatically — `configtx.yaml` needs the new org's MSP definition, and a channel configuration update transaction must add it to the consenter set. This is a Fabric channel administration task beyond the scope of this demo.
+====
+
+=== Revert the changes
+
+To undo the QuantumLeap addition:
+
+[.console-input]
+[source,bash]
+----
+cd ~/certchain-repo
+git revert HEAD --no-edit
+git push origin main
+----

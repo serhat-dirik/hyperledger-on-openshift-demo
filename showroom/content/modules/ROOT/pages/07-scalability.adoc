@@ -103,40 +103,18 @@ oc patch application certchain-central -n openshift-gitops --type=merge \
 | Deployed as a Kubernetes Deployment — scale replicas for concurrent endorsement execution.
 |===
 
-=== Exercise: Scale a Peer
+=== Scaling Peers
 
-Each organization runs a single peer. Pause ArgoCD and scale TechPulse to 2 peers:
+Each organization runs a single peer. In production, you'd run 2+ peers per org for endorsement availability. Each peer replica:
 
-[.console-input]
-[source,bash,subs="attributes"]
-----
-oc patch application certchain-techpulse -n openshift-gitops --type=merge \
-  -p '{"spec":{"syncPolicy":{"automated":null}}}'
-----
+* Maintains a full copy of the ledger via gossip sync
+* Can independently endorse transactions and serve queries
+* Is load-balanced by the Kubernetes Service
 
-[.console-input]
-[source,bash,subs="attributes"]
-----
-oc scale deployment peer0 -n {central_namespace}-techpulse --replicas=2
-----
-
-[.console-input]
-[source,bash,subs="attributes"]
-----
-oc get pods -n {central_namespace}-techpulse -l app.kubernetes.io/name=peer0 -w
-----
-
-Each peer replica maintains a full copy of the ledger via gossip sync, can independently endorse transactions, and is load-balanced by the Kubernetes Service.
-
-Scale back and re-enable auto-sync:
-
-[.console-input]
-[source,bash,subs="attributes"]
-----
-oc scale deployment peer0 -n {central_namespace}-techpulse --replicas=1
-oc patch application certchain-techpulse -n openshift-gitops --type=merge \
-  -p '{"spec":{"syncPolicy":{"automated":{"prune":true,"selfHeal":true}}}}'
-----
+[WARNING]
+====
+Peer scaling requires *ReadWriteMany (RWX)* persistent volumes because multiple peer pods share the same ledger PVC. This demo uses ReadWriteOnce (RWO) storage, so peer `replicas > 1` will fail with a multi-attach error. In production, use RWX-capable storage (e.g., OpenShift Data Foundation, NFS, or EFS).
+====
 
 === Scaling Orderers
 
@@ -234,74 +212,6 @@ git revert HEAD --no-edit
 git push origin main
 ----
 
-== Adding a New Organization
+== Adding New Organizations
 
-The App-of-Apps Helm structure makes adding a 4th (or 5th, 6th...) organization straightforward. Each org is a parameterized instance of the same `certchain-org` Helm chart.
-
-=== Architecture: How Orgs Are Created
-
-The bootstrap chart at `helm/bootstrap/templates/applications.yaml` contains a loop that generates one ArgoCD Application per organization:
-
-[source,yaml]
-----
-{{- $orgs := list "techpulse" "dataforge" "neuralpath" }}
-{{- range $orgKey := $orgs }}
-  # Creates: certchain-techpulse, certchain-dataforge, certchain-neuralpath
-{{- end }}
-----
-
-Each org's config lives in `helm/bootstrap/values.yaml`:
-
-[source,yaml]
-----
-components:
-  techpulse:
-    enabled: true
-    org:
-      name: techpulse
-      displayName: TechPulse Academy
-      mspId: TechPulseMSP
-      primaryColor: "#2563eb"
-----
-
-=== What It Takes to Add "QuantumLeap"
-
-To add a 4th organization called QuantumLeap, you would:
-
-[arabic]
-. *Add org config* to `helm/bootstrap/values.yaml`:
-+
-[source,yaml]
-----
-  quantumleap:
-    enabled: true
-    org:
-      name: quantumleap
-      displayName: "QuantumLeap Labs"
-      mspId: QuantumLeapMSP
-      primaryColor: "#dc2626"
-----
-
-. *Add org to the loop* in `helm/bootstrap/templates/applications.yaml`:
-+
-[source,yaml]
-----
-{{- $orgs := list "techpulse" "dataforge" "neuralpath" "quantumleap" }}
-----
-
-. *Create org values override* at `helm/components/certchain-org/values-quantumleap.yaml`
-
-. *Push to git* — ArgoCD detects the change and creates a new `certchain-quantumleap` Application
-
-. *Update Fabric config* — The `configtx.yaml` needs the new org's MSP definition, and a channel configuration update transaction must be submitted to add it to the consortium
-
-=== What Gets Auto-Generated
-
-Each new org Application automatically deploys a full stack:
-
-* **Blockchain**: Peer + CouchDB + Orderer (BFT node)
-* **Application**: cert-admin-api + course-manager-ui
-* **Identity**: Keycloak + Postgres
-* **Infrastructure**: RBAC, ExternalName services, enrollment jobs
-
-All in a dedicated `certchain-quantumleap` namespace — completely isolated from existing orgs.
+The App-of-Apps pattern makes adding organizations straightforward — see the xref:12-adding-organizations.adoc[Adding Organizations] reference for a hands-on exercise with ready-to-run scripts.

@@ -9,6 +9,8 @@ Hyperledger Fabric is a permissioned blockchain platform designed for enterprise
 * *Healthcare* — share patient records and clinical trial data across providers while preserving privacy
 * *Credentialing* — issue tamper-proof certificates that anyone can verify instantly
 
+image::01-hyperledger.png[HyperLedger,width=60%]
+
 This demo uses *course credentialing* as a concrete, relatable scenario — but the architecture patterns apply broadly.
 
 == Why OpenShift?
@@ -21,6 +23,8 @@ Running a multi-org blockchain network in production demands enterprise-grade in
 * *Prometheus + Grafana* provide built-in monitoring for all Fabric components
 * *BuildConfigs* build chaincode and application images directly on the cluster
 
+image::01-openshift[OpenShift,width=80%]
+
 The result: a complete Hyperledger Fabric network deployed and operational in minutes, not days.
 
 == The Problem: Credential Fraud
@@ -30,6 +34,8 @@ Professional training certificates are easy to forge. A PDF, a stamp, and a logo
 This is a real-world problem for *private course organizations* — professional training academies, coding bootcamps, certification bodies — that issue thousands of credentials annually. Unlike universities with established registrar offices, these organizations often lack infrastructure for reliable third-party verification.
 
 == The Solution: Blockchain-Backed Credentials
+
+image::01-credential-fraud[Crendential Fraud,width=80%]
 
 CertChain replaces paper certificates with blockchain-anchored credentials on *Hyperledger Fabric*. Every certificate is a transaction on an immutable distributed ledger — it cannot be altered, backdated, or forged after issuance.
 
@@ -56,6 +62,8 @@ CertChain replaces paper certificates with blockchain-anchored credentials on *H
 == The Demo Scenario
 
 CertChain demonstrates a consortium of three *private training organizations* that jointly operate a blockchain credentialing network:
+
+image::01-3-org.png[Demo Organizations,width=50%]
 
 [cols="1,1,2"]
 |===

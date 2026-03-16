@@ -301,6 +301,7 @@ spec:
                     - name: 09-api
                     - name: 10-troubleshooting
                     - name: 11-reference
+                    - name: 12-adding-organizations
                 tabs:
                   - name: Terminal
                     path: /terminal/

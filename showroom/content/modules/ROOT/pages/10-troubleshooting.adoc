@@ -103,7 +103,7 @@ done
 [.console-input]
 [source,bash,subs="attributes"]
 ----
-oc logs deployment/peer-deployment -n {central_namespace}-techpulse --tail=20
+oc logs deployment/peer0 -n certchain-techpulse --tail=20
 ----
 
 Look for: `Successfully committed block` messages indicating the peer is processing blocks.

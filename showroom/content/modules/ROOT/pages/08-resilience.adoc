@@ -76,14 +76,23 @@ curl -sk -X POST \
   }' | python3 -m json.tool
 ----
 
-=== Step 2: Scale Down an Orderer
+=== Step 2: Pause ArgoCD and Scale Down an Orderer
 
-Scale down one orderer (e.g., orderer2 in DataForge):
+ArgoCD auto-sync would restore the orderer automatically — pause it first:
 
 [.console-input]
 [source,bash,subs="attributes"]
 ----
-oc scale deployment orderer-deployment -n {central_namespace}-dataforge --replicas=0
+oc patch application certchain-dataforge -n openshift-gitops --type=merge \
+  -p '{"spec":{"syncPolicy":{"automated":null}}}'
+----
+
+Now scale down the DataForge orderer:
+
+[.console-input]
+[source,bash,subs="attributes"]
+----
+oc scale deployment orderer -n certchain-dataforge --replicas=0
 ----
 
 === Step 3: Verify Transactions Still Work
@@ -113,10 +122,17 @@ The transaction should *succeed* — 3 out of 4 orderers is sufficient for BFT c
 [.console-input]
 [source,bash,subs="attributes"]
 ----
-oc scale deployment orderer-deployment -n {central_namespace}-dataforge --replicas=1
+oc scale deployment orderer -n certchain-dataforge --replicas=1
+oc patch application certchain-dataforge -n openshift-gitops --type=merge \
+  -p '{"spec":{"syncPolicy":{"automated":{"prune":true,"selfHeal":true}}}}'
 ----
 
-The orderer will catch up automatically through the gossip protocol.
+The orderer will catch up automatically through the consensus protocol.
+
+[TIP]
+====
+Open the *Grafana* dashboard ({grafana_url}[Open^]) during this test — you'll see the *BFT Committed Block Number* panel show the restored orderer catching up to match the others.
+====
 
 == Demo: Peer Recovery
 
@@ -124,14 +140,37 @@ Each organization's peer maintains a full copy of the ledger and the CouchDB sta
 
 === Peer Crash and Recovery
 
+Pause ArgoCD auto-sync and simulate a peer crash:
+
+[.console-input]
+[source,bash,subs="attributes"]
+----
+oc patch application certchain-techpulse -n openshift-gitops --type=merge \
+  -p '{"spec":{"syncPolicy":{"automated":null}}}'
+----
+
 [.console-input]
 [source,bash,subs="attributes"]
 ----
 # Scale down TechPulse peer
-oc scale deployment peer-deployment -n {central_namespace}-techpulse --replicas=0
+oc scale deployment peer0 -n certchain-techpulse --replicas=0
+----
 
-# Wait a few seconds, then scale back up
-oc scale deployment peer-deployment -n {central_namespace}-techpulse --replicas=1
+Wait a few seconds, then bring it back:
+
+[.console-input]
+[source,bash,subs="attributes"]
+----
+oc scale deployment peer0 -n certchain-techpulse --replicas=1
+----
+
+Re-enable ArgoCD auto-sync:
+
+[.console-input]
+[source,bash,subs="attributes"]
+----
+oc patch application certchain-techpulse -n openshift-gitops --type=merge \
+  -p '{"spec":{"syncPolicy":{"automated":{"prune":true,"selfHeal":true}}}}'
 ----
 
 When the peer comes back:
@@ -144,24 +183,71 @@ During the outage, *verifications through other orgs' peers still work* — the 
 
 == Demo: CouchDB State Rebuild
 
-CouchDB is the *state database* — a queryable view of the latest ledger state. If CouchDB data is corrupted, it can be rebuilt from the blockchain:
+CouchDB is the *state database* — a queryable view of the latest ledger state. If CouchDB data is corrupted, it can be rebuilt from the blockchain.
 
-[.copypaste]
+=== Step 1: Record current state
+
+[.console-input]
 [source,bash,subs="attributes"]
 ----
-# Delete the CouchDB PVC (drastic — for demo purposes)
-oc delete pvc couchdb-data -n {central_namespace}-techpulse
-
-# Restart the peer — it will rebuild CouchDB from the ledger
-oc rollout restart deployment peer-deployment -n {central_namespace}-techpulse
+# Check current certificate count
+curl -sk "{techpulse_cert_admin_api_url}/api/v1/dashboard/stats" \
+  -H "Authorization: Bearer $TOKEN" | python3 -m json.tool
 ----
 
-The peer replays all blocks from the ledger to rebuild the CouchDB state. This proves that the *blockchain is the source of truth*, and CouchDB is just a queryable index.
+=== Step 2: Restart CouchDB to simulate recovery
 
-[WARNING]
-====
-Rebuilding CouchDB from the ledger takes time proportional to the number of blocks. In production with thousands of blocks, this could take minutes to hours.
-====
+[.console-input]
+[source,bash,subs="attributes"]
+----
+oc patch application certchain-techpulse -n openshift-gitops --type=merge \
+  -p '{"spec":{"syncPolicy":{"automated":null}}}'
+----
+
+[.console-input]
+[source,bash,subs="attributes"]
+----
+# Restart CouchDB — peer detects state mismatch and rebuilds
+oc rollout restart deployment couchdb -n certchain-techpulse
+----
+
+Watch the recovery:
+
+[.console-input]
+[source,bash,subs="attributes"]
+----
+oc logs deployment/peer0 -n certchain-techpulse --tail=20 -f
+----
+
+Look for log entries showing state reconciliation. Press `Ctrl+C` when done.
+
+=== Step 3: Verify state is intact
+
+[.console-input]
+[source,bash,subs="attributes"]
+----
+# Re-check — same certificate count proves state was rebuilt
+curl -sk "{techpulse_cert_admin_api_url}/api/v1/dashboard/stats" \
+  -H "Authorization: Bearer $TOKEN" | python3 -m json.tool
+----
+
+[.console-input]
+[source,bash,subs="attributes"]
+----
+# Verify a specific certificate still works
+curl -sk "{verify_api_url}/api/v1/verify/TP-FSWD-001" | python3 -m json.tool
+----
+
+Re-enable ArgoCD:
+
+[.console-input]
+[source,bash,subs="attributes"]
+----
+oc patch application certchain-techpulse -n openshift-gitops --type=merge \
+  -p '{"spec":{"syncPolicy":{"automated":{"prune":true,"selfHeal":true}}}}'
+----
+
+This proves that the *blockchain is the source of truth*, and CouchDB is a queryable index that can be rebuilt.
 
 == Production Considerations
 
@@ -173,10 +259,10 @@ Rebuilding CouchDB from the ledger takes time proportional to the number of bloc
 | Use 7 orderers (3f+1 = 7 for f=2) in production for better fault tolerance
 
 | *Peer redundancy*
-| Run 2+ peers per org for endorsement availability
+| Run 2+ peers per org with RWX storage for endorsement availability
 
 | *Storage*
-| Use ReadWriteMany (RWX) or replicated storage for PVCs
+| Use ReadWriteMany (RWX) storage for peer PVCs to enable horizontal scaling
 
 | *Backup*
 | Snapshot CouchDB and ledger PVCs regularly
