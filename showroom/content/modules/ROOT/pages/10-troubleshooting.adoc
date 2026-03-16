@@ -110,20 +110,32 @@ Look for: `Successfully committed block` messages indicating the peer is process
 
 === Check Orderer Status
 
+Central orderer:
+
 [.console-input]
 [source,bash,subs="attributes"]
 ----
-oc logs deployment/orderer-deployment -n {central_namespace}-techpulse --tail=20
+oc logs deployment/orderer0 -n {central_namespace} --tail=20
 ----
 
-Look for: `BFT view` and `committed block` messages indicating consensus participation.
+Org orderer (e.g. TechPulse):
+
+[.console-input]
+[source,bash,subs="attributes"]
+----
+oc logs deployment/orderer -n {central_namespace}-techpulse --tail=20
+----
+
+Look for: `smartbft` messages with `sequence` and `committed` indicating consensus participation.
 
 === Check Chaincode Status
 
+Chaincode runs as CcaaS (Chaincode-as-a-Service) in each *org* namespace, not central:
+
 [.console-input]
 [source,bash,subs="attributes"]
 ----
-oc logs deployment/certcontract-deployment -n {central_namespace} --tail=20
+oc logs deployment/certcontract -n {central_namespace}-techpulse --tail=20
 ----
 
 Look for: connection established messages and transaction invocations.
