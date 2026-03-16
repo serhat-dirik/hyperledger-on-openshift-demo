@@ -83,7 +83,7 @@ spec:
 {{- end }}
 
 # --- Per-org components (one Application per org) ----------------------------
-{{- $orgs := list "techpulse" "dataforge" "neuralpath" "quantumleap" }}
+{{- $orgs := list "techpulse" "dataforge" "neuralpath" }}
 {{- range $orgKey := $orgs }}
 {{- $orgConfig := index $.Values.components $orgKey }}
 {{- if $orgConfig.enabled }}
