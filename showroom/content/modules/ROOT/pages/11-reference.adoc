@@ -2,19 +2,43 @@
 
 == Demo Credentials
 
+=== Platform Access
+
+[cols="2,2,2,2"]
+|===
+| Service | Username | Password | Notes
+
+| *OpenShift Console*
+| `admin`
+| (from RHDP provisioning email)
+| {openshift_console_url}[Open^]
+
+| *ArgoCD*
+| —
+| —
+| Log in via *"Log in via OpenShift"* button using the OpenShift admin credentials above
+
+| *Gitea* (Git repository)
+| `gitea`
+| `openshift`
+| {gitea_url}[Open^]
+|===
+
+[TIP]
+====
+To retrieve the ArgoCD admin password directly:
+[.console-input]
+[source,bash]
+----
+oc get secret openshift-gitops-cluster -n openshift-gitops -o jsonpath='{.data.admin\.password}' | base64 -d && echo
+----
+====
+
+=== Application Users
+
 [cols="2,2,2,1"]
 |===
 | Role | Username | Password | Used For
-
-| *ArgoCD Admin*
-| `admin`
-| `admin`
-| GitOps dashboard
-
-| *OpenShift Admin*
-| `admin`
-| (provided by RHDP)
-| OpenShift Console
 
 | *TechPulse Admin*
 | `admin@techpulse.demo`
@@ -47,7 +71,26 @@
 | Cert Portal (transcript)
 |===
 
+=== Infrastructure
+
+[cols="2,2,2,1"]
+|===
+| Service | Username | Password | Used For
+
+| *CouchDB* (per-org)
+| `admin`
+| `adminpw`
+| State database (accessible via `oc exec`)
+
+| *PostgreSQL* (per-org)
+| `keycloak`
+| `keycloak`
+| Keycloak database
+|===
+
 == Environment URLs
+
+=== User-Facing Applications
 
 [cols="1,2"]
 |===
@@ -64,12 +107,65 @@
 
 | NeuralPath Course Manager
 | {neuralpath_course_manager_url}[Open^]
+|===
+
+=== Platform & Infrastructure
+
+[cols="1,2"]
+|===
+| Component | URL
+
+| OpenShift Console
+| {openshift_console_url}[Open^]
 
 | ArgoCD Dashboard
 | {argocd_url}[Open^]
 
 | Grafana Dashboards
 | {grafana_url}[Open^]
+
+| Gitea (Git Repository)
+| {gitea_url}[Open^]
+|===
+
+=== Keycloak Identity Providers
+
+[cols="1,2"]
+|===
+| Realm | URL
+
+| Central (identity brokering)
+| {central_keycloak_url}/admin[Open^]
+
+| TechPulse
+| {techpulse_keycloak_url}/admin[Open^]
+
+| DataForge
+| {dataforge_keycloak_url}/admin[Open^]
+
+| NeuralPath
+| {neuralpath_keycloak_url}/admin[Open^]
+|===
+
+Keycloak admin console credentials: `admin` / `admin` for all realms.
+
+=== API Endpoints
+
+[cols="1,2"]
+|===
+| API | Base URL
+
+| TechPulse cert-admin-api
+| {techpulse_cert_admin_api_url}
+
+| DataForge cert-admin-api
+| {dataforge_cert_admin_api_url}
+
+| NeuralPath cert-admin-api
+| {neuralpath_cert_admin_api_url}
+
+| verify-api (central)
+| {verify_api_url}
 |===
 
 == OpenShift CLI Access
