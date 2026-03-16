@@ -15,6 +15,7 @@ metadata:
     app.openshift.io/vcs-uri: {{ .Values.gitops.repoUrl | trimSuffix ".git" }}
     app.openshift.io/vcs-ref: {{ .Values.gitops.revision }}
     app.openshift.io/vcs-context: /
+    app.openshift.io/edit-url: https://devspaces.{{ .Values.global.domain }}/#{{ .Values.gitops.repoUrl | trimSuffix ".git" }}
 spec:
   replicas: 1
   selector:
