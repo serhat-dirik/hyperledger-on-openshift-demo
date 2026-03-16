@@ -354,9 +354,9 @@ Phase 2 (from Gitea):   certchain-central, 3× org, showroom
 
 ### Option A — Red Hat Demo Platform (RHDP)
 
-If you have RHDP access, use the **Field Sourced Content** catalog item:
+If you have RHDP access, use the [**Field Sourced Content — OpenShift Base**](https://catalog.demo.redhat.com/catalog?item=babylon-catalog-prod/published.ocp-field-asset.prod&utm_source=webapp&utm_medium=share-link) catalog item:
 
-1. Order from RHDP catalog with these parameters:
+1. Order from the catalog with these parameters:
    - **GitOps Repo URL:** `https://github.com/serhat-dirik/hyperledger-on-openshift-demo.git`
    - **GitOps Path:** `helm/bootstrap`
    - **GitOps Revision:** `main`
