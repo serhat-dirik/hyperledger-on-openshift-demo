@@ -73,42 +73,21 @@ curl -sk "{verify_api_url}/api/v1/verify/batch?ids=$CERT_ID,FAKE-CERT-123" \
 
 Each certificate returns its own status — VALID, REVOKED, or NOT_FOUND.
 
-== View Student Transcript (Authenticated)
+== View Student Transcript (Cert Portal)
 
-Get a student token from the org Keycloak and query the transcript endpoint:
+The transcript endpoints (`/api/v1/transcript`) require a token issued by **Central Keycloak** — the same token students get when they log into the *Cert Portal* through identity brokering.
 
-[.console-input]
-[source,bash,subs="attributes"]
-----
-STUDENT_TOKEN=$(curl -sk -X POST \
-  "{techpulse_keycloak_url}/realms/techpulse/protocol/openid-connect/token" \
-  -d "grant_type=password" \
-  -d "client_id=course-manager-ui" \
-  -d "username=student01@techpulse.demo" \
-  -d "password=student" | python3 -c "import sys,json; print(json.load(sys.stdin)['access_token'])")
+To test this flow:
 
-# View all certificates for this student (includes grade/degree on owned certs)
-curl -sk -H "Authorization: Bearer $STUDENT_TOKEN" \
-  "{verify_api_url}/api/v1/transcript" | python3 -m json.tool
-----
-
-The transcript response includes *all certificates issued to this student's email* — with grade and degree visible on the student's own certificates.
+1. Open the **Cert Portal** tab
+2. Click **Login** and select your organization (e.g., TechPulse)
+3. Sign in as `student01@techpulse.demo` / `student`
+4. The portal displays the student's transcript — all certificates with grade and degree visible
 
 [NOTE]
 ====
-In the browser, students log in via Cert Portal which uses Central Keycloak's identity brokering. For API testing, we use the org Keycloak directly.
+The Cert Portal uses Central Keycloak's identity brokering: the student authenticates at their org Keycloak, and Central Keycloak issues a federated token that verify-api accepts. This cannot be replicated with a simple `curl` password grant because federated users don't have local credentials in Central Keycloak — by design.
 ====
-
-== View a Single Certificate as Student
-
-[.console-input]
-[source,bash,subs="attributes"]
-----
-curl -sk -H "Authorization: Bearer $STUDENT_TOKEN" \
-  "{verify_api_url}/api/v1/transcript/$CERT_ID" | python3 -m json.tool
-----
-
-Compare this response to the anonymous verification — grade and degree are now visible.
 
 == List Certificates (Admin)
 
@@ -177,17 +156,22 @@ Expected: `status: "REVOKED"` with `revokedDate` and `revokedReason` fields.
 
 == Admin Role Enforcement
 
-Try accessing the cert-admin-api with a student token — it should be rejected:
+Try accessing the cert-admin-api *without* a valid admin token — it should be rejected:
 
 [.console-input]
 [source,bash,subs="attributes"]
 ----
-curl -sk -o /dev/null -w "HTTP %\{http_code}" \
+# No token at all
+curl -sk -o /dev/null -w "HTTP %{http_code}\n" \
+  "{techpulse_cert_admin_api_url}/api/v1/certificates"
+
+# With an invalid token
+curl -sk -o /dev/null -w "HTTP %{http_code}\n" \
   "{techpulse_cert_admin_api_url}/api/v1/certificates" \
-  -H "Authorization: Bearer $STUDENT_TOKEN"
+  -H "Authorization: Bearer invalid-token-here"
 ----
 
-Expected: HTTP 401 or 403 — students cannot access admin endpoints.
+Expected: HTTP 401 — only users with the `org-admin` role can access admin endpoints.
 
 == Verify a Non-Existent Certificate
 
