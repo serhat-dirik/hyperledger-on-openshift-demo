@@ -18,3 +18,4 @@
 ** xref:10-troubleshooting.adoc[Troubleshooting]
 ** xref:11-reference.adoc[Credentials & URLs]
 ** xref:12-adding-organizations.adoc[Adding Organizations]
+** xref:14-fabric-cheatsheet.adoc[Fabric Operations Cheatsheet]

@@ -1,0 +1,490 @@
+= Fabric Operations Cheatsheet
+
+Quick-reference commands for operating and troubleshooting the CertChain Hyperledger Fabric network on OpenShift. All commands run from the *Terminal* tab.
+
+== Prerequisites
+
+Log in to OpenShift and set up helper variables used throughout this page:
+
+[.console-input]
+[source,bash,subs="attributes"]
+----
+oc login {openshift_api_url} -u admin
+----
+
+[.console-input]
+[source,bash,subs="attributes"]
+----
+# Namespaces
+CENTRAL=certchain
+TP=certchain-techpulse
+DF=certchain-dataforge
+NP=certchain-neuralpath
+
+# Channel
+CHANNEL=certchannel
+----
+
+== Network Health
+
+=== Block Height (All Peers)
+
+Compare block heights across organizations — all peers should show the same value:
+
+[.console-input]
+[source,bash,subs="attributes"]
+----
+for NS in $TP $DF $NP; do
+  ORG=$(echo $NS | sed 's/certchain-//')
+  HEIGHT=$(oc exec deployment/peer0 -n $NS -- \
+    peer channel getinfo -c $CHANNEL 2>/dev/null | sed 's/.*: //')
+  echo "$ORG: $HEIGHT"
+done
+----
+
+=== Orderer Channel Status
+
+Check if all orderers have joined the channel and their consensus status:
+
+[.console-input]
+[source,bash,subs="attributes"]
+----
+# Check orderer0 (central) channel status
+oc exec deployment/orderer0 -n $CENTRAL -- \
+  osnadmin channel list --channelID $CHANNEL \
+    -o localhost:7053 \
+    --ca-file /var/hyperledger/orderer/tls/ca.crt \
+    --client-cert /var/hyperledger/orderer/tls/server.crt \
+    --client-key /var/hyperledger/orderer/tls/server.key 2>/dev/null
+----
+
+=== Gossip Peers
+
+Verify each peer can see the other organizations via gossip protocol:
+
+[.console-input]
+[source,bash,subs="attributes"]
+----
+for NS in $TP $DF $NP; do
+  ORG=$(echo $NS | sed 's/certchain-//')
+  echo "=== $ORG gossip peers ==="
+  oc exec deployment/peer0 -n $NS -- \
+    peer channel getinfo -c $CHANNEL 2>/dev/null | sed 's/.*: //' \
+    | python3 -c "import sys,json; print(json.dumps(json.load(sys.stdin), indent=2))" 2>/dev/null || echo "(no data)"
+done
+----
+
+=== Pod Health Across Namespaces
+
+[.console-input]
+[source,bash,subs="attributes"]
+----
+for NS in $CENTRAL $TP $DF $NP; do
+  echo "=== $NS ==="
+  oc get pods -n $NS --no-headers | grep -v Completed | awk '{print $1, $3}'
+done
+----
+
+== Chaincode Operations
+
+=== Query Committed Chaincode
+
+Check what chaincode is committed to the channel and its endorsement policy:
+
+[.console-input]
+[source,bash,subs="attributes"]
+----
+oc exec deployment/peer0 -n $TP -- \
+  peer lifecycle chaincode querycommitted \
+    -C $CHANNEL -n certcontract \
+    --tls --cafile /etc/hyperledger/fabric/tls/ca.crt \
+    -o orderer0.$CENTRAL.svc.cluster.local:7050 2>/dev/null
+----
+
+=== Query Installed Chaincode
+
+List chaincode packages installed on a peer:
+
+[.console-input]
+[source,bash,subs="attributes"]
+----
+oc exec deployment/peer0 -n $TP -- \
+  peer lifecycle chaincode queryinstalled 2>/dev/null
+----
+
+=== Invoke Chaincode Directly
+
+Issue a certificate directly via `peer chaincode invoke` (bypasses the API layer):
+
+[.console-input]
+[source,bash,subs="attributes"]
+----
+CERT_ID="CLI-TEST-$(date +%s)"
+oc exec deployment/peer0 -n $TP -- \
+  peer chaincode invoke \
+    -C $CHANNEL -n certcontract \
+    -c "{\"function\":\"IssueCertificate\",\"Args\":[\"$CERT_ID\",\"student01@techpulse.demo\",\"CLI Test Student\",\"CLI-101\",\"CLI Course\",\"2026-03-17\",\"2027-03-17\",\"TechPulseMSP\"]}" \
+    --tls --cafile /etc/hyperledger/fabric/tls/ca.crt \
+    -o orderer0.$CENTRAL.svc.cluster.local:7050 \
+    --peerAddresses peer0.$TP.svc.cluster.local:7051 \
+    --tlsRootCertFiles /etc/hyperledger/fabric/tls/ca.crt \
+    --peerAddresses peer0.$DF.svc.cluster.local:7051 \
+    --tlsRootCertFiles /etc/hyperledger/fabric/peer-tls/dataforge/ca.crt \
+    2>/dev/null
+echo "Issued: $CERT_ID"
+----
+
+=== Query Chaincode Directly
+
+Read a certificate from the ledger without going through the API:
+
+[.console-input]
+[source,bash,subs="attributes"]
+----
+# Query using the cert ID from the invoke above (or any known cert)
+oc exec deployment/peer0 -n $TP -- \
+  peer chaincode query \
+    -C $CHANNEL -n certcontract \
+    -c '{"function":"QueryCertificate","Args":["TP-FSWD-001"]}' \
+    --tls --cafile /etc/hyperledger/fabric/tls/ca.crt \
+    2>/dev/null | python3 -m json.tool
+----
+
+=== List All Certificates
+
+[.console-input]
+[source,bash,subs="attributes"]
+----
+oc exec deployment/peer0 -n $TP -- \
+  peer chaincode query \
+    -C $CHANNEL -n certcontract \
+    -c '{"function":"GetAllCertificates","Args":[]}' \
+    --tls --cafile /etc/hyperledger/fabric/tls/ca.crt \
+    2>/dev/null | python3 -c "import sys,json; certs=json.load(sys.stdin); print(f'{len(certs)} certificates'); [print(f'  {c[\"certID\"]}: {c[\"status\"]}') for c in certs[:10]]"
+----
+
+== CouchDB State Database
+
+=== Database Statistics
+
+[.console-input]
+[source,bash,subs="attributes"]
+----
+for NS in $TP $DF $NP; do
+  ORG=$(echo $NS | sed 's/certchain-//')
+  STATS=$(oc exec deployment/couchdb -n $NS -- \
+    curl -s -u admin:adminpw http://localhost:5984/certchannel_certcontract 2>/dev/null)
+  DOC_COUNT=$(echo "$STATS" | python3 -c "import sys,json; print(json.load(sys.stdin).get('doc_count','N/A'))" 2>/dev/null)
+  echo "$ORG: $DOC_COUNT documents"
+done
+----
+
+=== List All CouchDB Databases
+
+[.console-input]
+[source,bash,subs="attributes"]
+----
+oc exec deployment/couchdb -n $TP -- \
+  curl -s -u admin:adminpw http://localhost:5984/_all_dbs 2>/dev/null \
+  | python3 -m json.tool
+----
+
+=== Query a Certificate in CouchDB
+
+Read the raw CouchDB document (includes Fabric metadata):
+
+[.console-input]
+[source,bash,subs="attributes"]
+----
+oc exec deployment/couchdb -n $TP -- \
+  curl -s -u admin:adminpw \
+    "http://localhost:5984/certchannel_certcontract/TP-FSWD-001" 2>/dev/null \
+  | python3 -m json.tool
+----
+
+=== Compact a CouchDB Database
+
+Reclaim disk space by compacting the state database (safe while peer is running):
+
+[.console-input]
+[source,bash,subs="attributes"]
+----
+oc exec deployment/couchdb -n $TP -- \
+  curl -s -u admin:adminpw -X POST \
+    -H "Content-Type: application/json" \
+    http://localhost:5984/certchannel_certcontract/_compact 2>/dev/null
+----
+
+== Identity & Certificates
+
+=== View Fabric CA Server Info
+
+[.console-input]
+[source,bash,subs="attributes"]
+----
+oc exec deployment/fabric-ca -n $CENTRAL -- \
+  curl -s http://localhost:7054/api/v1/cainfo 2>/dev/null \
+  | python3 -m json.tool
+----
+
+=== List Registered Identities
+
+[.console-input]
+[source,bash,subs="attributes"]
+----
+oc exec deployment/fabric-ca -n $CENTRAL -- \
+  fabric-ca-client identity list \
+    --url http://localhost:7054 \
+    --tls.certfiles /etc/hyperledger/fabric-ca-server/tls-cert.pem 2>/dev/null
+----
+
+=== Inspect an MSP Certificate
+
+View the X.509 details of an organization's admin certificate:
+
+[.console-input]
+[source,bash,subs="attributes"]
+----
+# Extract and decode the TechPulse admin certificate
+oc get secret admin-msp -n $TP -o jsonpath='{.data.cert\.pem}' \
+  | base64 -d | openssl x509 -text -noout 2>/dev/null \
+  | grep -E "Subject:|Issuer:|Not Before|Not After"
+----
+
+=== Check Certificate Expiry (All Orgs)
+
+[.console-input]
+[source,bash,subs="attributes"]
+----
+for NS in $TP $DF $NP; do
+  ORG=$(echo $NS | sed 's/certchain-//')
+  EXPIRY=$(oc get secret admin-msp -n $NS -o jsonpath='{.data.cert\.pem}' \
+    | base64 -d | openssl x509 -enddate -noout 2>/dev/null | cut -d= -f2)
+  echo "$ORG admin cert expires: $EXPIRY"
+done
+----
+
+=== Inspect Peer TLS Certificate
+
+[.console-input]
+[source,bash,subs="attributes"]
+----
+oc get secret peer0-tls -n $TP -o jsonpath='{.data.server\.crt}' \
+  | base64 -d | openssl x509 -text -noout 2>/dev/null \
+  | grep -E "Subject:|DNS:|Not After"
+----
+
+== Orderer Cluster
+
+=== BFT Consensus Metrics
+
+Check SmartBFT leader and view number:
+
+[.console-input]
+[source,bash,subs="attributes"]
+----
+for NS in $CENTRAL $TP $DF $NP; do
+  ORG=$(echo $NS | sed "s/certchain/central/" | sed 's/central-//')
+  [ "$NS" = "$CENTRAL" ] && DEPLOY=orderer0 || DEPLOY=orderer
+  LEADER=$(oc exec deployment/$DEPLOY -n $NS -- \
+    wget -qO- http://localhost:8443/metrics 2>/dev/null \
+    | grep "consensus_BFT_is_leader " | awk '{print $2}')
+  VIEW=$(oc exec deployment/$DEPLOY -n $NS -- \
+    wget -qO- http://localhost:8443/metrics 2>/dev/null \
+    | grep "consensus_BFT_view_number " | awk '{print $2}')
+  echo "$ORG: leader=$LEADER view=$VIEW"
+done
+----
+
+=== Orderer Logs (Recent Blocks)
+
+Watch the most recent block activity on orderer0:
+
+[.console-input]
+[source,bash,subs="attributes"]
+----
+oc logs deployment/orderer0 -n $CENTRAL --tail=20 2>/dev/null \
+  | grep -E "Committed block|Start consensus|Delivering"
+----
+
+== Peer Operations
+
+=== Peer Logs (Endorsement Activity)
+
+[.console-input]
+[source,bash,subs="attributes"]
+----
+oc logs deployment/peer0 -n $TP --tail=30 2>/dev/null \
+  | grep -E "Committed block|endorseProposal|chaincode"
+----
+
+=== Peer Channel Membership
+
+[.console-input]
+[source,bash,subs="attributes"]
+----
+oc exec deployment/peer0 -n $TP -- \
+  peer channel list 2>/dev/null
+----
+
+=== Fetch a Specific Block
+
+Retrieve block N from the ledger (useful for auditing):
+
+[.console-input]
+[source,bash,subs="attributes"]
+----
+# Fetch block 5 (change number as needed)
+oc exec deployment/peer0 -n $TP -- \
+  peer channel fetch 5 /tmp/block5.pb \
+    -c $CHANNEL \
+    -o orderer0.$CENTRAL.svc.cluster.local:7050 \
+    --tls --cafile /etc/hyperledger/fabric/tls/ca.crt 2>/dev/null
+echo "Block fetched"
+----
+
+=== Rebuild State Databases
+
+If CouchDB is corrupted, rebuild from the immutable ledger (see xref:08-resilience.adoc[Resilience] for full walkthrough):
+
+[.console-input]
+[source,bash,subs="attributes"]
+----
+# Peer must be stopped first
+oc scale deployment peer0 -n $TP --replicas=0
+oc rollout status deployment peer0 -n $TP --timeout=30s
+
+# Mark databases for rebuild
+oc debug deployment/peer0 -n $TP -- peer node rebuild-dbs
+
+# Restart peer — it replays all blocks into fresh CouchDB
+oc scale deployment peer0 -n $TP --replicas=1
+----
+
+== Keycloak & Authentication
+
+=== Get an Admin JWT Token
+
+[.console-input]
+[source,bash,subs="attributes"]
+----
+# TechPulse admin token
+TOKEN=$(curl -sk -X POST \
+  "{techpulse_keycloak_url}/realms/techpulse/protocol/openid-connect/token" \
+  -d "grant_type=password" \
+  -d "client_id=course-manager-ui" \
+  -d "username=admin@techpulse.demo" \
+  -d "password=admin" \
+  | python3 -c "import sys,json; print(json.load(sys.stdin)['access_token'])")
+echo "Token: ${TOKEN:0:20}..."
+----
+
+=== Decode a JWT Token
+
+[.console-input]
+[source,bash,subs="attributes"]
+----
+echo "$TOKEN" | cut -d. -f2 | base64 -d 2>/dev/null | python3 -m json.tool
+----
+
+=== List Keycloak Users (via Admin API)
+
+[.console-input]
+[source,bash,subs="attributes"]
+----
+# Get Keycloak admin token
+KC_ADMIN_TOKEN=$(curl -sk -X POST \
+  "{techpulse_keycloak_url}/realms/master/protocol/openid-connect/token" \
+  -d "grant_type=password" \
+  -d "client_id=admin-cli" \
+  -d "username=admin" \
+  -d "password=admin" \
+  | python3 -c "import sys,json; print(json.load(sys.stdin)['access_token'])")
+
+curl -sk "{techpulse_keycloak_url}/admin/realms/techpulse/users" \
+  -H "Authorization: Bearer $KC_ADMIN_TOKEN" \
+  | python3 -c "import sys,json; [print(f'{u[\"username\"]:30s} {u.get(\"email\",\"\")}') for u in json.load(sys.stdin)]"
+----
+
+== API Quick Reference
+
+=== Issue a Certificate
+
+[.console-input]
+[source,bash,subs="attributes"]
+----
+CERT_ID="CHEAT-$(date +%s)"
+curl -sk -X POST "{techpulse_cert_admin_api_url}/api/v1/certificates" \
+  -H "Authorization: Bearer $TOKEN" \
+  -H "Content-Type: application/json" \
+  -d "{
+    \"certID\": \"$CERT_ID\",
+    \"studentID\": \"student01@techpulse.demo\",
+    \"studentName\": \"Cheatsheet Test\",
+    \"courseID\": \"CHEAT-101\",
+    \"courseName\": \"Cheatsheet Course\",
+    \"issueDate\": \"2026-03-17\",
+    \"expiryDate\": \"2027-03-17\"
+  }" | python3 -m json.tool
+----
+
+=== Verify a Certificate
+
+[.console-input]
+[source,bash,subs="attributes"]
+----
+curl -sk "{verify_api_url}/api/v1/verify/$CERT_ID" | python3 -m json.tool
+----
+
+=== Batch Verify
+
+[.console-input]
+[source,bash,subs="attributes"]
+----
+curl -sk "{verify_api_url}/api/v1/verify/batch?ids=TP-FSWD-001,DF-DSML-001,NP-CCNA-001" \
+  | python3 -m json.tool
+----
+
+=== Get Dashboard Stats
+
+[.console-input]
+[source,bash,subs="attributes"]
+----
+curl -sk "{techpulse_cert_admin_api_url}/api/v1/dashboard/stats" \
+  -H "Authorization: Bearer $TOKEN" | python3 -m json.tool
+----
+
+== ArgoCD Operations
+
+=== Force Sync an Application
+
+[.console-input]
+[source,bash,subs="attributes"]
+----
+# Hard refresh + sync
+oc annotate application certchain-central -n openshift-gitops \
+  argocd.argoproj.io/refresh=hard --overwrite
+----
+
+=== Pause/Resume Auto-Sync
+
+[.console-input]
+[source,bash,subs="attributes"]
+----
+# Pause (for manual changes)
+oc patch application certchain-techpulse -n openshift-gitops --type=merge \
+  -p '{"spec":{"syncPolicy":{"automated":null}}}'
+
+# Resume
+oc patch application certchain-techpulse -n openshift-gitops --type=merge \
+  -p '{"spec":{"syncPolicy":{"automated":{"prune":true,"selfHeal":true}}}}'
+----
+
+=== Check All Application Status
+
+[.console-input]
+[source,bash,subs="attributes"]
+----
+oc get applications -n openshift-gitops \
+  -o custom-columns='NAME:.metadata.name,SYNC:.status.sync.status,HEALTH:.status.health.status'
+----
