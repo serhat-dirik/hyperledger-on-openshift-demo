@@ -119,22 +119,32 @@ done
 # Peer MSP + TLS
 PEER_CSR="peer0,peer0.${ORG_NS}.svc.cluster.local,peer0-${ORG_NS}.${DOMAIN_SUFFIX}"
 echo "  Enrolling $PEER_NAME MSP..."
-enroll_identity "$PEER_NAME" "$WORK_DIR/${PEER_NAME}-msp"
+enroll_identity "$PEER_NAME" "$WORK_DIR/${PEER_NAME}-msp" || {
+    echo "  [ERROR] $PEER_NAME MSP enrollment failed"; exit 1
+}
 echo "  Enrolling $PEER_NAME TLS..."
-enroll_identity "$PEER_NAME" "$WORK_DIR/${PEER_NAME}-tls" tls "$PEER_CSR"
+enroll_identity "$PEER_NAME" "$WORK_DIR/${PEER_NAME}-tls" tls "$PEER_CSR" || {
+    echo "  [ERROR] $PEER_NAME TLS enrollment failed"; exit 1
+}
 
 # Orderer MSP + TLS
 ORD_ID="${ORDERER_NAME}-${ORG_NAME}"
 ORD_CSR="orderer,orderer.${ORG_NS}.svc.cluster.local,${ORDERER_NAME}-${ORG_NS}.${DOMAIN_SUFFIX}"
 echo "  Enrolling $ORD_ID MSP..."
-enroll_identity "$ORD_ID" "$WORK_DIR/${ORD_ID}-msp"
+enroll_identity "$ORD_ID" "$WORK_DIR/${ORD_ID}-msp" || {
+    echo "  [ERROR] $ORD_ID MSP enrollment failed"; exit 1
+}
 echo "  Enrolling $ORD_ID TLS..."
-enroll_identity "$ORD_ID" "$WORK_DIR/${ORD_ID}-tls" tls "$ORD_CSR"
+enroll_identity "$ORD_ID" "$WORK_DIR/${ORD_ID}-tls" tls "$ORD_CSR" || {
+    echo "  [ERROR] $ORD_ID TLS enrollment failed"; exit 1
+}
 
 # Admin MSP
 ADMIN_ID="admin-${ORG_NAME}"
 echo "  Enrolling $ADMIN_ID..."
-enroll_identity "$ADMIN_ID" "$WORK_DIR/${ADMIN_ID}-msp"
+enroll_identity "$ADMIN_ID" "$WORK_DIR/${ADMIN_ID}-msp" || {
+    echo "  [ERROR] $ADMIN_ID MSP enrollment failed"; exit 1
+}
 
 # --- Step 3: Create K8s secrets ---
 echo "[3/3] Creating K8s secrets..."

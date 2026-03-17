@@ -40,30 +40,42 @@ fi
 
 WORK_DIR=$(mktemp -d)
 
-# Skip if already completed (idempotency)
+# Idempotency: skip orderer0 enrollment if already done, but always run org registration
+SKIP_ORDERER0=0
 if kubectl get secret orderer0-msp -n "$CENTRAL_NS" &>/dev/null; then
-    echo "[SKIP] orderer0-msp secret already exists — enrollment already done."
-    echo "TIMING_END $(date +%s)"
-    exit 0
+    echo "[INFO] orderer0-msp already exists — skipping orderer0 enrollment."
+    SKIP_ORDERER0=1
 fi
 
-# Helper: register + enroll an identity (idempotent)
-enroll_identity() {
+# Helper: register an identity (idempotent — tolerates "already registered")
+register_identity() {
     local id_name="$1"
     local id_type="$2"
-    local msp_dir="$3"
-    local profile="${4:-}"
-    local csr_hosts="${5:-}"
 
-    # Register (ignore if already registered)
-    fabric-ca-client register \
+    local output
+    output=$(fabric-ca-client register \
         --id.name "$id_name" \
         --id.secret "${id_name}pw" \
         --id.type "$id_type" \
         -u "$CA_URL" \
-        -M "$WORK_DIR/ca-admin-msp" 2>/dev/null || true
+        -M "$WORK_DIR/ca-admin-msp" 2>&1) || {
+        if echo "$output" | grep -q "is already registered"; then
+            echo "  ($id_name already registered)"
+            return 0
+        fi
+        echo "  [ERROR] Failed to register $id_name: $output"
+        return 1
+    }
+}
 
-    # Reset password so enrollment always works (even on retry)
+# Helper: enroll an identity
+enroll_identity() {
+    local id_name="$1"
+    local msp_dir="$2"
+    local profile="${3:-}"
+    local csr_hosts="${4:-}"
+
+    # Reset password so enrollment works even on retry
     fabric-ca-client identity modify "$id_name" \
         --secret "${id_name}pw" \
         -u "$CA_URL" \
@@ -86,54 +98,65 @@ fabric-ca-client enroll \
     exit 1
 }
 
-# --- Step 2: Register and enroll orderer0 ---
-echo "[2/4] Registering and enrolling orderer0..."
+if [ "$SKIP_ORDERER0" -eq 0 ]; then
+    # --- Step 2: Register and enroll orderer0 ---
+    echo "[2/4] Registering and enrolling orderer0..."
 
-echo "  Enrolling orderer0 MSP..."
-enroll_identity orderer0 orderer "$WORK_DIR/orderer0-msp"
+    register_identity orderer0 orderer || { echo "  [ERROR] orderer0 registration failed"; exit 1; }
 
-echo "  Enrolling orderer0 TLS..."
-ORDERER0_CSR="orderer0,orderer0.${CENTRAL_NS}.svc.cluster.local,orderer0-${CENTRAL_NS}.${DOMAIN_SUFFIX}"
-enroll_identity orderer0 orderer "$WORK_DIR/orderer0-tls" tls "$ORDERER0_CSR"
+    echo "  Enrolling orderer0 MSP..."
+    enroll_identity orderer0 "$WORK_DIR/orderer0-msp" || {
+        echo "  [ERROR] orderer0 MSP enrollment failed"; exit 1
+    }
 
-# --- Step 3: Create K8s secrets for orderer0 ---
-echo "[3/4] Creating orderer0 K8s secrets..."
+    echo "  Enrolling orderer0 TLS..."
+    ORDERER0_CSR="orderer0,orderer0.${CENTRAL_NS}.svc.cluster.local,orderer0-${CENTRAL_NS}.${DOMAIN_SUFFIX}"
+    enroll_identity orderer0 "$WORK_DIR/orderer0-tls" tls "$ORDERER0_CSR" || {
+        echo "  [ERROR] orderer0 TLS enrollment failed"; exit 1
+    }
 
-# MSP secret
-SIGNCERT=$(find "$WORK_DIR/orderer0-msp/signcerts" -name '*.pem' | head -1)
-KEYSTORE=$(find "$WORK_DIR/orderer0-msp/keystore" -name '*_sk' | head -1)
-CACERT=$(find "$WORK_DIR/orderer0-msp/cacerts" -name '*.pem' | head -1)
-TLSCACERT=$(find "$WORK_DIR/orderer0-msp/tlscacerts" -name '*.pem' 2>/dev/null | head -1)
-[ -z "$TLSCACERT" ] && TLSCACERT="$CACERT"
+    # --- Step 3: Create K8s secrets for orderer0 ---
+    echo "[3/4] Creating orderer0 K8s secrets..."
 
-if [ -z "$SIGNCERT" ] || [ -z "$KEYSTORE" ] || [ -z "$CACERT" ]; then
-    echo "  [ERROR] MSP enrollment produced incomplete output"
-    ls -laR "$WORK_DIR/orderer0-msp/" 2>&1
-    exit 1
+    # MSP secret
+    SIGNCERT=$(find "$WORK_DIR/orderer0-msp/signcerts" -name '*.pem' | head -1)
+    KEYSTORE=$(find "$WORK_DIR/orderer0-msp/keystore" -name '*_sk' | head -1)
+    CACERT=$(find "$WORK_DIR/orderer0-msp/cacerts" -name '*.pem' | head -1)
+    TLSCACERT=$(find "$WORK_DIR/orderer0-msp/tlscacerts" -name '*.pem' 2>/dev/null | head -1)
+    [ -z "$TLSCACERT" ] && TLSCACERT="$CACERT"
+
+    if [ -z "$SIGNCERT" ] || [ -z "$KEYSTORE" ] || [ -z "$CACERT" ]; then
+        echo "  [ERROR] MSP enrollment produced incomplete output"
+        ls -laR "$WORK_DIR/orderer0-msp/" 2>&1
+        exit 1
+    fi
+
+    kubectl create secret generic orderer0-msp \
+        --from-file=signcerts="$SIGNCERT" \
+        --from-file=keystore="$KEYSTORE" \
+        --from-file=cacerts="$CACERT" \
+        --from-file=tlscacerts="$TLSCACERT" \
+        --from-file=config.yaml=/msp-config/config.yaml \
+        -n "$CENTRAL_NS" --dry-run=client -o yaml | kubectl apply -f -
+
+    # TLS secret
+    TLS_CERT=$(find "$WORK_DIR/orderer0-tls/signcerts" -name '*.pem' | head -1)
+    TLS_KEY=$(find "$WORK_DIR/orderer0-tls/keystore" -name '*_sk' | head -1)
+    TLS_CA=$(find "$WORK_DIR/orderer0-tls/tlscacerts" -name '*.pem' 2>/dev/null | head -1)
+    [ -z "$TLS_CA" ] && TLS_CA=$(find "$WORK_DIR/orderer0-tls/cacerts" -name '*.pem' | head -1)
+
+    kubectl create secret generic orderer0-tls \
+        --from-file=server.crt="$TLS_CERT" \
+        --from-file=server.key="$TLS_KEY" \
+        --from-file=ca.crt="$TLS_CA" \
+        -n "$CENTRAL_NS" --dry-run=client -o yaml | kubectl apply -f -
+    echo "  [OK] orderer0 secrets created"
+else
+    echo "[2/4] Skipped (orderer0 already enrolled)"
+    echo "[3/4] Skipped (orderer0 secrets already exist)"
 fi
 
-kubectl create secret generic orderer0-msp \
-    --from-file=signcerts="$SIGNCERT" \
-    --from-file=keystore="$KEYSTORE" \
-    --from-file=cacerts="$CACERT" \
-    --from-file=tlscacerts="$TLSCACERT" \
-    --from-file=config.yaml=/msp-config/config.yaml \
-    -n "$CENTRAL_NS" --dry-run=client -o yaml | kubectl apply -f -
-
-# TLS secret
-TLS_CERT=$(find "$WORK_DIR/orderer0-tls/signcerts" -name '*.pem' | head -1)
-TLS_KEY=$(find "$WORK_DIR/orderer0-tls/keystore" -name '*_sk' | head -1)
-TLS_CA=$(find "$WORK_DIR/orderer0-tls/tlscacerts" -name '*.pem' 2>/dev/null | head -1)
-[ -z "$TLS_CA" ] && TLS_CA=$(find "$WORK_DIR/orderer0-tls/cacerts" -name '*.pem' | head -1)
-
-kubectl create secret generic orderer0-tls \
-    --from-file=server.crt="$TLS_CERT" \
-    --from-file=server.key="$TLS_KEY" \
-    --from-file=ca.crt="$TLS_CA" \
-    -n "$CENTRAL_NS" --dry-run=client -o yaml | kubectl apply -f -
-echo "  [OK] orderer0 secrets created"
-
-# --- Step 4: Register org identities ---
+# --- Step 4: Register org identities (always runs — idempotent) ---
 echo "[4/4] Registering org identities..."
 
 IDENTITY_NAMES=(
@@ -147,17 +170,18 @@ IDENTITY_TYPES=(
     admin admin admin
 )
 
+FAILED=0
 for i in $(seq 0 $((${#IDENTITY_NAMES[@]} - 1))); do
     identity="${IDENTITY_NAMES[$i]}"
     id_type="${IDENTITY_TYPES[$i]}"
     echo "  Registering $identity (type: $id_type)..."
-    fabric-ca-client register \
-        --id.name "$identity" \
-        --id.secret "${identity}pw" \
-        --id.type "$id_type" \
-        -u "$CA_URL" \
-        -M "$WORK_DIR/ca-admin-msp" 2>/dev/null || echo "  ($identity may already be registered)"
+    register_identity "$identity" "$id_type" || FAILED=1
 done
+
+if [ "$FAILED" -ne 0 ]; then
+    echo "  [ERROR] One or more org identity registrations failed"
+    exit 1
+fi
 echo "  [OK] All org identities registered"
 
 rm -rf "$WORK_DIR"

@@ -66,7 +66,7 @@ for org in techpulse dataforge neuralpath; do
             | sed "s/namespace: $org_ns/namespace: $CENTRAL_NS/" \
             | sed "s/name: $src/name: $dest/" \
             | grep -v 'uid:\|resourceVersion:\|creationTimestamp:' \
-            | kubectl apply -n "$CENTRAL_NS" -f - 2>/dev/null
+            | kubectl apply -n "$CENTRAL_NS" -f -
     done
 
     # orderer TLS — orderer-tls → ordererN-{org}-tls
@@ -83,7 +83,7 @@ for org in techpulse dataforge neuralpath; do
             | sed "s/namespace: $org_ns/namespace: $CENTRAL_NS/" \
             | sed "s/name: $src/name: $dest/" \
             | grep -v 'uid:\|resourceVersion:\|creationTimestamp:' \
-            | kubectl apply -n "$CENTRAL_NS" -f - 2>/dev/null
+            | kubectl apply -n "$CENTRAL_NS" -f -
     done
 done
 
