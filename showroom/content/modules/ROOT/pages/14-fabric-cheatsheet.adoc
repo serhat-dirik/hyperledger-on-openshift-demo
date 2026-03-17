@@ -519,18 +519,26 @@ View the X.509 details of an organization's admin certificate:
 [source,bash,subs="attributes"]
 ----
 oc extract secret/admin-msp -n $TP --keys=signcerts --to=- 2>/dev/null \
-  | openssl x509 -text -noout 2>/dev/null \
-  | grep -E "Subject:|Issuer:|Not Before|Not After"
+  | python3 -c "
+import sys
+from cryptography import x509
+from cryptography.hazmat.backends import default_backend
+cert = x509.load_pem_x509_certificate(sys.stdin.buffer.read(), default_backend())
+print(f'Issuer:    {cert.issuer.rfc4514_string()}')
+print(f'Subject:   {cert.subject.rfc4514_string()}')
+print(f'Not Before: {cert.not_valid_before_utc}')
+print(f'Not After:  {cert.not_valid_after_utc}')
+"
 ----
 
 .Sample output
 [.console-output]
 [source,text]
 ----
-        Issuer: C=US, ST=North Carolina, O=Hyperledger, OU=Fabric, CN=fabric-ca-server
-            Not Before: Mar 17 04:37:00 2026 GMT
-            Not After : Mar 17 04:44:00 2027 GMT
-        Subject: C=US, ST=North Carolina, O=Hyperledger, OU=admin, CN=admin-techpulse
+Issuer:    CN=fabric-ca-server,OU=Fabric,O=Hyperledger,ST=North Carolina,C=US
+Subject:   CN=admin-techpulse,OU=admin,O=Hyperledger,ST=North Carolina,C=US
+Not Before: 2026-03-17 04:37:00+00:00
+Not After:  2027-03-17 04:44:00+00:00
 ----
 
 === Check Certificate Expiry (All Orgs)
@@ -541,7 +549,7 @@ oc extract secret/admin-msp -n $TP --keys=signcerts --to=- 2>/dev/null \
 for NS in $TP $DF $NP; do
   ORG=$(echo $NS | sed 's/certchain-//')
   EXPIRY=$(oc extract secret/admin-msp -n $NS --keys=signcerts --to=- 2>/dev/null \
-    | openssl x509 -enddate -noout 2>/dev/null | cut -d= -f2)
+    | python3 -c "import sys; from cryptography import x509; from cryptography.hazmat.backends import default_backend; cert=x509.load_pem_x509_certificate(sys.stdin.buffer.read(),default_backend()); print(cert.not_valid_after_utc.strftime('%b %d %H:%M:%S %Y GMT'))" 2>/dev/null)
   echo "$ORG admin cert expires: $EXPIRY"
 done
 ----
@@ -561,17 +569,28 @@ neuralpath admin cert expires: Mar 17 04:46:00 2027 GMT
 [source,bash,subs="attributes"]
 ----
 oc extract secret/peer0-tls -n $TP --keys=server.crt --to=- 2>/dev/null \
-  | openssl x509 -text -noout 2>/dev/null \
-  | grep -E "Subject:|DNS:|Not After"
+  | python3 -c "
+import sys
+from cryptography import x509
+from cryptography.x509.oid import ExtensionOID
+from cryptography.hazmat.backends import default_backend
+cert = x509.load_pem_x509_certificate(sys.stdin.buffer.read(), default_backend())
+print(f'Subject:   {cert.subject.rfc4514_string()}')
+print(f'Not After: {cert.not_valid_after_utc}')
+try:
+    san = cert.extensions.get_extension_for_oid(ExtensionOID.SUBJECT_ALTERNATIVE_NAME)
+    print(f'DNS:       {', '.join(san.value.get_values_for_type(x509.DNSName))}')
+except: pass
+"
 ----
 
 .Sample output
 [.console-output]
 [source,text]
 ----
-            Not After : Mar 17 04:44:00 2027 GMT
-        Subject: C=US, ST=North Carolina, O=Hyperledger, OU=peer, CN=peer0-techpulse
-                DNS:peer0, DNS:peer0.certchain-techpulse.svc.cluster.local, DNS:peer0-certchain-techpulse.apps...
+Subject:   CN=peer0-techpulse,OU=peer,O=Hyperledger,ST=North Carolina,C=US
+Not After: 2027-03-17 04:44:00+00:00
+DNS:       peer0, peer0.certchain-techpulse.svc.cluster.local, peer0-certchain-techpulse.apps...
 ----
 
 === Inspect Orderer TLS Certificate
@@ -580,17 +599,28 @@ oc extract secret/peer0-tls -n $TP --keys=server.crt --to=- 2>/dev/null \
 [source,bash,subs="attributes"]
 ----
 oc extract secret/orderer0-tls -n $CENTRAL --keys=server.crt --to=- 2>/dev/null \
-  | openssl x509 -text -noout 2>/dev/null \
-  | grep -E "Subject:|DNS:|Not After"
+  | python3 -c "
+import sys
+from cryptography import x509
+from cryptography.x509.oid import ExtensionOID
+from cryptography.hazmat.backends import default_backend
+cert = x509.load_pem_x509_certificate(sys.stdin.buffer.read(), default_backend())
+print(f'Subject:   {cert.subject.rfc4514_string()}')
+print(f'Not After: {cert.not_valid_after_utc}')
+try:
+    san = cert.extensions.get_extension_for_oid(ExtensionOID.SUBJECT_ALTERNATIVE_NAME)
+    print(f'DNS:       {', '.join(san.value.get_values_for_type(x509.DNSName))}')
+except: pass
+"
 ----
 
 .Sample output
 [.console-output]
 [source,text]
 ----
-            Not After : Mar 17 04:43:00 2027 GMT
-        Subject: C=US, ST=North Carolina, O=Hyperledger, OU=orderer, CN=orderer0
-                DNS:orderer0, DNS:orderer0.certchain.svc.cluster.local, DNS:orderer0-certchain.apps...
+Subject:   CN=orderer0,OU=orderer,O=Hyperledger,ST=North Carolina,C=US
+Not After: 2027-03-17 04:43:00+00:00
+DNS:       orderer0, orderer0.certchain.svc.cluster.local, orderer0-certchain.apps...
 ----
 
 == Peer Operations
