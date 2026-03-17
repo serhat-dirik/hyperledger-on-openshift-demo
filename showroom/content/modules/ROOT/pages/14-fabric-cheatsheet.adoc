@@ -523,14 +523,18 @@ TIP: If you have `openssl` available (e.g., on your local machine), you can use 
 ----
 oc extract secret/admin-msp -n $TP --keys=signcerts --to=- 2>/dev/null \
   | python3 -c "
-import sys
-from cryptography import x509
-from cryptography.hazmat.backends import default_backend
-cert = x509.load_pem_x509_certificate(sys.stdin.buffer.read(), default_backend())
-print(f'Issuer:    {cert.issuer.rfc4514_string()}')
-print(f'Subject:   {cert.subject.rfc4514_string()}')
-print(f'Not Before: {cert.not_valid_before_utc}')
-print(f'Not After:  {cert.not_valid_after_utc}')
+import sys, ssl, tempfile, os
+pem = sys.stdin.buffer.read()
+tmp = tempfile.NamedTemporaryFile(suffix='.pem', delete=False)
+tmp.write(pem); tmp.close()
+c = ssl._ssl._test_decode_cert(tmp.name)
+os.unlink(tmp.name)
+subj = ','.join(f'{k}={v}' for t in c['subject'] for k,v in t)
+issr = ','.join(f'{k}={v}' for t in c['issuer'] for k,v in t)
+print(f'Subject:    {subj}')
+print(f'Issuer:     {issr}')
+print(f'Not Before: {c[\"notBefore\"]}')
+print(f'Not After:  {c[\"notAfter\"]}')
 "
 ----
 
@@ -538,10 +542,10 @@ print(f'Not After:  {cert.not_valid_after_utc}')
 [.console-output]
 [source,text]
 ----
-Issuer:    CN=fabric-ca-server,OU=Fabric,O=Hyperledger,ST=North Carolina,C=US
-Subject:   CN=admin-techpulse,OU=admin,O=Hyperledger,ST=North Carolina,C=US
-Not Before: 2026-03-17 04:37:00+00:00
-Not After:  2027-03-17 04:44:00+00:00
+Subject:    countryName=US,...,organizationalUnitName=admin,commonName=admin-techpulse
+Issuer:     countryName=US,...,organizationalUnitName=Fabric,commonName=fabric-ca-server
+Not Before: Mar 17 04:37:00 2026 GMT
+Not After:  Mar 17 04:44:00 2027 GMT
 ----
 
 === Check Certificate Expiry (All Orgs)
@@ -552,7 +556,7 @@ Not After:  2027-03-17 04:44:00+00:00
 for NS in $TP $DF $NP; do
   ORG=$(echo $NS | sed 's/certchain-//')
   EXPIRY=$(oc extract secret/admin-msp -n $NS --keys=signcerts --to=- 2>/dev/null \
-    | python3 -c "import sys; from cryptography import x509; from cryptography.hazmat.backends import default_backend; cert=x509.load_pem_x509_certificate(sys.stdin.buffer.read(),default_backend()); print(cert.not_valid_after_utc.strftime('%b %d %H:%M:%S %Y GMT'))" 2>/dev/null)
+    | python3 -c "import sys,ssl,tempfile,os; pem=sys.stdin.buffer.read(); tmp=tempfile.NamedTemporaryFile(suffix='.pem',delete=False); tmp.write(pem); tmp.close(); c=ssl._ssl._test_decode_cert(tmp.name); os.unlink(tmp.name); print(c['notAfter'])" 2>/dev/null)
   echo "$ORG admin cert expires: $EXPIRY"
 done
 ----
@@ -573,17 +577,18 @@ neuralpath admin cert expires: Mar 17 04:46:00 2027 GMT
 ----
 oc extract secret/peer0-tls -n $TP --keys=server.crt --to=- 2>/dev/null \
   | python3 -c "
-import sys
-from cryptography import x509
-from cryptography.x509.oid import ExtensionOID
-from cryptography.hazmat.backends import default_backend
-cert = x509.load_pem_x509_certificate(sys.stdin.buffer.read(), default_backend())
-print(f'Subject:   {cert.subject.rfc4514_string()}')
-print(f'Not After: {cert.not_valid_after_utc}')
-try:
-    san = cert.extensions.get_extension_for_oid(ExtensionOID.SUBJECT_ALTERNATIVE_NAME)
-    print(f'DNS:       {', '.join(san.value.get_values_for_type(x509.DNSName))}')
-except: pass
+import sys, ssl, tempfile, os
+pem = sys.stdin.buffer.read()
+tmp = tempfile.NamedTemporaryFile(suffix='.pem', delete=False)
+tmp.write(pem); tmp.close()
+c = ssl._ssl._test_decode_cert(tmp.name)
+os.unlink(tmp.name)
+subj = ','.join(f'{k}={v}' for t in c['subject'] for k,v in t)
+print(f'Subject:   {subj}')
+print(f'Not After: {c[\"notAfter\"]}')
+if 'subjectAltName' in c:
+    dns = [v for t,v in c['subjectAltName'] if t=='DNS']
+    print(f'DNS:       {\", \".join(dns)}')
 "
 ----
 
@@ -591,8 +596,8 @@ except: pass
 [.console-output]
 [source,text]
 ----
-Subject:   CN=peer0-techpulse,OU=peer,O=Hyperledger,ST=North Carolina,C=US
-Not After: 2027-03-17 04:44:00+00:00
+Subject:   countryName=US,...,organizationalUnitName=peer,commonName=peer0-techpulse
+Not After: Mar 17 04:44:00 2027 GMT
 DNS:       peer0, peer0.certchain-techpulse.svc.cluster.local, peer0-certchain-techpulse.apps...
 ----
 
@@ -603,17 +608,18 @@ DNS:       peer0, peer0.certchain-techpulse.svc.cluster.local, peer0-certchain-t
 ----
 oc extract secret/orderer0-tls -n $CENTRAL --keys=server.crt --to=- 2>/dev/null \
   | python3 -c "
-import sys
-from cryptography import x509
-from cryptography.x509.oid import ExtensionOID
-from cryptography.hazmat.backends import default_backend
-cert = x509.load_pem_x509_certificate(sys.stdin.buffer.read(), default_backend())
-print(f'Subject:   {cert.subject.rfc4514_string()}')
-print(f'Not After: {cert.not_valid_after_utc}')
-try:
-    san = cert.extensions.get_extension_for_oid(ExtensionOID.SUBJECT_ALTERNATIVE_NAME)
-    print(f'DNS:       {', '.join(san.value.get_values_for_type(x509.DNSName))}')
-except: pass
+import sys, ssl, tempfile, os
+pem = sys.stdin.buffer.read()
+tmp = tempfile.NamedTemporaryFile(suffix='.pem', delete=False)
+tmp.write(pem); tmp.close()
+c = ssl._ssl._test_decode_cert(tmp.name)
+os.unlink(tmp.name)
+subj = ','.join(f'{k}={v}' for t in c['subject'] for k,v in t)
+print(f'Subject:   {subj}')
+print(f'Not After: {c[\"notAfter\"]}')
+if 'subjectAltName' in c:
+    dns = [v for t,v in c['subjectAltName'] if t=='DNS']
+    print(f'DNS:       {\", \".join(dns)}')
 "
 ----
 
@@ -621,8 +627,8 @@ except: pass
 [.console-output]
 [source,text]
 ----
-Subject:   CN=orderer0,OU=orderer,O=Hyperledger,ST=North Carolina,C=US
-Not After: 2027-03-17 04:43:00+00:00
+Subject:   countryName=US,...,organizationalUnitName=orderer,commonName=orderer0
+Not After: Mar 17 04:43:00 2027 GMT
 DNS:       orderer0, orderer0.certchain.svc.cluster.local, orderer0-certchain.apps...
 ----
 
