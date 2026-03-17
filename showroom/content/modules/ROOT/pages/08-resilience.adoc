@@ -188,7 +188,7 @@ Record the current ledger height on the TechPulse peer, then take it offline:
 # Record block height BEFORE the outage
 echo "=== TechPulse block height BEFORE peer down ==="
 oc exec deployment/peer0 -n certchain-techpulse -- \
-  peer channel getinfo -c certchannel 2>/dev/null
+  peer channel getinfo -c certchannel 2>/dev/null | python3 -m json.tool
 
 # Pause ArgoCD auto-sync (it would restore the peer automatically)
 oc patch application certchain-techpulse -n openshift-gitops --type=merge \
@@ -270,7 +270,7 @@ done
 echo ""
 echo "=== Block height AFTER recovery ==="
 oc exec deployment/peer0 -n certchain-techpulse -- \
-  peer channel getinfo -c certchannel 2>/dev/null
+  peer channel getinfo -c certchannel 2>/dev/null | python3 -m json.tool
 ----
 
 You should see output like:

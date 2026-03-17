@@ -31,7 +31,7 @@ You should see 6 Applications, all *Synced* and *Healthy*:
 |===
 | Application | Description
 
-| *certchain*
+| *field-content* (or *certchain* on BYO clusters)
 | Root App-of-Apps — generates the child Applications from Helm bootstrap chart
 
 | *certchain-central*

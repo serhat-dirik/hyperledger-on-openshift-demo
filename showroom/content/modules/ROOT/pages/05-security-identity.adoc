@@ -90,19 +90,22 @@ Use the admin token to issue a certificate:
 [.console-input]
 [source,bash,subs="attributes"]
 ----
+# Generate a unique cert ID (safe for repeated runs)
+SEC_CERT_ID="SEC-TEST-$(date +%s)"
+
 curl -sk -X POST \
   "{techpulse_cert_admin_api_url}/api/v1/certificates" \
   -H "Authorization: Bearer $ADMIN_TOKEN" \
   -H "Content-Type: application/json" \
-  -d '{
-    "certID": "SEC-TEST-001",
-    "studentID": "student01@techpulse.demo",
-    "studentName": "Security Walkthrough",
-    "courseID": "SEC-101",
-    "courseName": "Security Verification",
-    "issueDate": "2026-03-14",
-    "expiryDate": "2027-03-14"
-  }' | python3 -m json.tool
+  -d "{
+    \"certID\": \"$SEC_CERT_ID\",
+    \"studentID\": \"student01@techpulse.demo\",
+    \"studentName\": \"Security Walkthrough\",
+    \"courseID\": \"SEC-101\",
+    \"courseName\": \"Security Verification\",
+    \"issueDate\": \"2026-03-14\",
+    \"expiryDate\": \"2027-03-14\"
+  }" | python3 -m json.tool
 ----
 
 Expected: HTTP 200 with the issued certificate. This request passed *three* security checks:
@@ -118,7 +121,7 @@ Now verify the certificate through the public verify-api — no token required:
 [.console-input]
 [source,bash,subs="attributes"]
 ----
-curl -sk "{verify_api_url}/api/v1/verify/SEC-TEST-001" | python3 -m json.tool
+curl -sk "{verify_api_url}/api/v1/verify/$SEC_CERT_ID" | python3 -m json.tool
 ----
 
 Expected: `"status": "VALID"` — the certificate exists on the blockchain and is publicly verifiable.
@@ -197,7 +200,7 @@ Verify that only the legitimate certificate exists:
 [source,bash,subs="attributes"]
 ----
 # The legitimate certificate is valid
-curl -sk "{verify_api_url}/api/v1/verify/SEC-TEST-001" | python3 -c "import sys,json; d=json.load(sys.stdin); print(f'SEC-TEST-001: {d[\"status\"]}')"
+curl -sk "{verify_api_url}/api/v1/verify/$SEC_CERT_ID" | python3 -c "import sys,json; d=json.load(sys.stdin); print(f'$SEC_CERT_ID: {d[\"status\"]}')"
 
 # The unauthorized attempts never reached the blockchain
 curl -sk "{verify_api_url}/api/v1/verify/SEC-HACK-001" | python3 -c "import sys,json; d=json.load(sys.stdin); print(f'SEC-HACK-001: {d[\"status\"]}')"
@@ -207,7 +210,7 @@ curl -sk "{verify_api_url}/api/v1/verify/SEC-XORG-001" | python3 -c "import sys,
 Expected output:
 
 ----
-SEC-TEST-001: VALID
+SEC-TEST-xxxx: VALID
 SEC-HACK-001: NOT_FOUND
 SEC-XORG-001: NOT_FOUND
 ----

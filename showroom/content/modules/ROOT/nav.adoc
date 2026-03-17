@@ -11,6 +11,7 @@
 ** xref:06-monitoring.adoc[Monitoring & Observability]
 ** xref:07-scalability.adoc[Scalability]
 ** xref:08-resilience.adoc[Resilience & Fault Tolerance]
+* xref:13-conclusion.adoc[Conclusion]
 * Reference
 ** xref:01b-production-architecture.adoc[Production Architecture Guide]
 ** xref:09-api.adoc[API Walkthrough]
