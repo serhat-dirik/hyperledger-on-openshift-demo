@@ -465,9 +465,18 @@ Expected: a JSON object with `"status": "ACTIVE"`.
 
 ## Demo Walkthroughs
 
-Interactive demo walkthroughs are available in the **Showroom** lab guide, which is deployed automatically with the platform. Showroom provides a split-pane interface with instructions on the left and interactive tabs on the right (terminal, OpenShift Console, Git repository, ArgoCD, and application UIs).
+The **Showroom** lab guide is deployed automatically as part of CertChain. It provides a split-pane interface with instructions on the left and interactive tabs on the right (terminal, OpenShift Console, Git repository, ArgoCD, and application UIs).
 
-**Available walkthroughs in Showroom:**
+**Access Showroom** after deployment:
+
+```bash
+DOMAIN=$(oc get ingresses.config cluster -o jsonpath='{.spec.domain}')
+echo "https://showroom-showroom.${DOMAIN}"
+```
+
+For RHDP orders, the Showroom URL is also shown in the order confirmation email.
+
+**Available walkthroughs:**
 
 | Walkthrough | What you do |
 |---|---|
@@ -476,16 +485,19 @@ Interactive demo walkthroughs are available in the **Showroom** lab guide, which
 | **Student Transcript** | Log in as a student — identity brokering auto-routes to your org |
 | **Security & Identity** | Explore Keycloak brokering, RBAC, MSP, and KC Organizations |
 | **Monitoring** | Prometheus metrics, Grafana dashboards, PromQL queries |
-| **Scalability** | Add a new org, scale peers and orderers |
+| **Scalability** | Scale services imperatively and via GitOps, learn scaling constraints |
 | **Resilience** | Kill orderers, crash pods, prove BFT consensus works |
 | **API Walkthrough** | curl commands from the terminal: issue, verify, revoke, transcript |
 
-**Access Showroom:**
+**Reference material** (also in Showroom):
 
-```bash
-DOMAIN=$(oc get ingresses.config cluster -o jsonpath='{.spec.domain}')
-echo "https://showroom-showroom.${DOMAIN}"
-```
+| Reference | Description |
+|---|---|
+| **Fabric Operations Cheatsheet** | Quick-reference commands for inspecting peers, orderers, ledger, certs, and CouchDB |
+| **Production Architecture Guide** | How this demo maps to enterprise deployments |
+| **Adding Organizations** | Multi-org expansion considerations |
+| **Troubleshooting** | Common issues and resolution steps |
+| **Credentials & URLs** | All service URLs, logins, and namespace layout |
 
 ---
 
