@@ -47,6 +47,10 @@ spec:
       jqPathExpressions:
         - .spec.template.spec.containers[].image
         - .spec.template.spec.initContainers[]?.image
+    - group: operators.coreos.com
+      kind: Subscription
+      jqPathExpressions:
+        - .status
   syncPolicy:
     automated:
       prune: true
