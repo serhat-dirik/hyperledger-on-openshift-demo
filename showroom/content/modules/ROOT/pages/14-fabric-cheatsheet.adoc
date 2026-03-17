@@ -43,6 +43,15 @@ for NS in $TP $DF $NP; do
 done
 ----
 
+.Sample output
+[.console-output]
+[source,text]
+----
+techpulse: height=55
+dataforge: height=55
+neuralpath: height=55
+----
+
 === Block Height (via Prometheus Metrics)
 
 An alternative approach using Prometheus metrics — works even when the peer CLI is unresponsive:
@@ -56,6 +65,15 @@ for ORG in techpulse dataforge neuralpath; do
     | grep "^ledger_blockchain_height" | awk '{print $2}')
   echo "$ORG: height=$H"
 done
+----
+
+.Sample output
+[.console-output]
+[source,text]
+----
+techpulse: height=55
+dataforge: height=55
+neuralpath: height=55
 ----
 
 === Gossip Peers (via Metrics)
@@ -73,6 +91,15 @@ for ORG in techpulse dataforge neuralpath; do
 done
 ----
 
+.Sample output
+[.console-output]
+[source,text]
+----
+techpulse: 2 gossip peers
+dataforge: 2 gossip peers
+neuralpath: 2 gossip peers
+----
+
 === Pod Health Across Namespaces
 
 [.console-input]
@@ -82,6 +109,30 @@ for NS in $CENTRAL $TP $DF $NP; do
   echo "=== $NS ==="
   oc get pods -n $NS --no-headers | grep -v Completed | awk '{print $1, $3}'
 done
+----
+
+.Sample output
+[.console-output]
+[source,text]
+----
+=== certchain ===
+cert-portal-6d8b9c7f4-x2k9m Running
+fabric-ca-5f8d6c9b7-qm4vn Running
+grafana-deployment-7c8d5b6f4-r8j2k Running
+keycloak-7d9e8f6c5-t3m7n Running
+orderer0-6f7d8e9c5-p4k8m Running
+postgres-6c7d8e9f5-w2j6n Running
+verify-api-5d6e7f8c9-q9m3k Running
+=== certchain-techpulse ===
+cert-admin-api-7e8f9d6c5-k2m4n Running
+certcontract-6d7e8f9c5-j3n7m Running
+couchdb-5c6d7e8f9-p8k2j Running
+course-manager-ui-8f9d6e7c5-w4m6n Running
+keycloak-9d6e7f8c5-t5n8m Running
+orderer-7c8d9e6f5-q2k4j Running
+peer0-6e7f8d9c5-r6m9n Running
+postgres-5d6e7f8c9-j3k7m Running
+...
 ----
 
 == Orderer Cluster
@@ -104,6 +155,18 @@ for PAIR in central/orderer0.certchain techpulse/orderer.certchain-techpulse dat
 done
 ----
 
+.Sample output
+[.console-output]
+[source,text]
+----
+central: leader=1 block=54 cluster_size=4
+techpulse: leader=0 block=54 cluster_size=4
+dataforge: leader=0 block=54 cluster_size=4
+neuralpath: leader=0 block=54 cluster_size=4
+----
+
+TIP: `leader=1` indicates the current BFT leader. Exactly one orderer should be the leader at any time. The `block` value should be equal across all orderers (±1 during active transactions).
+
 === Orderer Logs (Recent Blocks)
 
 Watch the most recent block activity on orderer0:
@@ -113,6 +176,13 @@ Watch the most recent block activity on orderer0:
 ----
 oc logs deployment/orderer0 -n $CENTRAL --tail=20 2>/dev/null \
   | grep -E "Committed block|Start consensus|Delivering"
+----
+
+.Sample output
+[.console-output]
+[source,text]
+----
+Committed block [54] ... channel=certchannel
 ----
 
 == Chaincode Operations
@@ -132,6 +202,21 @@ Read a certificate without authentication through the public verify-api:
 curl -sk "{verify_api_url}/api/v1/verify/TP-FSWD-001" | python3 -m json.tool
 ----
 
+.Sample output
+[.console-output]
+[source,json]
+----
+{
+    "certID": "TP-FSWD-001",
+    "studentName": "Alice Johnson",
+    "courseName": "Full-Stack Web Development",
+    "issueDate": "2025-09-15",
+    "expiryDate": "2028-09-15",
+    "status": "VALID",
+    "issuerOrg": "TechPulseMSP"
+}
+----
+
 === Batch Verify Multiple Certificates
 
 [.console-input]
@@ -139,6 +224,20 @@ curl -sk "{verify_api_url}/api/v1/verify/TP-FSWD-001" | python3 -m json.tool
 ----
 curl -sk "{verify_api_url}/api/v1/verify/batch?ids=TP-FSWD-001,DF-DSML-001,NP-CCNA-001" \
   | python3 -m json.tool
+----
+
+.Sample output
+[.console-output]
+[source,json]
+----
+{
+    "results": [
+        {"certID": "TP-FSWD-001", "status": "VALID", "issuerOrg": "TechPulseMSP"},
+        {"certID": "DF-DSML-001", "status": "VALID", "issuerOrg": "DataForgeMSP"},
+        {"certID": "NP-CCNA-001", "status": "VALID", "issuerOrg": "NeuralPathMSP"}
+    ],
+    "totalVerified": 3
+}
 ----
 
 === List Certificates (via API)
@@ -151,6 +250,17 @@ Requires an admin JWT token (see <<_get_an_admin_jwt_token>>):
 curl -sk "{techpulse_cert_admin_api_url}/api/v1/certificates?page=0&size=100" \
   -H "Authorization: Bearer $TOKEN" \
   | python3 -c "import sys,json; data=json.load(sys.stdin); [print(f'  {c[\"certID\"]:20s} {c[\"status\"]}') for c in data.get('content', data) if isinstance(c, dict)]"
+----
+
+.Sample output
+[.console-output]
+[source,text]
+----
+  TP-FSWD-001          ACTIVE
+  TP-FSWD-002          ACTIVE
+  TP-UXUI-001          ACTIVE
+  TP-UXUI-002          ACTIVE
+  ...
 ----
 
 === Issue a Certificate (via API)
@@ -173,6 +283,23 @@ curl -sk -X POST "{techpulse_cert_admin_api_url}/api/v1/certificates" \
   }" | python3 -m json.tool
 ----
 
+.Sample output
+[.console-output]
+[source,json]
+----
+{
+    "certID": "CHEAT-1742208000",
+    "studentID": "student01@techpulse.demo",
+    "studentName": "Cheatsheet Test",
+    "courseID": "CHEAT-101",
+    "courseName": "Cheatsheet Course",
+    "issueDate": "2026-03-17",
+    "expiryDate": "2027-03-17",
+    "status": "ACTIVE",
+    "txID": "a1b2c3d4e5f6..."
+}
+----
+
 === Get Dashboard Stats (via API)
 
 [.console-input]
@@ -180,6 +307,18 @@ curl -sk -X POST "{techpulse_cert_admin_api_url}/api/v1/certificates" \
 ----
 curl -sk "{techpulse_cert_admin_api_url}/api/v1/dashboard/stats" \
   -H "Authorization: Bearer $TOKEN" | python3 -m json.tool
+----
+
+.Sample output
+[.console-output]
+[source,json]
+----
+{
+    "totalCertificates": 100,
+    "activeCertificates": 96,
+    "revokedCertificates": 2,
+    "expiredCertificates": 2
+}
 ----
 
 == CouchDB State Database
@@ -198,6 +337,15 @@ for NS in $TP $DF $NP; do
 done
 ----
 
+.Sample output
+[.console-output]
+[source,text]
+----
+techpulse: 100 documents
+dataforge: 100 documents
+neuralpath: 100 documents
+----
+
 === List All CouchDB Databases
 
 [.console-input]
@@ -207,6 +355,27 @@ oc exec deployment/couchdb -n $TP -- \
   curl -s -u admin:adminpw http://localhost:5984/_all_dbs 2>/dev/null \
   | python3 -m json.tool
 ----
+
+.Sample output
+[.console-output]
+[source,json]
+----
+[
+    "_global_changes",
+    "_replicator",
+    "_users",
+    "certchannel_",
+    "certchannel_certcontract",
+    "certchannel_lscc",
+    "certchannel_lifecycle",
+    "certchannel_lifecycle$$h_implicit_org_DataForgeMSP",
+    "certchannel_lifecycle$$h_implicit_org_NeuralPathMSP",
+    "certchannel_lifecycle$$h_implicit_org_TechPulseMSP",
+    "certchannel_lifecycle$$p_implicit_org_TechPulseMSP"
+]
+----
+
+TIP: The `certchannel_certcontract` database contains the chaincode world state. The `certchannel_lifecycle$$*` databases track chaincode lifecycle approvals per organization.
 
 === Query a Certificate in CouchDB
 
@@ -221,6 +390,29 @@ oc exec deployment/couchdb -n $TP -- \
   | python3 -m json.tool
 ----
 
+.Sample output
+[.console-output]
+[source,json]
+----
+{
+    "_id": "TP-FSWD-001",
+    "_rev": "1-abc123...",
+    "certID": "TP-FSWD-001",
+    "studentID": "alice.johnson@techpulse.demo",
+    "studentName": "Alice Johnson",
+    "courseID": "TP-FSWD",
+    "courseName": "Full-Stack Web Development",
+    "issueDate": "2025-09-15",
+    "expiryDate": "2028-09-15",
+    "status": "ACTIVE",
+    "issuerOrg": "TechPulseMSP",
+    "txID": "7f8e9d...",
+    "~version": "CgMBFQ=="
+}
+----
+
+TIP: The `~version` field is Fabric's MVCC (Multi-Version Concurrency Control) marker used for read-write conflict detection during endorsement.
+
 === Compact a CouchDB Database
 
 Reclaim disk space by compacting the state database (safe while peer is running):
@@ -234,6 +426,13 @@ oc exec deployment/couchdb -n $TP -- \
     http://localhost:5984/certchannel_certcontract/_compact 2>/dev/null
 ----
 
+.Sample output
+[.console-output]
+[source,json]
+----
+{"ok":true}
+----
+
 === CouchDB Active Tasks
 
 Check compaction progress and other background tasks:
@@ -245,6 +444,15 @@ oc exec deployment/couchdb -n $TP -- \
   curl -s -u admin:adminpw http://localhost:5984/_active_tasks 2>/dev/null \
   | python3 -m json.tool
 ----
+
+.Sample output
+[.console-output]
+[source,json]
+----
+[]
+----
+
+NOTE: An empty array means no background tasks are running. During compaction, you'd see entries with `type: "database_compaction"` and `progress` percentage.
 
 == Identity & Certificates
 
@@ -264,6 +472,23 @@ oc exec deployment/fabric-ca -n $CENTRAL -- sh -c \
      --tls.certfiles /var/hyperledger/fabric-ca-server/ca-cert.pem 2>/dev/null'
 ----
 
+.Sample output
+[.console-output]
+[source,text]
+----
+Name: admin, Type: client, Affiliation: , Max Enrollments: -1, Attrs: [...]
+Name: peer0-techpulse, Type: peer, Affiliation: techpulse, Max Enrollments: -1
+Name: peer0-dataforge, Type: peer, Affiliation: dataforge, Max Enrollments: -1
+Name: peer0-neuralpath, Type: peer, Affiliation: neuralpath, Max Enrollments: -1
+Name: orderer0, Type: orderer, Affiliation: , Max Enrollments: -1
+Name: orderer1-techpulse, Type: orderer, Affiliation: techpulse, Max Enrollments: -1
+Name: orderer2-dataforge, Type: orderer, Affiliation: dataforge, Max Enrollments: -1
+Name: orderer3-neuralpath, Type: orderer, Affiliation: neuralpath, Max Enrollments: -1
+Name: admin-techpulse, Type: client, Affiliation: techpulse, Max Enrollments: -1
+Name: admin-dataforge, Type: client, Affiliation: dataforge, Max Enrollments: -1
+Name: admin-neuralpath, Type: client, Affiliation: neuralpath, Max Enrollments: -1
+----
+
 === Inspect an MSP Certificate
 
 View the X.509 details of an organization's admin certificate:
@@ -274,6 +499,16 @@ View the X.509 details of an organization's admin certificate:
 oc get secret admin-msp -n $TP -o jsonpath='{.data.signcerts}' \
   | base64 -d | openssl x509 -text -noout 2>/dev/null \
   | grep -E "Subject:|Issuer:|Not Before|Not After"
+----
+
+.Sample output
+[.console-output]
+[source,text]
+----
+        Issuer: C=US, ST=North Carolina, O=Hyperledger, OU=Fabric, CN=fabric-ca-server
+            Not Before: Mar 17 04:37:00 2026 GMT
+            Not After : Mar 17 04:44:00 2027 GMT
+        Subject: C=US, ST=North Carolina, O=Hyperledger, OU=admin, CN=admin-techpulse
 ----
 
 === Check Certificate Expiry (All Orgs)
@@ -289,6 +524,15 @@ for NS in $TP $DF $NP; do
 done
 ----
 
+.Sample output
+[.console-output]
+[source,text]
+----
+techpulse admin cert expires: Mar 17 04:44:00 2027 GMT
+dataforge admin cert expires: Mar 17 04:44:00 2027 GMT
+neuralpath admin cert expires: Mar 17 04:46:00 2027 GMT
+----
+
 === Inspect Peer TLS Certificate
 
 [.console-input]
@@ -299,14 +543,32 @@ oc get secret peer0-tls -n $TP -o jsonpath='{.data.server\.crt}' \
   | grep -E "Subject:|DNS:|Not After"
 ----
 
+.Sample output
+[.console-output]
+[source,text]
+----
+            Not After : Mar 17 04:44:00 2027 GMT
+        Subject: C=US, ST=North Carolina, O=Hyperledger, OU=peer, CN=peer0-techpulse
+                DNS:peer0, DNS:peer0.certchain-techpulse.svc.cluster.local, DNS:peer0-certchain-techpulse.apps...
+----
+
 === Inspect Orderer TLS Certificate
 
 [.console-input]
 [source,bash,subs="attributes"]
 ----
-oc get secret orderer-tls -n $CENTRAL -o jsonpath='{.data.server\.crt}' \
+oc get secret orderer0-tls -n $CENTRAL -o jsonpath='{.data.server\.crt}' \
   | base64 -d | openssl x509 -text -noout 2>/dev/null \
   | grep -E "Subject:|DNS:|Not After"
+----
+
+.Sample output
+[.console-output]
+[source,text]
+----
+            Not After : Mar 17 04:43:00 2027 GMT
+        Subject: C=US, ST=North Carolina, O=Hyperledger, OU=orderer, CN=orderer0
+                DNS:orderer0, DNS:orderer0.certchain.svc.cluster.local, DNS:orderer0-certchain.apps...
 ----
 
 == Peer Operations
@@ -320,6 +582,14 @@ oc exec deployment/peer0 -n $TP -- \
   peer channel list 2>/dev/null | grep -v "INFO"
 ----
 
+.Sample output
+[.console-output]
+[source,text]
+----
+Channels peers has joined:
+certchannel
+----
+
 === Peer Logs (Endorsement Activity)
 
 [.console-input]
@@ -327,6 +597,14 @@ oc exec deployment/peer0 -n $TP -- \
 ----
 oc logs deployment/peer0 -n $TP --tail=30 2>/dev/null \
   | grep -E "Committed block|endorseProposal|chaincode"
+----
+
+.Sample output
+[.console-output]
+[source,text]
+----
+... Committed block [54] to ledger channel=certchannel
+... Committed block [55] to ledger channel=certchannel
 ----
 
 === Peer Metrics Summary
@@ -344,6 +622,18 @@ echo "Endorsement proposals (failed):"
 echo "$M" | grep "^endorser_proposal_acl_failures" | awk '{print "  "$2}'
 echo "Ledger height:"
 echo "$M" | grep "^ledger_blockchain_height" | awk '{print "  "$2}'
+----
+
+.Sample output
+[.console-output]
+[source,text]
+----
+Endorsement proposals (successful):
+  39
+Endorsement proposals (failed):
+  0
+Ledger height:
+  55
 ----
 
 === Rebuild State Databases
@@ -364,6 +654,8 @@ oc debug deployment/peer0 -n $TP -- peer node rebuild-dbs
 oc scale deployment peer0 -n $TP --replicas=1
 ----
 
+WARNING: This is a destructive operation — it drops all CouchDB databases for this peer and replays them from the block files. The peer will be unavailable until replay completes.
+
 == Keycloak & Authentication
 
 [[_get_an_admin_jwt_token]]
@@ -382,12 +674,35 @@ TOKEN=$(curl -sk -X POST \
 echo "Token: ${TOKEN:0:20}..."
 ----
 
+.Sample output
+[.console-output]
+[source,text]
+----
+Token: eyJhbGciOiJSUzI1Ni...
+----
+
 === Decode a JWT Token
 
 [.console-input]
 [source,bash,subs="attributes"]
 ----
 echo "$TOKEN" | cut -d. -f2 | base64 -d 2>/dev/null | python3 -m json.tool
+----
+
+.Sample output
+[.console-output]
+[source,json]
+----
+{
+    "sub": "a1b2c3d4-...",
+    "realm_access": {
+        "roles": ["org-admin", "default-roles-techpulse"]
+    },
+    "email": "admin@techpulse.demo",
+    "preferred_username": "admin@techpulse.demo",
+    "given_name": "Admin",
+    "family_name": "TechPulse"
+}
 ----
 
 === List Keycloak Users
@@ -408,6 +723,16 @@ curl -sk "{techpulse_keycloak_url}/admin/realms/techpulse/users" \
   | python3 -c "import sys,json; [print(u['username'] + '  ' + u.get('email','')) for u in json.load(sys.stdin)]"
 ----
 
+.Sample output
+[.console-output]
+[source,text]
+----
+admin@techpulse.demo  admin@techpulse.demo
+instructor01@techpulse.demo  instructor01@techpulse.demo
+student01@techpulse.demo  student01@techpulse.demo
+student02@techpulse.demo  student02@techpulse.demo
+----
+
 == ArgoCD Operations
 
 === Check All Application Status
@@ -419,6 +744,19 @@ oc get applications -n openshift-gitops \
   -o custom-columns='NAME:.metadata.name,SYNC:.status.sync.status,HEALTH:.status.health.status'
 ----
 
+.Sample output
+[.console-output]
+[source,text]
+----
+NAME                   SYNC     HEALTH
+certchain-central      Synced   Healthy
+certchain-dataforge    Synced   Healthy
+certchain-neuralpath   Synced   Healthy
+certchain-showroom     Synced   Healthy
+certchain-techpulse    Synced   Healthy
+field-content          Synced   Healthy
+----
+
 === Force Sync an Application
 
 [.console-input]
@@ -426,6 +764,13 @@ oc get applications -n openshift-gitops \
 ----
 oc annotate application certchain-central -n openshift-gitops \
   argocd.argoproj.io/refresh=hard --overwrite
+----
+
+.Sample output
+[.console-output]
+[source,text]
+----
+application.argoproj.io/certchain-central annotated
 ----
 
 === Pause/Resume Auto-Sync
@@ -440,4 +785,12 @@ oc patch application certchain-techpulse -n openshift-gitops --type=merge \
 # Resume
 oc patch application certchain-techpulse -n openshift-gitops --type=merge \
   -p '{"spec":{"syncPolicy":{"automated":{"prune":true,"selfHeal":true}}}}'
+----
+
+.Sample output
+[.console-output]
+[source,text]
+----
+application.argoproj.io/certchain-techpulse patched
+application.argoproj.io/certchain-techpulse patched
 ----
