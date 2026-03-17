@@ -1,0 +1,15 @@
+# Enable OpenShift user workload monitoring
+# Required for ServiceMonitors in user namespaces to be scraped by Prometheus.
+# This ConfigMap tells the cluster monitoring stack to deploy prometheus-operator
+# and Prometheus/Thanos components in the openshift-user-workload-monitoring namespace.
+apiVersion: v1
+kind: ConfigMap
+metadata:
+  name: cluster-monitoring-config
+  namespace: openshift-monitoring
+  annotations:
+    argocd.argoproj.io/sync-wave: "0"
+    argocd.argoproj.io/sync-options: ServerSideApply=true,Prune=false
+data:
+  config.yaml: |
+    enableUserWorkload: true
