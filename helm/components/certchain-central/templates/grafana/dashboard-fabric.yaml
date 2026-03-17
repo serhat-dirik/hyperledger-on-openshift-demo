@@ -156,7 +156,7 @@ spec:
           "title": "Network Nodes",
           "description": "Orderer pods and their namespaces — node IDs are assigned by consenter order in configtx.yaml (0=orderer0/central, 1=orderer/techpulse, 2=orderer/dataforge, 3=orderer/neuralpath)",
           "type": "table",
-          "gridPos": { "h": 4, "w": 12, "x": 0, "y": 3 },
+          "gridPos": { "h": 6, "w": 12, "x": 0, "y": 3 },
           "targets": [
             {
               "datasource": { "type": "prometheus", "uid": "prometheus" },
