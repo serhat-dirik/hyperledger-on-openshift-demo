@@ -174,22 +174,32 @@ Watch the most recent block activity on orderer0:
 [.console-input]
 [source,bash,subs="attributes"]
 ----
-oc logs deployment/orderer0 -n $CENTRAL --tail=20 2>/dev/null \
-  | grep -E "Committed block|Start consensus|Delivering"
+oc logs deployment/orderer0 -n $CENTRAL --tail=100 2>/dev/null \
+  | grep -E "Committed block|Start consensus|Delivering" | tail -5
 ----
 
 .Sample output
 [.console-output]
 [source,text]
 ----
-Committed block [54] ... channel=certchannel
+... Committed block [53] with 1 transaction(s) ... channel=certchannel
+... Committed block [54] with 1 transaction(s) ... channel=certchannel
+... Committed block [55] with 0 transaction(s) ... channel=certchannel
 ----
+
+NOTE: If no output appears, the network has been idle and the recent log lines contain only TLS handshake messages (normal — caused by OpenShift Router health checks on passthrough Routes). Increase `--tail=500` or issue a certificate to generate new block activity.
 
 == Chaincode Operations
 
 [NOTE]
 ====
-The `peer lifecycle` and `peer chaincode` CLI commands require *admin MSP* credentials. The peer pods run with the peer's own identity, which lacks admin privileges. Use the *API layer* (cert-admin-api / verify-api) for chaincode operations from the terminal, or use the CouchDB queries below for direct state inspection.
+**Why not use `peer` CLI directly?** You might expect to run commands like `peer lifecycle chaincode querycommitted` or `peer chaincode query` by exec-ing into the peer pod. This won't work because:
+
+* The peer pod runs with a *peer identity* (`OU=peer`), not an *admin identity* (`OU=admin`)
+* Chaincode queries and lifecycle commands require admin-level MSP credentials
+* The admin MSP is mounted only in the `cert-admin-api` pods, not in the peer pods
+
+Instead, use the **REST APIs** below (which have the admin MSP configured) or query **CouchDB directly** for raw state inspection.
 ====
 
 === Query a Certificate (via API)
@@ -242,14 +252,28 @@ curl -sk "{verify_api_url}/api/v1/verify/batch?ids=TP-FSWD-001,DF-DSML-001,NP-CC
 
 === List Certificates (via API)
 
-Requires an admin JWT token (see <<_get_an_admin_jwt_token>>):
+First, obtain an admin JWT token:
+
+[.console-input]
+[source,bash,subs="attributes"]
+----
+TOKEN=$(curl -sk -X POST \
+  "{techpulse_keycloak_url}/realms/techpulse/protocol/openid-connect/token" \
+  -d "grant_type=password" \
+  -d "client_id=course-manager-ui" \
+  -d "username=admin@techpulse.demo" \
+  -d "password=admin" \
+  | python3 -c "import sys,json; print(json.load(sys.stdin)['access_token'])")
+----
+
+Then list all certificates for TechPulse:
 
 [.console-input]
 [source,bash,subs="attributes"]
 ----
 curl -sk "{techpulse_cert_admin_api_url}/api/v1/certificates?page=0&size=100" \
   -H "Authorization: Bearer $TOKEN" \
-  | python3 -c "import sys,json; data=json.load(sys.stdin); [print(f'  {c[\"certID\"]:20s} {c[\"status\"]}') for c in data.get('content', data) if isinstance(c, dict)]"
+  | python3 -c "import sys,json; data=json.load(sys.stdin); certs=data.get('content',data) if isinstance(data,dict) else data; [print(f'  {c[\"certID\"]:20s} {c[\"status\"]}') for c in certs if isinstance(c, dict)]"
 ----
 
 .Sample output
@@ -361,17 +385,15 @@ oc exec deployment/couchdb -n $TP -- \
 [source,json]
 ----
 [
-    "_global_changes",
     "_replicator",
     "_users",
     "certchannel_",
+    "certchannel__lifecycle",
+    "certchannel__lifecycle$$h_implicit_org_...",
+    "certchannel__lifecycle$$p_implicit_org_...",
     "certchannel_certcontract",
     "certchannel_lscc",
-    "certchannel_lifecycle",
-    "certchannel_lifecycle$$h_implicit_org_DataForgeMSP",
-    "certchannel_lifecycle$$h_implicit_org_NeuralPathMSP",
-    "certchannel_lifecycle$$h_implicit_org_TechPulseMSP",
-    "certchannel_lifecycle$$p_implicit_org_TechPulseMSP"
+    "fabric__internal"
 ]
 ----
 
@@ -497,7 +519,7 @@ View the X.509 details of an organization's admin certificate:
 [source,bash,subs="attributes"]
 ----
 oc get secret admin-msp -n $TP -o jsonpath='{.data.signcerts}' \
-  | base64 -d | openssl x509 -text -noout 2>/dev/null \
+  | base64 -d 2>/dev/null | openssl x509 -text -noout 2>/dev/null \
   | grep -E "Subject:|Issuer:|Not Before|Not After"
 ----
 
@@ -519,7 +541,7 @@ oc get secret admin-msp -n $TP -o jsonpath='{.data.signcerts}' \
 for NS in $TP $DF $NP; do
   ORG=$(echo $NS | sed 's/certchain-//')
   EXPIRY=$(oc get secret admin-msp -n $NS -o jsonpath='{.data.signcerts}' \
-    | base64 -d | openssl x509 -enddate -noout 2>/dev/null | cut -d= -f2)
+    | base64 -d 2>/dev/null | openssl x509 -enddate -noout 2>/dev/null | cut -d= -f2)
   echo "$ORG admin cert expires: $EXPIRY"
 done
 ----
@@ -539,7 +561,7 @@ neuralpath admin cert expires: Mar 17 04:46:00 2027 GMT
 [source,bash,subs="attributes"]
 ----
 oc get secret peer0-tls -n $TP -o jsonpath='{.data.server\.crt}' \
-  | base64 -d | openssl x509 -text -noout 2>/dev/null \
+  | base64 -d 2>/dev/null | openssl x509 -text -noout 2>/dev/null \
   | grep -E "Subject:|DNS:|Not After"
 ----
 
@@ -558,7 +580,7 @@ oc get secret peer0-tls -n $TP -o jsonpath='{.data.server\.crt}' \
 [source,bash,subs="attributes"]
 ----
 oc get secret orderer0-tls -n $CENTRAL -o jsonpath='{.data.server\.crt}' \
-  | base64 -d | openssl x509 -text -noout 2>/dev/null \
+  | base64 -d 2>/dev/null | openssl x509 -text -noout 2>/dev/null \
   | grep -E "Subject:|DNS:|Not After"
 ----
 
