@@ -83,8 +83,8 @@ Test the scaled service — the OpenShift Service load-balances across all 3 rep
 ----
 # Verify a known certificate — the request is routed to any of the 3 replicas
 for i in 1 2 3; do
-  curl -sk -w "  (HTTP %{http_code})\n" "{verify_api_url}/api/v1/verify/TP-FSWD-001" \
-    | python3 -c "import sys,json; d=json.load(sys.stdin); print(f'Request {}'+'$i'+f': status={d[\"status\"]}', end='')"
+  curl -sk "{verify_api_url}/api/v1/verify/TP-FSWD-001" \
+    | python3 -c "import sys,json; d=json.load(sys.stdin); print('Request $i: status=' + d['status'])"
 done
 ----
 
