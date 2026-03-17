@@ -34,6 +34,8 @@ Throughout this guide, you worked with a production-grade Hyperledger Fabric 3.1
 == Next Steps
 
 * Explore the xref:09-api.adoc[API Walkthrough] for direct `curl`-based interaction with the APIs
+* Use the xref:14-fabric-cheatsheet.adoc[Fabric Operations Cheatsheet] for quick-reference commands to inspect and troubleshoot the network
 * Review the xref:01b-production-architecture.adoc[Production Architecture Guide] for how this demo maps to enterprise deployments
 * Check the xref:12-adding-organizations.adoc[Adding Organizations] reference for multi-org expansion considerations
 * Browse the source code in the *Git Repository* tab to see how the Helm charts, chaincode, and scripts work together
+* Clone the https://github.com/serhat-dirik/hyperledger-on-openshift-demo[public GitHub repository^] to run this demo on your own OpenShift cluster
