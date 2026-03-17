@@ -42,11 +42,6 @@ spec:
       kind: GrafanaDatasource
       jsonPointers:
         - /spec/datasource/secureJsonData
-    - group: build.openshift.io
-      kind: BuildConfig
-      jqPathExpressions:
-        - .spec.triggers
-        - .status
     - group: apps
       kind: Deployment
       jqPathExpressions:
