@@ -518,8 +518,8 @@ View the X.509 details of an organization's admin certificate:
 [.console-input]
 [source,bash,subs="attributes"]
 ----
-oc get secret admin-msp -n $TP -o jsonpath='{.data.signcerts}' \
-  | base64 -d 2>/dev/null | openssl x509 -text -noout 2>/dev/null \
+oc extract secret/admin-msp -n $TP --keys=signcerts --to=- 2>/dev/null \
+  | openssl x509 -text -noout 2>/dev/null \
   | grep -E "Subject:|Issuer:|Not Before|Not After"
 ----
 
@@ -540,8 +540,8 @@ oc get secret admin-msp -n $TP -o jsonpath='{.data.signcerts}' \
 ----
 for NS in $TP $DF $NP; do
   ORG=$(echo $NS | sed 's/certchain-//')
-  EXPIRY=$(oc get secret admin-msp -n $NS -o jsonpath='{.data.signcerts}' \
-    | base64 -d 2>/dev/null | openssl x509 -enddate -noout 2>/dev/null | cut -d= -f2)
+  EXPIRY=$(oc extract secret/admin-msp -n $NS --keys=signcerts --to=- 2>/dev/null \
+    | openssl x509 -enddate -noout 2>/dev/null | cut -d= -f2)
   echo "$ORG admin cert expires: $EXPIRY"
 done
 ----
@@ -560,8 +560,8 @@ neuralpath admin cert expires: Mar 17 04:46:00 2027 GMT
 [.console-input]
 [source,bash,subs="attributes"]
 ----
-oc get secret peer0-tls -n $TP -o jsonpath='{.data.server\.crt}' \
-  | base64 -d 2>/dev/null | openssl x509 -text -noout 2>/dev/null \
+oc extract secret/peer0-tls -n $TP --keys=server.crt --to=- 2>/dev/null \
+  | openssl x509 -text -noout 2>/dev/null \
   | grep -E "Subject:|DNS:|Not After"
 ----
 
@@ -579,8 +579,8 @@ oc get secret peer0-tls -n $TP -o jsonpath='{.data.server\.crt}' \
 [.console-input]
 [source,bash,subs="attributes"]
 ----
-oc get secret orderer0-tls -n $CENTRAL -o jsonpath='{.data.server\.crt}' \
-  | base64 -d 2>/dev/null | openssl x509 -text -noout 2>/dev/null \
+oc extract secret/orderer0-tls -n $CENTRAL --keys=server.crt --to=- 2>/dev/null \
+  | openssl x509 -text -noout 2>/dev/null \
   | grep -E "Subject:|DNS:|Not After"
 ----
 
