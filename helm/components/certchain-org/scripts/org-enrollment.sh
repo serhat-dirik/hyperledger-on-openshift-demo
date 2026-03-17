@@ -101,6 +101,21 @@ fabric-ca-client enroll \
     exit 1
 }
 
+# Wait for central enrollment to register our org identities
+echo "  Waiting for org identities to be registered on CA..."
+for i in $(seq 1 60); do
+    if fabric-ca-client identity list --id "$PEER_NAME" \
+        -u "$CA_URL" -M "$WORK_DIR/ca-admin-msp" &>/dev/null; then
+        echo "  Org identities registered (attempt $i)"
+        break
+    fi
+    if [ "$i" -eq 60 ]; then
+        echo "  [ERROR] Timed out waiting for central enrollment to register identities"
+        exit 1
+    fi
+    sleep 5
+done
+
 # Peer MSP + TLS
 PEER_CSR="peer0,peer0.${ORG_NS}.svc.cluster.local,peer0-${ORG_NS}.${DOMAIN_SUFFIX}"
 echo "  Enrolling $PEER_NAME MSP..."
