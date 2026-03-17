@@ -88,7 +88,8 @@ metadata:
     app.kubernetes.io/component: monitoring
     dashboards: certchain
   annotations:
-    argocd.argoproj.io/sync-wave: "7"
+    argocd.argoproj.io/sync-wave: "8"
+    argocd.argoproj.io/sync-options: SkipDryRunOnMissingResource=true
 spec:
   route:
     spec:
@@ -113,7 +114,8 @@ metadata:
   labels:
     {{- include "certchain-central.labels" . | nindent 4 }}
   annotations:
-    argocd.argoproj.io/sync-wave: "7"
+    argocd.argoproj.io/sync-wave: "8"
+    argocd.argoproj.io/sync-options: SkipDryRunOnMissingResource=true
 spec:
   instanceSelector:
     matchLabels:
