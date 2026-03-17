@@ -308,7 +308,7 @@ helm/
 └── components/                    ← Phase 2: Deployed by ArgoCD from Gitea (or your fork)
     ├── certchain-central/         ← Central: Fabric CA, orderer0, Keycloak, verify-api, cert-portal, Grafana
     ├── certchain-org/             ← Per-org (deployed 3×): peer, orderer, CouchDB, APIs, UI, Keycloak
-    └── certchain-showroom/        ← Lab guide: Antora + terminal + 8 browser tabs
+    └── showroom/                  ← Lab guide: Antora + terminal + 8 browser tabs
 
 apps/
 ├── cert-admin-api/                ← Quarkus (Java 21) — per-org certificate CRUD
@@ -459,7 +459,7 @@ Expected: a JSON object with `"status": "ACTIVE"`.
 | Channel setup job fails | `oc logs job/fabric-channel-setup -n certchain` | Orderers/peers may not be ready. Delete job and re-run. |
 | Chaincode `CORE_CHAINCODE_ID_NAME` error | `oc logs deploy/certcontract -n certchain-techpulse` | Check ConfigMap `chaincode-id`: `oc get cm chaincode-id -n certchain-techpulse` |
 | ArgoCD sync stuck | ArgoCD UI → Application → Sync Status | Terminate operation → delete stuck Job → force refresh |
-| Gitea mirror job failed | `oc logs job/gitea-mirror -n certchain-showroom` | Check Gitea pod is running: `oc get pods -n certchain-showroom -l app.kubernetes.io/name=gitea` |
+| Gitea mirror job failed | `oc logs job/gitea-mirror -n certchain` | Check Gitea pod is running: `oc get pods -n certchain -l app.kubernetes.io/name=gitea` |
 
 ---
 
@@ -484,7 +484,7 @@ Interactive demo walkthroughs are available in the **Showroom** lab guide, which
 
 ```bash
 DOMAIN=$(oc get ingresses.config cluster -o jsonpath='{.spec.domain}')
-echo "https://showroom-certchain-showroom.${DOMAIN}"
+echo "https://showroom-showroom.${DOMAIN}"
 ```
 
 ---
@@ -500,7 +500,7 @@ To completely remove CertChain from your cluster:
 This script:
 1. Deletes all ArgoCD Applications (`certchain-bootstrap` and children)
 2. Uninstalls Helm releases from all namespaces
-3. Deletes all 5 project namespaces (`certchain`, `certchain-techpulse`, `certchain-dataforge`, `certchain-neuralpath`, `certchain-showroom`)
+3. Deletes all 5 project namespaces (`certchain`, `certchain-techpulse`, `certchain-dataforge`, `certchain-neuralpath`, `showroom`)
 5. Waits for namespace cleanup to complete
 
 **Verify cleanup:**

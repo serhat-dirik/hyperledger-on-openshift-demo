@@ -8,7 +8,7 @@ ROOT_DIR="$(dirname "$SCRIPT_DIR")"
 source "$ROOT_DIR/env.sh"
 
 CENTRAL_NS="$PROJECT_NAMESPACE"
-ALL_NS=("$CENTRAL_NS" "${CENTRAL_NS}-techpulse" "${CENTRAL_NS}-dataforge" "${CENTRAL_NS}-neuralpath" "${CENTRAL_NS}-showroom")
+ALL_NS=("$CENTRAL_NS" "${CENTRAL_NS}-techpulse" "${CENTRAL_NS}-dataforge" "${CENTRAL_NS}-neuralpath" "showroom")
 
 echo "=== Tearing down CertChain Demo ==="
 

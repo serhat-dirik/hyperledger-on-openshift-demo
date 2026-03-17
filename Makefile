@@ -25,7 +25,7 @@ configure-kc: ## Configure KC identity brokering (post-deploy)
 	@bash scripts/configure-identity-brokering.sh
 
 lint-helm: ## Lint all Helm charts
-	@helm lint helm/components/certchain-central && helm lint helm/components/certchain-org && helm lint helm/components/certchain-showroom
+	@helm lint helm/components/certchain-central && helm lint helm/components/certchain-org && helm lint helm/components/showroom
 
 # ---- Seed & Test ------------------------------------------------------------
 seed: ## Load demo data

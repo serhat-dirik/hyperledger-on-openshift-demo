@@ -30,7 +30,7 @@ tabs:
     external: true
 
   - name: Git Repository
-    url: 'https://gitea-certchain-showroom.${DOMAIN}'
+    url: 'https://gitea-certchain.${DOMAIN}'
     external: true
 
   - name: ArgoCD

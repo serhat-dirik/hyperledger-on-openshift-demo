@@ -10,7 +10,7 @@ kind: ServiceAccount
 metadata:
   name: {{ .Values.showroom.name }}
   labels:
-    {{- include "certchain-showroom.labels" . | nindent 4 }}
+    {{- include "showroom.labels" . | nindent 4 }}
 
 ---
 # --- RBAC ---
@@ -34,7 +34,7 @@ kind: ConfigMap
 metadata:
   name: {{ .Values.showroom.name }}-proxy-config
   labels:
-    {{- include "certchain-showroom.labels" . | nindent 4 }}
+    {{- include "showroom.labels" . | nindent 4 }}
 data:
   nginx.conf: |
     events {}
@@ -84,7 +84,7 @@ kind: ConfigMap
 metadata:
   name: {{ .Values.showroom.name }}-userdata
   labels:
-    {{- include "certchain-showroom.labels" . | nindent 4 }}
+    {{- include "showroom.labels" . | nindent 4 }}
 data:
   user_data.yml: |
     cluster_domain: {{ .Values.global.domain }}
@@ -121,7 +121,7 @@ kind: PersistentVolumeClaim
 metadata:
   name: {{ .Values.showroom.name }}-terminal-lab-user-home
   labels:
-    {{- include "certchain-showroom.labels" . | nindent 4 }}
+    {{- include "showroom.labels" . | nindent 4 }}
 spec:
   accessModes:
     - ReadWriteOnce
@@ -137,7 +137,7 @@ kind: Service
 metadata:
   name: {{ .Values.showroom.name }}
   labels:
-    {{- include "certchain-showroom.labels" . | nindent 4 }}
+    {{- include "showroom.labels" . | nindent 4 }}
 spec:
   type: ClusterIP
   ports:
@@ -154,7 +154,7 @@ kind: Deployment
 metadata:
   name: {{ .Values.showroom.name }}
   labels:
-    {{- include "certchain-showroom.labels" . | nindent 4 }}
+    {{- include "showroom.labels" . | nindent 4 }}
     demo.redhat.com/application: showroom
 spec:
   replicas: 1
@@ -399,7 +399,7 @@ metadata:
     haproxy.router.openshift.io/timeout: 1h
     haproxy.router.openshift.io/timeout-tunnel: 1h
   labels:
-    {{- include "certchain-showroom.labels" . | nindent 4 }}
+    {{- include "showroom.labels" . | nindent 4 }}
 spec:
   to:
     kind: Service

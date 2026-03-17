@@ -18,7 +18,7 @@ sourceRepo:
 # --- Gitea (local git server) -----------------------------------------------
 gitea:
   enabled: true
-  namespace: certchain-showroom
+  namespace: certchain
   image: "quay.io/rhpds/gitea:latest"
   adminUser: gitea
   adminPassword: openshift
@@ -72,6 +72,6 @@ components:
 
   showroom:
     enabled: true
-    namespace: certchain-showroom
+    namespace: showroom
     terminal:
       enabled: true

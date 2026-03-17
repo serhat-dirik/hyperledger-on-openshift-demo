@@ -34,8 +34,8 @@ metadata:
 apiVersion: v1
 kind: Namespace
 metadata:
-  name: {{ .Values.components.showroom.namespace | default "certchain-showroom" }}
+  name: {{ .Values.components.showroom.namespace | default "showroom" }}
   labels:
     app.kubernetes.io/part-of: certchain
-    kubernetes.io/metadata.name: {{ .Values.components.showroom.namespace | default "certchain-showroom" }}
+    kubernetes.io/metadata.name: {{ .Values.components.showroom.namespace | default "showroom" }}
 {{- end }}

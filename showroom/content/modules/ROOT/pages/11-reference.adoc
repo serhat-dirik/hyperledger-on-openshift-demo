@@ -231,7 +231,7 @@ done
 | Namespace | Contents
 
 | `certchain`
-| Fabric CA, orderer0, cert-portal, verify-api, central Keycloak, Postgres, Grafana
+| Fabric CA, orderer0, cert-portal, verify-api, central Keycloak, Postgres, Grafana, Gitea
 
 | `certchain-techpulse`
 | Peer, orderer, CouchDB, certcontract (CcaaS), Postgres, org Keycloak, cert-admin-api, course-manager-ui
@@ -242,6 +242,6 @@ done
 | `certchain-neuralpath`
 | Same as techpulse
 
-| `certchain-showroom`
-| Antora lab guide, Gitea
+| `showroom`
+| Antora lab guide
 |===

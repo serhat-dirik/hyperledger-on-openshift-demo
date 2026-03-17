@@ -47,7 +47,7 @@ You should see 6 Applications, all *Synced* and *Healthy*:
 | NeuralPath org: same layout as TechPulse
 
 | *certchain-showroom*
-| This lab guide + Gitea (local git mirror)
+| This lab guide (deployed to `showroom` namespace)
 |===
 
 Click any Application to explore its *resource tree*, *sync status*, and *sync-wave ordering*. The sync waves ensure resources are created in the correct order — for example, Fabric CA must be running before enrollment jobs can execute.

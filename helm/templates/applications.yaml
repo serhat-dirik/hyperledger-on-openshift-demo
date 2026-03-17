@@ -120,7 +120,7 @@ spec:
   source:
     repoURL: {{ .Values.gitops.repoUrl }}
     targetRevision: {{ .Values.gitops.revision }}
-    path: {{ .Values.gitops.basePath }}/components/certchain-showroom
+    path: {{ .Values.gitops.basePath }}/components/showroom
     helm:
       valuesObject:
         global:
@@ -136,7 +136,7 @@ spec:
           centralNamespace: {{ .Values.central.namespace }}
   destination:
     server: https://kubernetes.default.svc
-    namespace: {{ .Values.components.showroom.namespace | default "certchain-showroom" }}
+    namespace: {{ .Values.components.showroom.namespace | default "showroom" }}
   syncPolicy:
     automated:
       prune: true
