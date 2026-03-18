@@ -26,17 +26,13 @@ jobs:
     steps:
       - name: Checkout
         uses: actions/checkout@v4
+        with:
+          fetch-depth: 1
 
       - name: Build Antora site
         run: |
           mkdir -p output
-          docker run --rm \
-            -u $(id -u):$(id -g) \
-            -v "${{ github.workspace }}:/antora:Z" \
-            -w /antora \
-            --entrypoint antora \
-            ghcr.io/rhpds/showroom-content:latest \
-            generate --to-dir output showroom/default-site.yml
+          npx antora generate --to-dir output showroom/default-site.yml
 
       - name: Upload artifact
         uses: actions/upload-pages-artifact@v3
