@@ -5,6 +5,8 @@
 
 This project demonstrates how to deploy and operate a [Hyperledger Fabric](https://www.hyperledger.org/projects/fabric) permissioned blockchain network on OpenShift. It covers multi-organization governance with BFT consensus, per-org identity isolation via Keycloak, GitOps-driven deployment with ArgoCD, and a full observability stack. **CertChain** — a certificate credentialing system — is the sample use case that ties it all together.
 
+![CertChain Solution Overview](showroom/content/modules/ROOT/images/solution.png)
+
 ---
 
 ## What Does This Demo Show?
