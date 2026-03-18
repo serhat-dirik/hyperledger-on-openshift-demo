@@ -32,7 +32,7 @@ jobs:
       - name: Build Antora site
         run: |
           mkdir -p output
-          npx antora generate --to-dir output showroom/default-site.yml
+          npx antora generate --to-dir output default-site.yml
 
       - name: Upload artifact
         uses: actions/upload-pages-artifact@v3
