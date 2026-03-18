@@ -31,6 +31,7 @@ jobs:
         run: |
           mkdir -p output
           docker run --rm \
+            -u $(id -u):$(id -g) \
             -v "${{ github.workspace }}:/antora:Z" \
             -w /antora \
             --entrypoint antora \
