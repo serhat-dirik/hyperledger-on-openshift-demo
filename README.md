@@ -361,31 +361,44 @@ If you have RHDP access, use the [**Field Sourced Content — OpenShift Base**](
    - **GitOps Path:** `helm/bootstrap`
    - **GitOps Revision:** `main`
 
-2. RHDP provisions the cluster, installs ArgoCD, and creates the root Application. The bootstrap chart automatically:
-   - Deploys Gitea and mirrors this repo
-   - Creates 5 ArgoCD Applications (central, 3 orgs, showroom)
-   - Deploys the full CertChain platform
+2. RHDP provisions the cluster, installs ArgoCD, and creates the root Application. The bootstrap chart automatically deploys Gitea, mirrors this repo, and creates 5 child ArgoCD Applications.
 
-3. **Wait for the full deployment to finish.** RHDP marks the order as "Ready" once the bootstrap chart syncs, but the 5 child ArgoCD applications continue deploying in the background (~25 minutes total). Open the ArgoCD console to monitor progress:
+3. **IMPORTANT — Wait for the full deployment (~25 min after RHDP shows "Ready").**
+
+   RHDP marks your order as "Ready" once the bootstrap chart syncs (~1 min), but the 5 child ArgoCD applications continue deploying in the background. **The platform is NOT usable until all apps reach Synced/Healthy.**
+
+   **How to monitor progress:**
+
+   Open the ArgoCD console (URL is in the RHDP order email, or find it via OpenShift Console → Networking → Routes → `openshift-gitops`). Log in with the OpenShift admin credentials from the order email.
+
+   You should see 6 ArgoCD Applications. Wait until all show **Synced / Healthy**:
+
+   | Application | What it deploys | Typical time |
+   |---|---|---|
+   | `field-content` (bootstrap) | Gitea, mirror, child apps | ~1 min |
+   | `certchain-showroom` | Lab guide + terminal | ~2 min |
+   | `certchain-techpulse` | TechPulse org (peer, orderer, CouchDB, Keycloak, APIs, UI) | ~8 min |
+   | `certchain-dataforge` | DataForge org (same) | ~8 min |
+   | `certchain-neuralpath` | NeuralPath org (same) | ~8 min |
+   | `certchain-central` | Fabric CA, orderer, Keycloak, Grafana, verify-api, cert-portal, all setup Jobs | **~25 min** (finishes last) |
+
+   > **What's happening:** `certchain-central` runs 13 sequential sync waves — CA enrollment, orderer bootstrap, image builds, channel creation, chaincode lifecycle, identity brokering, and demo data seeding. The org apps finish faster but depend on central for final setup.
+   >
+   > **Expected behavior:** `certcontract` pods in org namespaces will show CrashLoopBackOff (~8 restarts) — this is normal. They need a ConfigMap from central wave 11. Kubernetes backoff restarts handle this cross-app timing automatically.
+
+   **Quick check from terminal** (if Showroom terminal is available):
 
    ```bash
-   # ArgoCD URL (from RHDP order details or OpenShift Console → Networking → Routes → openshift-gitops)
-   # Login with the OpenShift admin credentials provided in the order email.
+   # Check all ArgoCD apps at a glance
+   oc get applications -n openshift-gitops \
+     -o custom-columns=NAME:.metadata.name,SYNC:.status.sync.status,HEALTH:.status.health.status
+
+   # Smoke test (only works after certchain-central finishes all 13 waves)
+   DOMAIN=$(oc get ingresses.config cluster -o jsonpath='{.spec.domain}')
+   curl -sk "https://verify-api-certchain.${DOMAIN}/api/v1/verify/TP-FSWD-001" | python3 -m json.tool
    ```
 
-   All 5 apps must show **Synced / Healthy** before the platform is fully operational:
-
-   | Application | What it deploys |
-   |---|---|
-   | `certchain-central` | Fabric CA, orderer, Keycloak, Grafana, verify-api, cert-portal, setup Jobs |
-   | `certchain-techpulse` | TechPulse org (peer, orderer, CouchDB, Keycloak, APIs, UI) |
-   | `certchain-dataforge` | DataForge org (same) |
-   | `certchain-neuralpath` | NeuralPath org (same) |
-   | `certchain-showroom` | Lab guide, terminal, UI tabs |
-
-   > **Tip:** The `certchain-central` app finishes last — it runs setup Jobs sequentially through 13 sync waves (enrollment → channel creation → chaincode lifecycle → identity brokering → demo data seeding).
-
-4. When deployment completes, open the **Showroom** lab guide URL (provided in RHDP order details). The Showroom has interactive walkthroughs with a built-in terminal, OpenShift Console, and Git repo tabs.
+4. When all apps show **Synced / Healthy**, open the **Showroom** lab guide URL (provided in RHDP order details). The Showroom has interactive walkthroughs with a built-in terminal, OpenShift Console, and Git repo tabs.
 
 ### Option B — Bring Your Own Cluster
 
