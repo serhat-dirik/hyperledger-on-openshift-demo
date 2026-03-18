@@ -1,0 +1,46 @@
+name: Deploy Showroom to GitHub Pages
+
+on:
+  push:
+    branches: [main]
+    paths:
+      - 'showroom/**'
+      - '.github/workflows/deploy-pages.yml'
+  workflow_dispatch:
+
+permissions:
+  contents: read
+  pages: write
+  id-token: write
+
+concurrency:
+  group: pages
+  cancel-in-progress: false
+
+jobs:
+  deploy:
+    environment:
+      name: github-pages
+      url: ${{ steps.deployment.outputs.page_url }}
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Build Antora site
+        run: |
+          mkdir -p output
+          docker run --rm \
+            -v "${{ github.workspace }}:/antora:Z" \
+            -w /antora \
+            ghcr.io/rhpds/showroom-content:latest \
+            antora generate --to-dir output showroom/default-site.yml
+
+      - name: Upload artifact
+        uses: actions/upload-pages-artifact@v3
+        with:
+          path: output
+
+      - name: Deploy to GitHub Pages
+        id: deployment
+        uses: actions/deploy-pages@v4
