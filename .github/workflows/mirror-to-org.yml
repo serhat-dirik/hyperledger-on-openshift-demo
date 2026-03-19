@@ -1,0 +1,34 @@
+name: Mirror to RedHat-MEA-OpenShift
+
+on:
+  push:
+    branches:
+      - '**'       # all branches
+    tags:
+      - '**'       # all tags
+  delete:           # keep mirror clean when branches/tags are deleted
+  # Optional: run daily to catch any drift
+  schedule:
+    - cron: '0 6 * * *'   # 06:00 UTC daily
+  # Allow manual trigger
+  workflow_dispatch:
+
+jobs:
+  mirror:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout source (full history)
+        uses: actions/checkout@v4
+        with:
+          fetch-depth: 0          # full clone, all branches & tags
+          fetch-tags: true
+
+      - name: Fetch all remote refs
+        run: |
+          # Make sure we have every remote branch and tag locally
+          git fetch --prune --prune-tags origin '+refs/heads/*:refs/heads/*' '+refs/tags/*:refs/tags/*'
+
+      - name: Push mirror to org
+        run: |
+          git push --mirror \
+            https://x-access-token:${{ secrets.ORG_MIRROR_TOKEN }}@github.com/RedHat-MEA-OpenShift/hyperledger-on-openshift-demo.git
